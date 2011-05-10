@@ -1,6 +1,8 @@
 project(pseudopodia_project)
 cmake_minimum_required(VERSION 2.6)
 
+option(ENABLE_TEST "Enable test." ON)
+
 find_package(Qt4 REQUIRED)
 
 if(MSVC)
@@ -26,23 +28,18 @@ set(HEADERS
     connectionstatus.hpp
 )
 
-#set(UIS
-#
-#)
-
-#set(RESOURCES resources.qrc)
-
 qt4_wrap_cpp(MOC_SOURCES ${HEADERS})
-#qt4_wrap_ui(UIS_HEADERS ${UIS})
-#qt4_add_resources(RCC ${RESOURCES})
 
-add_library(pseudopodia SHARED
+add_library(pseudopodia STATIC
     ${SOURCES}
     ${MOC_SOURCES}
     ${HEADERS}
-#    ${RCC}
 )
 
 target_link_libraries(pseudopodia
     ${QT_LIBRARIES}
 )
+
+if(ENABLE_TEST)
+    add_subdirectory(test)
+endif(ENABLE_TEST)

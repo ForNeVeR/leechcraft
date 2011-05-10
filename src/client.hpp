@@ -34,7 +34,7 @@ namespace Pseudopodia
     public:
         /* Constructs a Client object.
          */
-        Client(QObject *parent);
+        Client(QObject *parent=NULL);
     
     public slots:
         /* Connects to server.
@@ -50,6 +50,9 @@ namespace Pseudopodia
         /* Emitted after connection to server initiated successfully.
          */
         void connected(const quint64 &UIN);
+        
+        /* Emitted whenever any connection error occurs.
+         */
         void connectionError(const quint64 &UIN);
         
     private slots:

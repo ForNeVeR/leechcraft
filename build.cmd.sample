@@ -1,0 +1,29 @@
+@echo off
+rem # This file is part of Pseudopodia.
+rem # Copyright (C) 2011 ForNeVeR
+rem #
+rem # Pseudopodia is free software: you can redistribute it and/or modify it
+rem # under the terms of the GNU General Public License as published by the Free
+rem # Software Foundation, either version 3 of the License, or (at your option)
+rem # any later version.
+rem #
+rem # Pseudopodia is distributed in the hope that it will be useful, but WITHOUT
+rem # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+rem # FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+rem # more details.
+rem #
+rem # You should have received a copy of the GNU General Public License along
+rem # with Pseudopodia. If not, see <http://www.gnu.org/licenses/>.
+
+rem # This is build file for Windows platform.
+
+rem # Set these variables to proper paths for your system.
+set QTDIR="C:\Programs\Qt\4.7.1"
+set CMAKE_BIN="cmake"
+rem # End of configuration section.
+
+if exist build rmdir /s /q build
+if not exist build mkdir build
+cd build
+%CMAKE_BIN% ../src
+pause

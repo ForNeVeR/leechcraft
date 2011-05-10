@@ -28,4 +28,4 @@ Building
 
 ### Others
 
-    $ md build && cmake ../src
+    $ md build && cd build && cmake ../src

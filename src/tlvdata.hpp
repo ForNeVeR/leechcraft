@@ -14,14 +14,24 @@
  * You should have received a copy of the GNU General Public License along with
  * Pseudopodia. If not, see <http://www.gnu.org/licenses/>.
  */
-#include <QCoreApplication>
- 
-#include "consoleclient.hpp"
+#pragma once
 
-int main(int argc, char **argv)
+#include <QByteArray>
+
+namespace Pseudopodia
 {
-    QCoreApplication application(argc, argv);
-    Pseudopodia::ConsoleClient client;
-    qDebug() << "Entering Qt event loop...";
-    return application.exec();
+    class TLVData
+    {
+        public:
+            /* Constructs new TLV (type-length-value) data sequence.
+             * type - reserved data type.
+             * data - data to put into packet.
+             */
+            TLVData(quint16 type, const QByteArray &data);
+            QByteArray toByteArray() const;
+        
+        private:
+            quint16 type;
+            QByteArray data;
+    };
 }

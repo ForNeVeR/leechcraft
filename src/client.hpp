@@ -17,7 +17,7 @@
 #pragma once
 
 #include <QtGlobal>
-#include <QUdpSocket>
+#include <QTcpSocket>
 
 class QObject;
 class QString;
@@ -59,8 +59,9 @@ namespace Pseudopodia
         void socketConnected();
     
     private:
-        QUdpSocket socket;
+        QTcpSocket socket;
         
+        quint64 UIN;
         ConnectionStatus connectionStatus;
     };
 }

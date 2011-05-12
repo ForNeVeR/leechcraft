@@ -21,11 +21,17 @@ include_directories(
 
 set(SOURCES
     client.cpp
+    flappacket.cpp
+    tlvdata.cpp
+    utils.cpp
 )
 
 set(HEADERS
     client.hpp
     connectionstatus.hpp
+    flappacket.hpp
+    tlvdata.hpp
+    utils.hpp
 )
 
 qt4_wrap_cpp(MOC_SOURCES ${HEADERS})

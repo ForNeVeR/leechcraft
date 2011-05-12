@@ -28,9 +28,9 @@ namespace Pseudopodia
             /* Starts main console loop.
              */
             ConsoleClient(QObject *parent=NULL);
-            void execute();
             
         private slots:
+            void execute();
             void connected(const quint64 &UIN);
             void connectionError(const quint64 &UIN);
             

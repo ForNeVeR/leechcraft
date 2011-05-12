@@ -20,6 +20,7 @@
 #include <iostream>
 
 #include <QCoreApplication>
+#include <QTimer>
 
 using namespace std;
 
@@ -34,20 +35,36 @@ namespace Pseudopodia
             SLOT(connected(const quint64 &)));
         connect(&client, SIGNAL(connectionError(const quint64 &)), this,
             SLOT(connectionError(const quint64 &)));
+
+        // Start executing loop right after event system activates:
+        QTimer::singleShot(0, this, SLOT(execute()));
     }
 
     void ConsoleClient::execute()
     {
-        output << "Available commands: connect, exit." << endl;
+        output << "Available commands: connect, check, exit." << endl;
         while(true)
         {
             output << "> ";
             output.flush();
             QString command = input.readLine();
             if(command == "connect")
-                client.simpleConnect(0, "");
+            {
+                output << "UIN:      ";
+                output.flush();
+                QString UIN = input.readLine();
+                output << "Password: ";
+                output.flush();
+                QString password = input.readLine();
+                client.simpleConnect(UIN.toLongLong(), password);
+            }
+            else if(command == "check")
+                QCoreApplication::processEvents();
             else if(command == "exit")
+            {
+                QCoreApplication::quit();
                 return;
+            }
             else
                 output << "Unknown command." << endl;
             output.flush();

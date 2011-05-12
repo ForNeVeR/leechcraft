@@ -14,14 +14,26 @@
  * You should have received a copy of the GNU General Public License along with
  * Pseudopodia. If not, see <http://www.gnu.org/licenses/>.
  */
-#include <QCoreApplication>
- 
-#include "consoleclient.hpp"
+#include "utils.hpp"
 
-int main(int argc, char **argv)
+#include <QtEndian>
+
+namespace Pseudopodia
 {
-    QCoreApplication application(argc, argv);
-    Pseudopodia::ConsoleClient client;
-    qDebug() << "Entering Qt event loop...";
-    return application.exec();
+    namespace Utils
+    {
+        QByteArray toBigEndian(quint16 word)
+        {
+            quint8 data[2] = { 0 };
+            qToBigEndian(word, data);
+            return QByteArray((char *)data, 2);
+        }
+    
+        QByteArray toBigEndian(quint32 quad)
+        {
+            quint8 data[4] = { 0 };
+            qToBigEndian(quad, data);
+            return QByteArray((char *)data, 4);
+        }
+    }
 }

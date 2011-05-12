@@ -14,14 +14,31 @@
  * You should have received a copy of the GNU General Public License along with
  * Pseudopodia. If not, see <http://www.gnu.org/licenses/>.
  */
-#include <QCoreApplication>
- 
-#include "consoleclient.hpp"
+#include "tlvdata.hpp"
 
-int main(int argc, char **argv)
+#include <QtEndian>
+
+#include "utils.hpp"
+
+namespace Pseudopodia
 {
-    QCoreApplication application(argc, argv);
-    Pseudopodia::ConsoleClient client;
-    qDebug() << "Entering Qt event loop...";
-    return application.exec();
+    TLVData::TLVData(quint16 type, const QByteArray &data) :
+        type(type),
+        data(data)
+    {
+    
+    }
+    
+    QByteArray TLVData::toByteArray() const
+    {
+        QByteArray dataToReturn;
+        dataToReturn.append(Utils::toBigEndian(type));
+        
+        quint16 length = data.length();
+        dataToReturn.append(Utils::toBigEndian(length));
+        
+        dataToReturn.append(data);
+        
+        return dataToReturn;
+    }
 }

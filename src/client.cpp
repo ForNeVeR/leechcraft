@@ -23,9 +23,11 @@
 namespace Pseudopodia
 {
     Client::Client(QObject *parent) :
-        QObject(parent)
+        QObject(parent),
+        connectionStatus(Disconnected),
+        UIN(0)
     {
-        connectionStatus = Disconnected;
+        connect(&socket, SIGNAL(connected()), this, SLOT(socketConnected()));
     }
     
     void Client::simpleConnect(const quint64 &UIN, const QString &password,
@@ -34,13 +36,13 @@ namespace Pseudopodia
         if (connectionStatus == Disconnected)
         {
             connectionStatus = Connecting;
-            connect(&socket, SIGNAL(connected()), this,
-                SLOT(socketConnected()));
-            socket.connectToHost(serverName, port, QIODevice::ReadWrite);
+            this->UIN = UIN;
+            qDebug() << "Trying to connect " << serverName << " port " <<
+                port << ".";
+            socket.connectToHost(serverName, port);
         }
         else
         {
-            connectionStatus = Disconnected;
             emit connectionError(UIN);
         }
     }
@@ -50,5 +52,6 @@ namespace Pseudopodia
         qDebug() << "socketConnected()" << endl;
         // TODO: Send cli_ident packet.
         connectionStatus = Connected;
+        emit connected(UIN);
     }
 }

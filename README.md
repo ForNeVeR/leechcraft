@@ -28,6 +28,8 @@ About
 LeechPower is PowerShell based system for building LeechCraft modular
 application under Windows environment.
 
+Visit http://leechcraft.org for details about LeechCraft.
+
 Usage
 =====
 

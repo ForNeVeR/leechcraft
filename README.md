@@ -30,7 +30,27 @@ application under Windows environment.
 
 Visit http://leechcraft.org for details about LeechCraft.
 
+Project status
+==============
+LeechPower system is under development. Expect no functionality at this moment.
+
+Prerequisites
+=============
+Minimal requirement for using LeechPower is installed version of Windows
+PowerShell v2. All commands in this document must be executed inside PowerShell
+host (such as standard PowerShell or more modern PowerShell ISE; third-party
+hosts as PoshConsole are also supported).
+
 Usage
 =====
+At first, start PowerShell host and copy file config.example.ps1 to config.ps1:
 
-Sorry, for now there are nothing to use here :(
+    Set-Location 'path to LeechPower directory here'
+    Copy-Item config.example.ps1 config.ps1
+
+Now, edit file config.ps1. Follow instructions in file comments.
+
+Finally, run main project script and follow on-screen instructions:
+
+    Set-Location 'path to LeechPower directory here'
+    .\Build-LeechCraft.ps1

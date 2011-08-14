@@ -20,29 +20,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 #>
 
-$version = '0.1'
-
-function Show-Banner
-{
-    Write-Output "LeechCraft build system version '$version'."
-}
-
-function Load-Config
-{
-    return .\config.ps1
-}
-
-function Check-Components
-{
-    param($settings)
-    Write-Output "Starting checking components with `$settings = $settings..."
-
-    # TODO: Check every needed component.
-    
-    Write-Output 'Component checking finished.'
-}
-
-# Main script:
-Show-Banner
-$settings = Load-Config
-Check-Components $settings
+# This is example LeechPower configuration file. Copy it with config.ps1 name,
+# then change following settings.

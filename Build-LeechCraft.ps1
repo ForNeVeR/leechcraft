@@ -22,27 +22,37 @@ THE SOFTWARE.
 
 $version = '0.1'
 
+# Prepare service functions:
+. '.\Register-ComponentChecks.ps1'
+
 function Show-Banner
 {
-    Write-Output "LeechCraft build system version '$version'."
+    Write-Host "LeechCraft build system version '$version'."
 }
 
 function Load-Config
 {
-    return .\config.ps1
+    $config = .\config.ps1
+    Write-Host "Config loaded:"
+    Out-Host -InputObject $config
+    return $config
 }
 
-function Check-Components
+function Check-Components($config)
 {
-    param($settings)
-    Write-Output "Starting checking components with `$settings = $settings..."
+    $components = $config.Components
+    Write-Host "Starting checking following components:"
+    Out-Host -InputObject $components
 
-    # TODO: Check every needed component.
+    if (!(Check-cmake $components.cmake))
+    {
+        Write-Host 'cmake checking failed!'
+    }
     
-    Write-Output 'Component checking finished.'
+    Write-Host 'Component checking finished.'
 }
 
 # Main script:
 Show-Banner
-$settings = Load-Config
-Check-Components $settings
+$config = Load-Config
+Check-Components $config

@@ -20,27 +20,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 #>
 
-# This is example LeechPower configuration file. Copy it with config.ps1 name,
-# then change following settings.
+# This file containts functions for checking any components needed for
+# LeechCraft building.
 
-$config = @{}
-
-# Path to local LeechCraft git repository clone:
-$config.RepositoryPath = 'f:\X-Files\Projects\leechcraft'
-
-$config.Components =
-@{
-    # cmake executable path:
-    cmake = 'c:\Program Files (x86)\CMake 2.8\bin\cmake.exe'
+function Check-cmake($cmakePath)
+{
+    Write-Host "Checking cmake at '$cmakePath'..."
+    try
+    {
+        $version = & $cmakePath --version
+    }
+    catch 
+    {
+        Write-Host "Cannot detect cmake version: $_"
+        return $false
+    }
+    Write-Host "$version detected."
+    return $true
 }
-
-# $config.Plugins is array of paths to every plugin included in build. Paths are
-# relative to $config.RepositoryPath.
-$config.Plugins =
-(
-    'src', # LeechCraft main module
-    'src\xmlsettingsdialog'
-)
-
-# Return $config variable from this script:
-$config

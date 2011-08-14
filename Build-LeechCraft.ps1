@@ -33,7 +33,7 @@ function Show-Banner
 function Load-Config
 {
     $config = .\config.ps1
-    Write-Host "Config loaded:"
+    Write-Host 'Config loaded:'
     Out-Host -InputObject $config
     return $config
 }
@@ -41,7 +41,7 @@ function Load-Config
 function Check-Components($config)
 {
     $components = $config.Components
-    Write-Host "Starting checking following components:"
+    Write-Host 'Starting checking following components:'
     Out-Host -InputObject $components
 
     if (!(Check-cmake $components.cmake))

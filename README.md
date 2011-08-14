@@ -45,12 +45,12 @@ Usage
 =====
 At first, start PowerShell host and copy file config.example.ps1 to config.ps1:
 
-    Set-Location 'path to LeechPower directory here'
-    Copy-Item config.example.ps1 config.ps1
+    PS> Set-Location 'path to LeechPower directory here'
+    PS> Copy-Item config.example.ps1 config.ps1
 
 Now, edit file config.ps1. Follow instructions in file comments.
 
 Finally, run main project script and follow on-screen instructions:
 
-    Set-Location 'path to LeechPower directory here'
-    .\Build-LeechCraft.ps1
+    PS> Set-Location 'path to LeechPower directory here'
+    PS> .\Build-LeechCraft.ps1

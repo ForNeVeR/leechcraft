@@ -20,27 +20,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 #>
 
-# This is example LeechPower configuration file. Copy it with config.ps1 name,
-# then change following settings.
+# This file contains main functions for executing various build actions.
 
-$config = @{}
-
-# Path to local LeechCraft git repository clone:
-$config.RepositoryPath = 'f:\X-Files\Projects\leechcraft'
-
-$config.Components =
-@{
-    # cmake executable path:
-    cmake = 'c:\Program Files (x86)\CMake 2.8\bin\cmake.exe'
+function Execute-cmake($cmakePath, $pluginPath)
+{
+    $output = & $cmakePath $pluginPath 2>&1
+    $output >> 'build.log'
+    if ($LASTEXITCODE -eq 0)
+    {
+        return @{ Status = 'OK'; Output = $output }
+    }
+    else
+    {
+        return @{ Status = "Error code $LASTEXITCODE"; Output = $output }
+    }
 }
-
-# $config.Plugins contains paths to every plugin included in build. Paths are
-# relative to $config.RepositoryPath.
-$config.Plugins =
-(
-    @{ Name = 'Main'; Path = 'src' },
-    @{ Name = 'xmlsettingsdialog', Path = 'src\xmlsettingsdialog' }
-)
-
-# Return $config variable from this script:
-$config

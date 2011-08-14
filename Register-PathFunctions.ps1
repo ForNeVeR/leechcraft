@@ -20,27 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 #>
 
-# This is example LeechPower configuration file. Copy it with config.ps1 name,
-# then change following settings.
+# This script file registers functions for working with OS paths.
 
-$config = @{}
-
-# Path to local LeechCraft git repository clone:
-$config.RepositoryPath = 'f:\X-Files\Projects\leechcraft'
-
-$config.Components =
-@{
-    # cmake executable path:
-    cmake = 'c:\Program Files (x86)\CMake 2.8\bin\cmake.exe'
+function Append-Path($parentPath, $childPath)
+{
+    $path = [IO.Path]::Combine($parentPath, $childPath)
+    $absolute = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path)
+    return $absolute
 }
-
-# $config.Plugins contains paths to every plugin included in build. Paths are
-# relative to $config.RepositoryPath.
-$config.Plugins =
-(
-    @{ Name = 'Main'; Path = 'src' },
-    @{ Name = 'xmlsettingsdialog', Path = 'src\xmlsettingsdialog' }
-)
-
-# Return $config variable from this script:
-$config

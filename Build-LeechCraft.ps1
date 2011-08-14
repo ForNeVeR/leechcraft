@@ -23,7 +23,9 @@ THE SOFTWARE.
 $version = '0.1'
 
 # Prepare service functions:
-. '.\Register-ComponentChecks.ps1'
+. '.\Register-PathFunctions.ps1'
+. '.\Register-CheckFunctions.ps1'
+. '.\Register-BuildFunctions.ps1'
 
 function Show-Banner
 {
@@ -41,18 +43,89 @@ function Load-Config
 function Check-Components($config)
 {
     $components = $config.Components
-    Write-Host 'Starting checking following components:'
+    Write-Host 'Started checking following components:'
     Out-Host -InputObject $components
 
     if (!(Check-cmake $components.cmake))
     {
         Write-Host 'cmake checking failed!'
+        return $false
     }
     
     Write-Host 'Component checking finished.'
+    return $true
+}
+
+function Do-Build($config)
+{
+    $pluginStates = @{}
+    Push-Location
+    
+    try
+    {
+        $buildPath = Append-Path . 'build'
+        $plugins = $config.Plugins
+        Write-Host "Building to '$buildPath'..."
+        
+        Write-Host 'Plugin list:'
+        $format = 
+        (
+            @{ Name = 'Name'; Expression = { $_.Name } },
+            @{ Name = 'Path'; Expression = { $_.Path } }
+        )
+        $plugins | Format-Table $format | Out-Host
+        
+        if (Test-Path $buildPath)
+        {
+            Remove-Item $buildPath -Recurse
+        }
+        New-Item $buildPath -Type directory | Out-Null
+        
+        $repoPath = $config.RepositoryPath
+        $cmake = $config.Components.cmake
+        
+        foreach ($plugin in $plugins)
+        {
+            Set-Location $buildPath
+            $pluginPath = Append-Path $repoPath $plugin.Path
+            Write-Host "Configuring plugin in '$pluginPath'..."
+            $outPath = Append-Path $buildPath $plugin.Name
+            New-Item $outPath -Type directory | Out-Null
+            Write-Host "Configuring into '$outPath'..."
+            
+            Set-Location $outPath            
+            $pluginStates[$plugin.Name] = Execute-cmake $cmake $pluginPath
+        }
+    }
+    finally
+    {
+        Write-Host 'Build finished.'
+        Write-Host 'Plugin states:'
+        $format =
+        (
+            @{ Name = 'Name'; Expression = { $_.Name } },
+            @{ Name = 'Status'; Expression = { $_.Value.Status } },
+            @{ Name = 'Output'; Expression = { $_.Value.Output } }
+        )
+        $pluginStates | Format-Table $format | Out-Host
+        Pop-Location
+    }
+    
+    return $pluginStates
 }
 
 # Main script:
 Show-Banner
 $config = Load-Config
-Check-Components $config
+if (Check-Components $config)
+{
+    Write-Host 'Component check succeed.'
+    $report = Do-Build $config
+    Write-Host ('Building finished. Check returned variable or plugin ' +
+        'directories for logs.')
+    return $report
+}
+else
+{
+    Write-Host 'Component check failed. Cannot build.'
+}

@@ -3,6 +3,8 @@ LeechPower
 
 License
 =======
+LeechPower is distributed under terms of MIT license.
+
 Copyright (C) 2011 by ForNeVeR
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

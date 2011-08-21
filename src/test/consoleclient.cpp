@@ -36,6 +36,9 @@ namespace Pseudopodia
         output(stdout),
         thread()
     {
+        connect(&thread, SIGNAL(initialized(Pseudopodia::Client &)), this,
+            SLOT(execute(Pseudopodia::Client &)));  
+        
         // Start executing loop right after event system activates:
         QTimer::singleShot(0, this, SLOT(init()));
     }
@@ -43,9 +46,6 @@ namespace Pseudopodia
     void ConsoleClient::init()
     {
         thread.start();
-
-        connect(&thread, SIGNAL(initialized(Pseudopodia::Client &)), this,
-            SLOT(execute(Pseudopodia::Client &)));        
     }
 
     void ConsoleClient::execute(Client &client)

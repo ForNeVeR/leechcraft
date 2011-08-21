@@ -29,5 +29,5 @@ rem # End of configuration section.
 if exist build rmdir /s /q build
 if not exist build mkdir build
 cd build
-%CMAKE_BIN% ../src
+%CMAKE_BIN% ../src -DQT_QMAKE_EXECUTABLE=%QTDIR%\bin\qmake
 pause

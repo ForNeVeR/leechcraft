@@ -18,14 +18,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <QCoreApplication>
- 
-#include "consoleclient.hpp"
+#include "librarythread.hpp"
 
-int main(int argc, char **argv)
+namespace Pseudopodia
 {
-    QCoreApplication application(argc, argv);
-    Pseudopodia::ConsoleClient client;
-    qDebug() << "Entering Qt event loop...";
-    return application.exec();
+    void LibraryThread::run()
+    {
+        emit initialized(client);
+    }
 }

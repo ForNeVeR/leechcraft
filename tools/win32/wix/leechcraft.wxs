@@ -6,18 +6,27 @@
 			Version='0.4.85'
 			Manufacturer='Deviant Soft'
 			UpgradeCode='B8A483B3-66C1-4352-B399-4A694C305388'>
-		<Package Compressed="yes"
+		<Package Compressed='yes'
 				Manufacturer='Deviant Soft'
 				Description='Installs LeechCraft' />
 		<Media Id='1'
 				Cabinet='leechcraft.cab'
 				EmbedCab='yes' />
-		<Directory Id="TARGETDIR"
-				Name="SourceDir">
-			<Directory Id="ProgramFilesFolder">
-				<Directory Id="LeechCraftDirectory"
-						Name="LeechCraft" />
+		<Directory Id='TARGETDIR'
+				Name='SourceDir'>
+			<Directory Id='ProgramFilesFolder'>
+				<Directory Id='DIR_LeechCraft'
+						Name='LeechCraft' />
 			</Directory>
 		</Directory>
+		
+		<DirectoryRef Id='DIR_LeechCraft'>
+			<Component Id='CMP_leechcraft_exe'
+					Guid='B55B0D5D-E625-4493-8B1E-D6F0D242F8B1'>
+				<File Id='FILE_leechcraft_exe'
+						Source='../LeechCraft/leechcraft.exe'
+						KeyPath='yes' />
+			</Component>
+		</DirectoryRef>
 	</Product>
 </Wix>

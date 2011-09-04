@@ -35,7 +35,8 @@
 		<!-- Features -->
 		<Feature Id='CoreBinaries'
 				Title='Core Binaries'
-				Level='1'>
+				Level='1'
+				Absent='disallow'>
 			<ComponentRef Id='CMP_leechcraft_exe' />
 		</Feature>
 	</Product>

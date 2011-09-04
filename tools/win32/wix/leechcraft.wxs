@@ -12,6 +12,8 @@
 		<Media Id='1'
 				Cabinet='leechcraft.cab'
 				EmbedCab='yes' />
+		
+		<!-- Directory structure -->
 		<Directory Id='TARGETDIR'
 				Name='SourceDir'>
 			<Directory Id='ProgramFilesFolder'>
@@ -20,6 +22,7 @@
 			</Directory>
 		</Directory>
 		
+		<!-- Components definitions -->
 		<DirectoryRef Id='DIR_LeechCraft'>
 			<Component Id='CMP_leechcraft_exe'
 					Guid='B55B0D5D-E625-4493-8B1E-D6F0D242F8B1'>
@@ -28,5 +31,12 @@
 						KeyPath='yes' />
 			</Component>
 		</DirectoryRef>
+		
+		<!-- Features -->
+		<Feature Id="CoreBinaries"
+				Title="Core Binaries"
+				Level="1">
+			<ComponentRef Id="CMP_leechcraft_exe" />
+		</Feature>
 	</Product>
 </Wix>

@@ -28,8 +28,7 @@
 				Title='Core Binaries'
 				Level='1'
 				Absent='disallow'>
-			<ComponentRef Id='CMP_leechcraft_exe' />
-			<ComponentRef Id='CMP_LeechCraftShortcut' />
+			<ComponentGroupRef Id='CG_CoreBinaries' />
 		</Feature>
 	</Product>
 </Wix>

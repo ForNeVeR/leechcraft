@@ -2,10 +2,73 @@
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 	<Fragment>
 		<DirectoryRef Id='DIR_LeechCraft'>
-			<Component Id='CMP_leechcraft_exe'
+			<Component Id='CMP_leechcraft.exe'
 					Guid='B55B0D5D-E625-4493-8B1E-D6F0D242F8B1'>
-				<File Id='FILE_leechcraft_exe'
+				<File Id='FILE_leechcraft.exe'
 						Source='$(var.SourcePath)\leechcraft.exe'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_plugininterface.dll'
+					Guid='584A2011-947E-4972-983E-96150624BD2C'>
+				<File Id='FILE_plugininterface.dll'
+						Source='$(var.SourcePath)\plugininterface.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_xmlsettingsdialog.dll'
+					Guid='FA514AE7-F0BC-48F0-A790-B2769D72B1BF'>
+				<File Id='FILE_xmlsettingsdialog.dll'
+						Source='$(var.SourcePath)\xmlsettingsdialog.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtCore4.dll'
+					Guid='859BAD0C-48CC-4D97-B639-8488EE9B0F15'>
+				<File Id='FILE_QtCore4.dll'
+						Source='$(var.SourcePath)\QtCore4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtGui4.dll'
+					Guid='229DBC4C-FB7F-4C35-AD50-A2C03E558F6C'>
+				<File Id='FILE_QtGui4.dll'
+						Source='$(var.SourcePath)\QtGui4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtNetwork4.dll'
+					Guid='39CE1BBF-41FD-4A91-9C87-3B1506D044B2'>
+				<File Id='FILE_QtNetwork4.dll'
+						Source='$(var.SourcePath)\QtNetwork4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtScript4.dll'
+					Guid='32E99851-6D9E-40CE-83BD-F6874F280702'>
+				<File Id='FILE_QtScript4.dll'
+						Source='$(var.SourcePath)\QtScript4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtSql4.dll'
+					Guid='14A46DC6-BD6F-499E-AA25-9FAA4E3EBF2B'>
+				<File Id='FILE_QtSql4.dll'
+						Source='$(var.SourcePath)\QtSql4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtXml4.dll'
+					Guid='57208A0C-491D-47FE-9681-1A1A38B500A1'>
+				<File Id='FILE_QtXml4.dll'
+						Source='$(var.SourcePath)\QtXml4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_boost_program_options'
+					Guid='85967A96-CAEF-4ED9-BDE6-1DF87F0C9D30'>
+				<File Id='FILE_boost_program_options'
+						Source='$(var.SourcePath)\boost_program_options-vc100-mt-1_46_1.dll'
 						KeyPath='yes' />
 			</Component>
 		</DirectoryRef>
@@ -24,5 +87,20 @@
 						KeyPath='yes' />
 			</Component>
 		</DirectoryRef>
+		
+		<ComponentGroup Id='CG_CoreBinaries'>
+			<ComponentRef Id='CMP_leechcraft.exe' />
+			<ComponentRef Id='CMP_plugininterface.dll' />
+			<ComponentRef Id='CMP_xmlsettingsdialog.dll' />
+			<ComponentRef Id='CMP_QtCore4.dll' />
+			<ComponentRef Id='CMP_QtGui4.dll' />
+			<ComponentRef Id='CMP_QtNetwork4.dll' />
+			<ComponentRef Id='CMP_QtScript4.dll' />
+			<ComponentRef Id='CMP_QtSql4.dll' />
+			<ComponentRef Id='CMP_QtXml4.dll' />
+			<ComponentRef Id='CMP_boost_program_options' />
+			
+			<ComponentRef Id='CMP_LeechCraftShortcut' />
+		</ComponentGroup>
 	</Fragment>
 </Wix>

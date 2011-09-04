@@ -23,32 +23,7 @@
 			</Directory>
 		</Directory>
 		
-		<!-- Components definitions -->
-		<DirectoryRef Id='DIR_LeechCraft'>
-			<Component Id='CMP_leechcraft_exe'
-					Guid='B55B0D5D-E625-4493-8B1E-D6F0D242F8B1'>
-				<File Id='FILE_leechcraft_exe'
-						Source='$(var.SourcePath)/leechcraft.exe'
-						KeyPath='yes' />
-			</Component>
-		</DirectoryRef>
-		<DirectoryRef Id='ProgramMenuFolder'>
-			<Component Id='CMP_LeechCraftShortcut'
-					Guid='885BFE4D-FC42-4570-ADF0-5BE9E938D21F'>
-				<Shortcut Id='SHORTCUT_LeechCraft'
-						Name='LeechCraft'
-						Description='Modular Internet client.'
-						Target='[DIR_LeechCraft]leechcraft.exe' />
-				<RegistryValue Root='HKCU'
-						Key='Software\LeechCraft'
-						Name='installed'
-						Type='integer'
-						Value='1'
-						KeyPath='yes' />
-			</Component>
-		</DirectoryRef>
-		
-		<!-- Features -->
+		<!-- Feature tree -->
 		<Feature Id='CoreBinaries'
 				Title='Core Binaries'
 				Level='1'

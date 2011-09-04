@@ -31,6 +31,15 @@
 						KeyPath='yes' />
 			</Component>
 		</DirectoryRef>
+		<DirectoryRef Id='ProgramMenuFolder'>
+			<Component Id='CMP_LeechCraftShortcut'
+					Guid='885BFE4D-FC42-4570-ADF0-5BE9E938D21F'>
+				<Shortcut Id='SHORTCUT_LeechCraft'
+						Name='LeechCraft'
+						Description='Modular Internet client.'
+						Target='[DIR_LeechCraft]leechcraft.exe' />
+			</Component>
+		</Directory>
 		
 		<!-- Features -->
 		<Feature Id='CoreBinaries'
@@ -38,6 +47,7 @@
 				Level='1'
 				Absent='disallow'>
 			<ComponentRef Id='CMP_leechcraft_exe' />
+			<ComponentRef Id='CMP_LeechCraftShortcut' />
 		</Feature>
 	</Product>
 </Wix>

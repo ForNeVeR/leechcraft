@@ -1,10 +1,11 @@
 # Configuration:
-$wixDirectory = 'c:\Program Files\Windows Installer XML v3.5\bin'
+$wixPath = 'c:\Program Files\Windows Installer XML v3.5\bin'
+$sourcePath = '..\LeechCraft'
 
 # Used tools:
-$candle = "$wixDirectory\candle"
-$light = "$wixDirectory\light"
+$candle = "$wixPath\candle"
+$light = "$wixPath\light"
 
 # Create installer:
-& $candle leechcraft.wxs
+& $candle leechcraft.wxs "-dSourcePath=$sourcePath"
 & $light leechcraft.wixobj

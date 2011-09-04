@@ -28,7 +28,7 @@
 			<Component Id='CMP_leechcraft_exe'
 					Guid='B55B0D5D-E625-4493-8B1E-D6F0D242F8B1'>
 				<File Id='FILE_leechcraft_exe'
-						Source='../LeechCraft/leechcraft.exe'
+						Source='$(var.SourcePath)/leechcraft.exe'
 						KeyPath='yes' />
 			</Component>
 		</DirectoryRef>

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+	<Product Id='*'
+			Name='LeechCraft'
+			Language='1033'
+			Version='0.4.85'
+			Manufacturer='Deviant Soft'
+			UpgradeCode='B8A483B3-66C1-4352-B399-4A694C305388'>
+		
+	</Product>
+</Wix>

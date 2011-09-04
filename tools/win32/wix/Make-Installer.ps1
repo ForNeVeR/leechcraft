@@ -7,5 +7,5 @@ $candle = "$wixPath\candle"
 $light = "$wixPath\light"
 
 # Create installer:
-& $candle leechcraft.wxs "-dSourcePath=$sourcePath"
+& $candle leechcraft.wxs "-dSourcePath=`"$sourcePath`""
 & $light leechcraft.wixobj

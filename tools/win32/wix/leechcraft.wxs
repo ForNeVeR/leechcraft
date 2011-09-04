@@ -38,6 +38,12 @@
 						Name='LeechCraft'
 						Description='Modular Internet client.'
 						Target='[DIR_LeechCraft]leechcraft.exe' />
+				<RegistryValue Root="HKCU"
+						Key="Software\LeechCraft"
+						Name="installed"
+						Type="integer"
+						Value="1"
+						KeyPath="yes" />
 			</Component>
 		</Directory>
 		

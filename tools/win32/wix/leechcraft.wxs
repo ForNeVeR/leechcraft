@@ -19,6 +19,7 @@
 			<Directory Id='ProgramFilesFolder'>
 				<Directory Id='DIR_LeechCraft'
 						Name='LeechCraft' />
+			<Directory Id='ProgramMenuFolder' />
 			</Directory>
 		</Directory>
 		

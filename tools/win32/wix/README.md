@@ -20,5 +20,7 @@ Compiling
 2. Open PowerShell console (there are various standard and 3rd-party PowerShell
 hosts; for example, you may use Windows built-in powershell.exe host).
 3. Execute Make-Installer.ps1 script:
+
 	PS> .\Make-Installer.ps1
+
 After that, file leechcraft.msi must be compiled into current directory.

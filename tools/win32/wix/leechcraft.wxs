@@ -6,6 +6,18 @@
 			Version='0.4.85'
 			Manufacturer='Deviant Soft'
 			UpgradeCode='B8A483B3-66C1-4352-B399-4A694C305388'>
-		
+		<Package Compressed="yes"
+				Manufacturer='Deviant Soft'
+				Description='Installs LeechCraft' />
+		<Media Id='1'
+				Cabinet='leechcraft.cab'
+				EmbedCab='yes' />
+		<Directory Id="TARGETDIR"
+				Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="LeechCraftDirectory"
+						Name="LeechCraft" />
+			</Directory>
+		</Directory>
 	</Product>
 </Wix>

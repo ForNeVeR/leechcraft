@@ -33,10 +33,10 @@
 		</DirectoryRef>
 		
 		<!-- Features -->
-		<Feature Id="CoreBinaries"
-				Title="Core Binaries"
-				Level="1">
-			<ComponentRef Id="CMP_leechcraft_exe" />
+		<Feature Id='CoreBinaries'
+				Title='Core Binaries'
+				Level='1'>
+			<ComponentRef Id='CMP_leechcraft_exe' />
 		</Feature>
 	</Product>
 </Wix>

@@ -2,11 +2,35 @@
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 	<Fragment>
 		<DirectoryRef Id='DIR_LeechCraft'>
-			<Component Id='CMP_boost_program_options'
-					Guid='85967A96-CAEF-4ED9-BDE6-1DF87F0C9D30'>
-				<File Id='FILE_boost_program_options'
-						Source='$(var.SourcePath)\boost_program_options-vc100-mt-1_46_1.dll'
-						KeyPath='yes' />
+			<Component Id="CMP_boost_date_time"
+					Guid="{B4D85EF2-071D-42C9-B09C-B811233A7F48}">
+				<File Id="filF09B5D08588379916B7082697B6756F1"
+						KeyPath="yes"
+						Source="$(var.SourcePath)\boost_date_time-vc100-mt-1_46_1.dll" />
+			</Component>
+			<Component Id="CMP_boost_file_system" 
+					Guid="{18B8BDBF-84CA-421F-97C9-3B2F46085373}">
+				<File Id="filDC3119DD3C6951CC733181420137EE64"
+						KeyPath="yes"
+						Source="$(var.SourcePath)\boost_filesystem-vc100-mt-1_46_1.dll" />
+			</Component>
+			<Component Id="CMP_boost_program_options"
+					Guid="{ED0F94DF-CE1C-4357-93CC-6A9774B520DD}">
+				<File Id="fil5753C31C316094CF071BE288D3A7C23A"
+						KeyPath="yes"
+						Source="$(var.SourcePath)\boost_program_options-vc100-mt-1_46_1.dll" />
+			</Component>
+			<Component Id="CMP_boost_system"
+					Guid="{DE4DF490-86CB-4A1E-9240-93FC3C087907}">
+				<File Id="fil4421BF019ED7B2628CA00850BEEB8877"
+						KeyPath="yes"
+						Source="$(var.SourcePath)\boost_system-vc100-mt-1_46_1.dll" />
+			</Component>
+			<Component Id="CMP_boost_thread"
+					Guid="{2D15BC26-36C0-4F42-AE9B-740CBBE320D1}">
+				<File Id="fil9B38E3C1B8A9982FC27C7AFFB7BF258F"
+						KeyPath="yes"
+						Source="$(var.SourcePath)\boost_thread-vc100-mt-1_46_1.dll" />
 			</Component>
 		</DirectoryRef>
 	</Fragment>

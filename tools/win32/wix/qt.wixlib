@@ -16,6 +16,13 @@
 						KeyPath='yes' />
 			</Component>
 			
+			<Component Id='CMP_QtMultimedia4.dll'
+					Guid='436C14D2-F951-469A-BFB7-5540160D3BE2'>
+				<File Id='FILE_QtMultimedia4.dll'
+						Source='$(var.SourcePath)\QtMultimedia4.dll'
+						KeyPath='yes' />
+			</Component>
+			
 			<Component Id='CMP_QtNetwork4.dll'
 					Guid='39CE1BBF-41FD-4A91-9C87-3B1506D044B2'>
 				<File Id='FILE_QtNetwork4.dll'
@@ -37,10 +44,31 @@
 						KeyPath='yes' />
 			</Component>
 			
+			<Component Id='CMP_QtSvg4.dll'
+					Guid='8270704D-4952-4B24-98E2-FEF6807C85C4'>
+				<File Id='FILE_QtSvg4.dll'
+						Source='$(var.SourcePath)\QtSvg4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtWebKit4.dll'
+					Guid='98C93481-9FAB-477F-A293-50F0419F4D34'>
+				<File Id='FILE_QtWebKit4.dll'
+						Source='$(var.SourcePath)\QtWebKit4.dll'
+						KeyPath='yes' />
+			</Component>
+			
 			<Component Id='CMP_QtXml4.dll'
 					Guid='57208A0C-491D-47FE-9681-1A1A38B500A1'>
 				<File Id='FILE_QtXml4.dll'
 						Source='$(var.SourcePath)\QtXml4.dll'
+						KeyPath='yes' />
+			</Component>
+			
+			<Component Id='CMP_QtXmlPatterns4.dll'
+					Guid='5E06DCBC-C102-4229-AF9C-5BCFD9FC071F'>
+				<File Id='FILE_QtXmlPatterns4.dll'
+						Source='$(var.SourcePath)\QtXmlPatterns4.dll'
 						KeyPath='yes' />
 			</Component>
 		</DirectoryRef>

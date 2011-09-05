@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+	<Fragment>
+		<DirectoryRef Id='DIR_LeechCraft'>
+			<Component Id='CMP_boost_program_options'
+					Guid='85967A96-CAEF-4ED9-BDE6-1DF87F0C9D30'>
+				<File Id='FILE_boost_program_options'
+						Source='$(var.SourcePath)\boost_program_options-vc100-mt-1_46_1.dll'
+						KeyPath='yes' />
+			</Component>
+		</DirectoryRef>
+	</Fragment>
+</Wix>

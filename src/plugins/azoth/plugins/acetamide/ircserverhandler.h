@@ -44,6 +44,7 @@ namespace Acetamide
 	class IrcServerSocket;
 	class UserCommandManager;
 	class ServerResponceManager;
+	class RplISupportParser;
 
 	class IrcServerHandler : public QObject
 	{
@@ -56,6 +57,7 @@ namespace Acetamide
 		IrcServerSocket *Socket_;
 		UserCommandManager *CmdManager_;
 		ServerResponceManager *ServerResponceManager_;
+		RplISupportParser *RplISupportParser_;
 		ConnectionState ServerConnectionState_;
 		bool IsConsoleEnabled_;
 		bool IsInviteDialogActive_;
@@ -64,14 +66,15 @@ namespace Acetamide
 		QString NickName_;
 		QString OldNickName_;
 		QString LastSendId_;
-		QVariantMap ISupport_;
 		ServerOptions ServerOptions_;
 		QList<ChannelOptions> ChannelsQueue_;
 		std::auto_ptr<InviteChannelsDialog> InviteChannelsDialog_;
 		QHash<QString, ChannelHandler*> ChannelHandlers_;
 		QHash<QString, ServerParticipantEntry_ptr> Nick2Entry_;
+		QMap<QString, QString> ISupport_;
 	public:
-		IrcServerHandler (const ServerOptions&, IrcAccount*);
+		IrcServerHandler (const ServerOptions&,
+				IrcAccount*);
 
 		IrcServerCLEntry* GetCLEntry () const;
 		IrcAccount* GetAccount () const;
@@ -108,7 +111,7 @@ namespace Acetamide
 
 		void SendMessage (const QStringList&);
 		void IncomingMessage (const QString&, const QString&, const QString&);
-		void IncomingNoticeMessage (const QString&);
+		void IncomingNoticeMessage (const QString&, const QString&);
 
 		void ChangeNickname (const QString&, const QString&);
 
@@ -178,6 +181,9 @@ namespace Acetamide
 		void ParseChanMode (const QString&, const QString&, 
 				const QString& value = QString ());
 		void ParseUserMode (const QString&, const QString&);
+
+		void ParserISupport (const QString&);
+		QMap<QString, QString> GetISupport () const;
 	private:
 		void SendToConsole (IMessage::Direction, const QString&);
 		void NickCmdError ();

@@ -228,12 +228,18 @@ namespace Acetamide
 	}
 
 	void ServerResponceManager::GotJoin (const QString& nick, 
-			const QList<std::string>&, const QString& msg)
+			const QList<std::string>& params, const QString& msg)
 	{
 		if (nick == ISH_->GetNickName ())
 		{
+			QString channel;
+			if (!params.isEmpty ())
+				channel = QString::fromUtf8 (params.first ().c_str ());
+			else if (!msg.isEmpty ())
+				channel = msg;
+
 			ChannelOptions co;
-			co.ChannelName_ = msg;
+			co.ChannelName_ = channel;
 			co.ServerName_ = ISH_->GetServerOptions ().ServerName_.toLower ();
 			co.ChannelPassword_ = QString ();
 			ISH_->JoinedChannel (co);
@@ -278,14 +284,14 @@ namespace Acetamide
 		if (params.isEmpty ())
 			return;
 
-		const QString target = QString::fromUtf8 (params.last ().c_str ());
+		const QString target = QString::fromUtf8 (params.first ().c_str ());
 		ISH_->IncomingMessage (nick, target, msg);
 	}
 
-	void ServerResponceManager::GotNoticeMsg (const QString&, 
+	void ServerResponceManager::GotNoticeMsg (const QString& nick, 
 			const QList<std::string>&, const QString& msg)
 	{
-		ISH_->IncomingNoticeMessage (msg);
+		ISH_->IncomingNoticeMessage (nick, msg);
 	}
 
 	void ServerResponceManager::GotNick (const QString& nick, 
@@ -942,9 +948,16 @@ namespace Acetamide
 	}
 
 	void ServerResponceManager::GotISupport (const QString&, 
-			const QList<std::string>&, const QString&)
+			const QList<std::string>& params, const QString& msg)
 	{
 		ISH_->JoinFromQueue ();
+		
+		QString result;
+		Q_FOREACH (const std::string& param, params)
+			result.append (QString::fromUtf8 (param.c_str ())).append (" ");
+		result.append (":").append (msg);
+		ISH_->ParserISupport (result);
+		ISH_->ShowAnswer (result);
 	}
 
 	void ServerResponceManager::GotChannelMode (const QString& nick, 

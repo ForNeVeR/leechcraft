@@ -35,6 +35,7 @@
 #include "interfaces/iprotocol.h"
 #include "interfaces/iauthable.h"
 #include "interfaces/ichatstyleresourcesource.h"
+#include "interfaces/isupportriex.h"
 #include "sourcetrackingmodel.h"
 #include "animatediconmanager.h"
 
@@ -63,6 +64,8 @@ namespace Azoth
 	class CallManager;
 	class EventsNotifier;
 
+	class CLModel;
+
 	class Core : public QObject
 	{
 		Q_OBJECT
@@ -84,12 +87,14 @@ namespace Azoth
 		QObjectList ProtocolPlugins_;
 		QList<QAction*> AccountCreatorActions_;
 
-		QStandardItemModel *CLModel_;
+		CLModel *CLModel_;
 		ChatTabsManager *ChatTabsManager_;
 
 		typedef QHash<QString, QStandardItem*> Category2Item_t;
 		typedef QHash<QStandardItem*, Category2Item_t> Account2Category2Item_t;
 		Account2Category2Item_t Account2Category2Item_;
+
+		QHash<IAccount*, QDateTime> LastAccountStatusChange_;
 
 		typedef QHash<ICLEntry*, QList<QStandardItem*> > Entry2Items_t;
 		Entry2Items_t Entry2Items_;
@@ -219,16 +224,6 @@ namespace Azoth
 		 */
 		void OpenChat (const QModelIndex& index);
 
-		/** Handles the given transfer job, taking ownership of it and
-		 * handling various events from it.
-		 *
-		 * @param[in] job The transfer job to handle, should implement
-		 * ITransferJob.
-		 *
-		 * @sa ITransferJob
-		 */
-		void HandleTransferJob (QObject *job);
-
 		TransferJobManager* GetTransferJobManager () const;
 
 		CallManager* GetCallManager () const;
@@ -302,10 +297,11 @@ namespace Azoth
 		QList<CLEntryActionArea> GetAreasForAction (const QAction *action) const;
 
 		QString GetSelectedChatTemplate (QObject *entry, QWebFrame *frame) const;
+		QUrl GetSelectedChatTemplateURL (QObject*) const;
 
 		bool AppendMessageByTemplate (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
 
-		void FrameFocused (QWebFrame*);
+		void FrameFocused (QObject*, QWebFrame*);
 
 		// Theming stuff
 		QList<QColor> GenerateColors (const QString& coloringScheme) const;
@@ -362,10 +358,13 @@ namespace Azoth
 		 */
 		QString MakeTooltipString (ICLEntry *entry) const;
 
+		Entity BuildStatusNotification (const EntryStatus&,
+				ICLEntry*, const QString&);
+
 		/** Handles the event of status changes in a contact list entry.
 		 */
 		void HandleStatusChanged (const EntryStatus& status,
-				ICLEntry *entry, const QString& variant);
+				ICLEntry *entry, const QString& variant, bool asSignal = false);
 
 		/** Checks whether icon representing incoming file should be
 		 * drawn for the entry with the given id.
@@ -415,7 +414,7 @@ namespace Azoth
 
 		void SuggestJoiningMUC (IAccount*, const QVariantMap&);
 
-		IChatStyleResourceSource* GetCurrentChatStyle () const;
+		IChatStyleResourceSource* GetCurrentChatStyle (QObject*) const;
 
 		void FillANFields ();
 
@@ -553,6 +552,8 @@ namespace Azoth
 		void handleFileOffered (QObject*);
 		void handleJobDeoffered (QObject*);
 
+		void handleRIEXItemsSuggested (QList<LeechCraft::Azoth::RIEXItem>, QObject*, QString);
+
 		/** Removes the entries in the client icon cache for the sender,
 		 * if obj is null, or for obj, if it is not null.
 		 *
@@ -575,9 +576,11 @@ namespace Azoth
 #ifdef ENABLE_CRYPT
 		void handleActionManagePGPTriggered ();
 #endif
+		void handleActionShareContactsTriggered ();
 		void handleActionVCardTriggered ();
 
 		void handleActionOpenChatTriggered ();
+		void handleActionInviteTriggered ();
 		void handleActionLeaveTriggered ();
 		void handleActionAuthorizeTriggered ();
 		void handleActionDenyAuthTriggered ();
@@ -628,11 +631,9 @@ namespace Azoth
 				QObject *message);
 		void hookFormatBodyBegin (LeechCraft::IHookProxy_ptr proxy,
 				QObject *chatTab,
-				QString body,
 				QObject *message);
 		void hookFormatBodyEnd (LeechCraft::IHookProxy_ptr proxy,
 				QObject *chatTab,
-				QString body,
 				QObject *message);
 		void hookGonnaHandleSmiles (LeechCraft::IHookProxy_ptr proxy,
 				QString body,

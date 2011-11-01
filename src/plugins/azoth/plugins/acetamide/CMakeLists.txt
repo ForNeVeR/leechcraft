@@ -28,7 +28,11 @@ SET (ACETAMIDE_SRCS
 	ircserverhandler.cpp
 	invitechannelsdialog.cpp
 	localtypes.cpp
+	newnickservidentifydialog.cpp
+	nickservidentifywidget.cpp
+	rplisupportparser.cpp
 	servercommandmessage.cpp
+	serverinfowidget.cpp
 	serverparticipantentry.cpp
 	serverresponcemanager.cpp
 	sortfilterproxymodel.cpp
@@ -59,7 +63,11 @@ SET (ACETAMIDE_HEADERS
 	ircserverhandler.h
 	invitechannelsdialog.h
 	localtypes.h
+	newnickservidentifydialog.h
+	nickservidentifywidget.h
+	rplisupportparser.h
 	servercommandmessage.h
+	serverinfowidget.h
 	serverparticipantentry.h
 	serverresponcemanager.h
 	sortfilterproxymodel.h
@@ -74,6 +82,9 @@ SET (ACETAMIDE_FORMS
 	ircaccountconfigurationwidget.ui
 	ircjoingroupchat.ui
 	invitechannelsdialog.ui
+	newnickservidentifydialog.ui
+	nickservidentifywidget.ui
+	serverinfowidget.ui
 	)
 SET (ACETAMIDE_RESOURCES azothacetamideresources.qrc)
 

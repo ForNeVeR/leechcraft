@@ -30,7 +30,9 @@ INCLUDE_DIRECTORIES (
 	${LEECHCRAFT_INCLUDE_DIR}
 	)
 
-IF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} EQUAL 2.8 AND ${CMAKE_PATCH_VERSION} LESS 4)
+OPTION (ENABLE_QTMULTIMEDIA_KLUDGE "Enable kludges for finding QtMultimedia" OFF)
+
+IF ((${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} EQUAL 2.8 AND ${CMAKE_PATCH_VERSION} LESS 4) OR ENABLE_QTMULTIMEDIA_KLUDGE)
 	IF (${QT_VERSION_MINOR} EQUAL 6)
 		INCLUDE_DIRECTORIES (/usr/include/qt4/QtMultimedia)
 		SET (QTMULTIMEDIA_KLUDGE "QtMultimedia")
@@ -39,7 +41,7 @@ IF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} EQUAL 2.8 AND ${CMAKE_PATCH_VE
 		INCLUDE_DIRECTORIES (/usr/include/QtMobility)
 		SET (QTMULTIMEDIA_KLUDGE "QtMultimediaKit")
 	ENDIF (${QT_VERSION_MINOR} EQUAL 6)
-ENDIF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} EQUAL 2.8 AND ${CMAKE_PATCH_VERSION} LESS 4)
+ENDIF ((${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} EQUAL 2.8 AND ${CMAKE_PATCH_VERSION} LESS 4) OR ENABLE_QTMULTIMEDIA_KLUDGE)
 
 OPTION (ENABLE_CRYPT "Enable QCA2-based support for PGP" ON)
 
@@ -93,10 +95,15 @@ SET (SRCS
 	activitydialog.cpp
 	mooddialog.cpp
 	callmanager.cpp
+	clmodel.cpp
 	callchatwidget.cpp
 	chattabwebview.cpp
 	locationdialog.cpp
 	msgformatterwidget.cpp
+	acceptriexdialog.cpp
+	shareriexdialog.cpp
+	searchwidget.cpp
+	mucinvitedialog.cpp
 	)
 SET (HEADERS
 	azoth.h
@@ -129,10 +136,15 @@ SET (HEADERS
 	activitydialog.h
 	mooddialog.h
 	callmanager.h
+	clmodel.h
 	callchatwidget.h
 	chattabwebview.h
 	locationdialog.h
 	msgformatterwidget.h
+	acceptriexdialog.h
+	shareriexdialog.h
+	searchwidget.h
+	mucinvitedialog.h
 	animatediconmanager.h
 	sourcetrackingmodel.h
 	interfaces/iprotocolplugin.h
@@ -159,6 +171,10 @@ SET (FORMS
 	mooddialog.ui
 	callchatwidget.ui
 	locationdialog.ui
+	acceptriexdialog.ui
+	shareriexdialog.ui
+	searchwidget.ui
+	mucinvitedialog.ui
 	)
 SET (RESOURCES azothresources.qrc)
 
@@ -168,7 +184,7 @@ IF (ENABLE_CRYPT)
 	SET (FORMS ${FORMS} pgpkeyselectiondialog.ui)
 ENDIF (ENABLE_CRYPT)
 
-CreateTrVars ("azoth" "en;ru_RU;uk_UA" TRANSLATIONS COMPILED_TRANSLATIONS)
+CreateTrVars ("azoth" "en;es;ru_RU;uk_UA" TRANSLATIONS COMPILED_TRANSLATIONS)
 QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 QT4_WRAP_UI (UIS_H ${FORMS})
 QT4_ADD_RESOURCES (RCCS ${RESOURCES})
@@ -214,11 +230,13 @@ OPTION (ENABLE_AZOTH_DEPESTER "Build Depester for ignoring unwanted MUC particip
 OPTION (ENABLE_AZOTH_EMBEDMEDIA "Build EmbedMedia  enables embedding different media objects in chat tab" ON)
 OPTION (ENABLE_AZOTH_HERBICIDE "Build Herbicide, a basic antispam plugin" ON)
 OPTION (ENABLE_AZOTH_HILI "Build HiLi, plugin for customizing conference highlights" ON)
+OPTION (ENABLE_AZOTH_ISTERIQUE "Build Isterique, plugin for decapitalizing all-caps text" ON)
 OPTION (ENABLE_AZOTH_JUICK "Build plugin for the juick.com microblogging service" ON)
 OPTION (ENABLE_AZOTH_LASTSEEN "Build plugin for keeping track of the date of contacts' being online" ON)
 OPTION (ENABLE_AZOTH_METACONTACTS "Build support for metacontacts" ON)
 OPTION (ENABLE_AZOTH_MODNOK "Build Modnok for rendering and displaying LaTeX formulas" ON)
 OPTION (ENABLE_AZOTH_NATIVEEMOTICONS "Build support for Azoth's own emoticons packs" ON)
+OPTION (ENABLE_AZOTH_OTROID "Build OTRoid for supporting Off-the-Record messaging" OFF)
 OPTION (ENABLE_AZOTH_P100Q "Build plugin for the psto.net microblogging service" ON)
 OPTION (ENABLE_AZOTH_ROSENTHAL "Build Rosenthal, spellchecker plugin for Azoth" ON)
 OPTION (ENABLE_AZOTH_STANDARDSTYLES "Build support for standard Azoth styles" ON)
@@ -252,6 +270,9 @@ ENDIF (ENABLE_AZOTH_HERBICIDE)
 IF (ENABLE_AZOTH_HILI)
 	ADD_SUBDIRECTORY (plugins/hili)
 ENDIF (ENABLE_AZOTH_HILI)
+IF (ENABLE_AZOTH_ISTERIQUE)
+	ADD_SUBDIRECTORY (plugins/isterique)
+ENDIF (ENABLE_AZOTH_ISTERIQUE)
 IF (ENABLE_AZOTH_JUICK)
 	ADD_SUBDIRECTORY (plugins/juick)
 ENDIF (ENABLE_AZOTH_JUICK)
@@ -267,6 +288,9 @@ ENDIF (ENABLE_AZOTH_MODNOK)
 IF (ENABLE_AZOTH_NATIVEEMOTICONS)
 	ADD_SUBDIRECTORY (plugins/nativeemoticons)
 ENDIF (ENABLE_AZOTH_NATIVEEMOTICONS)
+IF (ENABLE_AZOTH_OTROID)
+	ADD_SUBDIRECTORY (plugins/otroid)
+ENDIF (ENABLE_AZOTH_OTROID)
 IF (ENABLE_AZOTH_P100Q)
 	ADD_SUBDIRECTORY (plugins/p100q)
 ENDIF (ENABLE_AZOTH_P100Q)

@@ -17,7 +17,10 @@
  **********************************************************************/
 
 #include "aboutdialog.h"
+#include "util/sysinfo.h"
+#include "interfaces/ihavediaginfo.h"
 #include "config.h"
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -97,13 +100,15 @@ namespace LeechCraft
 				QStringList (tr ("Firefox importer in New Life."))
 					<< tr ("Poshuku OnlineBookmarks.")
 					<< tr ("Azoth Acetamide: IRC support for Azoth.")
+					<< tr ("Chrome-style tabs.")
 					<< tr ("Various patches."),
 				QList<int> () << 2010 << 2011);
 
 		QList<ContributorInfo> contribs;
 		contribs << ContributorInfo (QString (), "Akon32",
 				QString (), "akon32@rambler.ru",
-				QStringList (tr ("Various patches.")),
+				QStringList (tr ("SecMan SecureStorage."))
+					<< tr ("Various patches."),
 				QList<int> () << 2011);
 		contribs << ContributorInfo ("Aleksey Frolov", "Aleks Lifey aka atommix",
 				QString (), "aleks.lifey@gmail.com",
@@ -112,6 +117,20 @@ namespace LeechCraft
 		contribs << ContributorInfo ("Alexander Batischev", "Minoru",
 				QString (), "eual.jp@gmail.com",
 				QStringList (tr ("Ukrainian translations.")),
+				QList<int> () << 2011);
+		contribs << ContributorInfo ("Alia Eolova", "alieola",
+				"alieola@jabber.ru", "aeors-team@yandex.ru",
+				QStringList (tr ("Spanish translations.")),
+				QList<int> () << 2011);
+		contribs << ContributorInfo ("Azer Abdullaev", "Like-all",
+				QString (), "lik3a11@gmail.com",
+				QStringList (tr ("Artwork designer.")),
+				QList<int> () << 2011);
+		contribs << ContributorInfo ("Elena Belova", "Zereal",
+				"elena.zereal@neko.im", "zereal25@gmail.com",
+				QStringList (tr ("French translations."))
+					<< tr ("Italian translations.")
+					<< tr ("Public relations."),
 				QList<int> () << 2011);
 		contribs << ContributorInfo (QString (), "ForNeVeR",
 				"revenrof@jabber.ru", QString (),
@@ -127,6 +146,10 @@ namespace LeechCraft
 				QString (), "lk4d4@yander.ru",
 				QStringList ("Initial ebuilds for Gentoo Linux."),
 				QList<int> () << 2009);
+		contribs << ContributorInfo ("Maxim Kirenenko", "part1zan_ aka 0x73571ab",
+				"part1zancheg@gmail.com", "part1zancheg@gmail.com",
+				QStringList (tr ("Extensive and thorough testing.")),
+				QList<int> () << 2010 << 2011);
 		contribs << ContributorInfo (QString (), "Miha",
 				QString (), "miha@52.ru",
 				QStringList ("OpenSUSE package maintainer."),
@@ -134,7 +157,8 @@ namespace LeechCraft
 		contribs << ContributorInfo (QString (), "nobodyzzz",
 				QString (), "nobodyzzz666@gmail.com",
 				QStringList ("Juick plugin.")
-					<< tr ("FatApe plugin, the GreaseMonkey support layer for Poshuku."),
+					<< tr ("FatApe plugin, the GreaseMonkey support layer for Poshuku.")
+					<< tr ("Various patches."),
 				QList<int> () << 2011);
 		contribs << ContributorInfo (QString (), "PanteR",
 				"panter_dsd@jabber.ru", "panter.dsd@gmail.com",
@@ -168,6 +192,46 @@ namespace LeechCraft
 		Q_FOREACH (const ContributorInfo& i, contribs)
 			formatted << i.Fmt ();
 		Ui_.Contributors_->setHtml (formatted.join ("<hr />"));
-	}
-};
 
+		BuildDiagInfo ();
+	}
+
+	void AboutDialog::BuildDiagInfo ()
+	{
+		QString text = QString ("LeechCraft ") + LEECHCRAFT_VERSION + "\n";
+		text += QString ("Built with Qt %1, running with Qt %2\n")
+				.arg (QT_VERSION_STR)
+				.arg (qVersion ());
+
+		text += QString ("Running on: %1\n").arg (Util::SysInfo::GetOSName ());
+		text += "--------------------------------\n\n";
+
+		QStringList loadedModules;
+		QStringList unPathedModules;
+		PluginManager *pm = Core::Instance ().GetPluginManager ();
+		Q_FOREACH (QObject *plugin, pm->GetAllPlugins ())
+		{
+			const QString& path = pm->GetPluginLibraryPath (plugin);
+
+			IInfo *ii = qobject_cast<IInfo*> (plugin);
+			if (path.isEmpty ())
+				unPathedModules << ("* " + ii->GetName ());
+			else
+				loadedModules << ("* " + ii->GetName () + " (" + path + ")");
+
+			IHaveDiagInfo *diagInfo = qobject_cast<IHaveDiagInfo*> (plugin);
+			if (diagInfo)
+			{
+				text += "Diag info for " + ii->GetName () + ":\n";
+				text += diagInfo->GetDiagInfoString ();
+				text += "\n--------------------------------\n\n";
+			}
+		}
+
+		text += QString ("Normal plugins:") + "\n" + loadedModules.join ("\n") + "\n\n";
+		if (!unPathedModules.isEmpty ())
+			text += QString ("Adapted plugins:") + "\n" + unPathedModules.join ("\n") + "\n\n";
+
+		Ui_.DiagInfo_->setPlainText (text);
+	}
+}

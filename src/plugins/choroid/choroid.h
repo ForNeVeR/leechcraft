@@ -19,15 +19,42 @@
 
 #ifndef PLUGINS_CHOROID_CHOROID_H
 #define PLUGINS_CHOROID_CHOROID_H
+#include <QObject>
+#include <interfaces/iinfo.h>
+#include <interfaces/ihavetabs.h>
 
 namespace LeechCraft
 {
 namespace Choroid
 {
-	class Choroid
+	class Plugin : public QObject
+				 , public IInfo
+				 , public IHaveTabs
 	{
 		Q_OBJECT
+		Q_INTERFACES (IInfo IHaveTabs);
+
+		TabClassInfo TabInfo_;
+	public:
+		void Init (ICoreProxy_ptr);
+		void SecondInit ();
+		QByteArray GetUniqueID () const;
+		void Release ();
+		QString GetName () const;
+		QString GetInfo () const;
+		QIcon GetIcon () const;
+
+		TabClasses_t GetTabClasses () const;
+		void TabOpenRequested (const QByteArray&);
+	signals:
+		void addNewTab (const QString&, QWidget*);
+		void removeTab (QWidget*);
+		void changeTabName (QWidget*, const QString&);
+		void changeTabIcon (QWidget*, const QIcon&);
+		void statusBarChanged (QWidget*, const QString&);
+		void raiseTab (QWidget*);
 	};
+}
 }
 
 #endif

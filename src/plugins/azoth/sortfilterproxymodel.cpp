@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "sortfilterproxymodel.h"
+#include <QTimer>
 #include "core.h"
 #include "interfaces/iclentry.h"
 #include "interfaces/imucperms.h"
@@ -31,28 +32,45 @@ namespace Azoth
 	, ShowOffline_ (true)
 	, MUCMode_ (false)
 	, OrderByStatus_ (true)
+	, HideMUCParts_ (false)
 	, MUCEntry_ (0)
 	{
 		setDynamicSortFilter (true);
 		setFilterCaseSensitivity (Qt::CaseInsensitive);
-		
+
 		XmlSettingsManager::Instance ().RegisterObject ("OrderByStatus",
 				this, "handleStatusOrderingChanged");
 		handleStatusOrderingChanged ();
+
+		XmlSettingsManager::Instance ().RegisterObject ("HideMUCPartsInWholeCL",
+				this, "handleHideMUCPartsChanged");
+		handleHideMUCPartsChanged ();
 	}
-	
+
 	void SortFilterProxyModel::SetMUCMode (bool muc)
 	{
 		MUCMode_ = muc;
 		invalidateFilter ();
-		
+
 		if (muc)
 		  emit mucMode ();
 	}
-	
+
 	void SortFilterProxyModel::SetMUC (QObject *mucEntry)
 	{
+		if (MUCEntry_)
+			disconnect (MUCEntry_,
+					SIGNAL (destroyed (QObject*)),
+					this,
+					SLOT (handleMUCDestroyed ()));
+
 		MUCEntry_ = qobject_cast<IMUCEntry*> (mucEntry) ? mucEntry : 0;
+		if (MUCEntry_)
+			connect (MUCEntry_,
+					SIGNAL (destroyed (QObject*)),
+					this,
+					SLOT (handleMUCDestroyed ()));
+
 		invalidateFilter ();
 	}
 
@@ -61,14 +79,29 @@ namespace Azoth
 		ShowOffline_ = show;
 		invalidateFilter ();
 	}
-	
+
 	void SortFilterProxyModel::handleStatusOrderingChanged ()
 	{
 		OrderByStatus_ = XmlSettingsManager::Instance ()
 				.property ("OrderByStatus").toBool ();
+		QTimer::singleShot (0,
+				this,
+				SLOT (invalidate ()));
+	}
+
+	void SortFilterProxyModel::handleHideMUCPartsChanged ()
+	{
+		HideMUCParts_ = XmlSettingsManager::Instance ()
+				.property ("HideMUCPartsInWholeCL").toBool ();
 		invalidate ();
 	}
-	
+
+	void SortFilterProxyModel::handleMUCDestroyed()
+	{
+		SetMUC (0);
+		SetMUCMode (false);
+	}
+
 	namespace
 	{
 		Core::CLEntryType GetType (const QModelIndex& idx)
@@ -104,7 +137,7 @@ namespace Azoth
 				break;
 			}
 		}
-		else if (!ShowOffline_)
+		else
 		{
 			const QModelIndex& idx = sourceModel ()->index (row, 0, parent);
 			if (!filterRegExp ().isEmpty ())
@@ -116,11 +149,18 @@ namespace Azoth
 			{
 				ICLEntry *entry = GetEntry (idx);
 				const State state = entry->GetStatus ().State_;
-				if (state == SOffline &&
+
+				if (!ShowOffline_ &&
+						state == SOffline &&
 						!idx.data (Core::CLRUnreadMsgCount).toInt ())
+					return false;
+
+				if (HideMUCParts_ &&
+						entry->GetEntryType () == ICLEntry::ETPrivateChat)
 					return false;
 			}
 		}
+
 		return QSortFilterProxyModel::filterAcceptsRow (row, parent);
 	}
 
@@ -133,7 +173,7 @@ namespace Azoth
 
 		ICLEntry *lE = GetEntry (left);
 		ICLEntry *rE = GetEntry (right);
-		
+
 		if (lE->GetEntryType () == ICLEntry::ETPrivateChat &&
 				rE->GetEntryType () == ICLEntry::ETPrivateChat &&
 				lE->GetParentCLEntry () == rE->GetParentCLEntry ())

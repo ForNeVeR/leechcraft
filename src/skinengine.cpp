@@ -27,6 +27,7 @@
 #include <QApplication>
 #include <QtDebug>
 #include "xmlsettingsmanager.h"
+#include <QTimer>
 
 using namespace LeechCraft;
 
@@ -34,6 +35,13 @@ const int MaxIconSize = 32;
 
 SkinEngine::SkinEngine ()
 {
+	QTimer *timer = new QTimer (this);
+	connect (timer,
+			SIGNAL (timeout ()),
+			this,
+			SLOT (flushCaches ()));
+	timer->start (60000);
+
 	FindIconSets ();
 }
 
@@ -54,6 +62,10 @@ QMap<int, QString> SkinEngine::GetIconPath (const QString& actionIcon) const
 
 QIcon SkinEngine::GetIcon (const QString& actionIcon, const QString& actionIconOff) const
 {
+	const QPair<QString, QString>& namePair = qMakePair (actionIcon, actionIconOff);
+	if (IconCache_.contains (namePair))
+		return IconCache_ [namePair];
+
 	QString icon = GetIconName (actionIcon);
 
 	QIcon iconEntity;
@@ -78,6 +90,8 @@ QIcon SkinEngine::GetIcon (const QString& actionIcon, const QString& actionIconO
 					QIcon::Off);
 	}
 
+	IconCache_ [namePair] = iconEntity;
+
 	return iconEntity;
 }
 
@@ -90,10 +104,11 @@ void SkinEngine::UpdateIconSet (const QList<QAction*>& actions)
 	{
 		if (!(*i)->property ("ActionIcon").isValid ())
 			continue;
-		QString actionIcon = (*i)->property ("ActionIcon").toString ();
-		QString actionIconOff = (*i)->property ("ActionIconOff").toString ();
-		
-		(*i)->setIcon (GetIcon (actionIcon, actionIconOff));
+
+		SetIcon (*i);
+
+		if ((*i)->property ("WatchActionIconChange").toBool ())
+			(*i)->installEventFilter (this);
 	}
 }
 
@@ -132,6 +147,20 @@ QStringList SkinEngine::ListIcons () const
 	return IconSets_;
 }
 
+bool SkinEngine::eventFilter (QObject *obj, QEvent *e)
+{
+	if (e->type () != QEvent::DynamicPropertyChange)
+		return QObject::eventFilter (obj, e);
+
+	QAction *act = qobject_cast<QAction*> (obj);
+	if (!act)
+		return QObject::eventFilter (obj, e);
+
+	SetIcon (act);
+
+	return QObject::eventFilter (obj, e);
+}
+
 QString SkinEngine::GetIconName (const QString& actionIcon) const
 {
 	QString icon;
@@ -140,6 +169,14 @@ QString SkinEngine::GetIconName (const QString& actionIcon) const
 	else
 		icon = QString ("lc_") + actionIcon;
 	return icon;
+}
+
+void SkinEngine::SetIcon (QAction *act)
+{
+	QString actionIcon = act->property ("ActionIcon").toString ();
+	QString actionIconOff = act->property ("ActionIconOff").toString ();
+
+	act->setIcon (GetIcon (actionIcon, actionIconOff));
 }
 
 void SkinEngine::FindIconSets ()
@@ -205,6 +242,7 @@ void SkinEngine::FindIcons ()
 		IconName2Path_.clear ();
 		IconName2FileName_.clear ();
 		IconDirs_.clear ();
+		IconCache_.clear ();
 
 		OldIconSet_ = iconSet;
 
@@ -298,10 +336,10 @@ void SkinEngine::ParseMapping (QFile& mappingFile)
 
 void SkinEngine::CollectDir (const QString& folder, const QString& iconSet)
 {
-	std::vector<int> numbers = GetDirForBase (folder, iconSet);
+	QList<int> numbers = GetDirForBase (folder, iconSet);
 	QDir baseDir (folder);
 	baseDir.cd (iconSet);
-	for (std::vector<int>::const_iterator i = numbers.begin (),
+	for (QList<int>::const_iterator i = numbers.begin (),
 			end = numbers.end (); i != end; ++i)
 	{
 		QDir current = baseDir;
@@ -348,12 +386,12 @@ void SkinEngine::CollectSubdir (QDir current, const QString& dir, int size)
 			IconName2Path_ [i->baseName ()] [size] = i->absoluteFilePath ();
 }
 
-std::vector<int> SkinEngine::GetDirForBase (const QString& base,
+QList<int> SkinEngine::GetDirForBase (const QString& base,
 		const QString& iconSet)
 {
 	QDir baseDir (base);
 	baseDir.cd (iconSet);
-	std::vector<int> numbers;
+	QList<int> numbers;
 	QStringList entries = baseDir.entryList ();
 	for (QStringList::const_iterator i = entries.begin (),
 			end = entries.end (); i != end; ++i)
@@ -378,3 +416,7 @@ std::vector<int> SkinEngine::GetDirForBase (const QString& base,
 	return numbers;
 }
 
+void SkinEngine::flushCaches ()
+{
+	IconCache_.clear ();
+}

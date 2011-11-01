@@ -36,6 +36,7 @@ namespace Acetamide
 		QString ServerNickName_;
 		int ServerPort_;
 		bool SSL_;
+		bool NickServIdentify_;
 	};
 
 	struct ChannelOptions
@@ -100,7 +101,18 @@ namespace Acetamide
 		QPair<bool, QString> ChannelKey_;
 	};
 
+	struct NickServIdentify
+	{
+		QString Server_;
+		QString Nick_;
+		QString NickServNick_;
+		QString AuthString_;
+		QString AuthMessage_;
+	};
+	
 	bool operator== (const ChannelOptions&, const ChannelOptions&);
+
+	bool operator== (const NickServIdentify&, const NickServIdentify&);
 };
 };
 };

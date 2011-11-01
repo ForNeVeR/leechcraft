@@ -23,6 +23,7 @@
 #include "clientconnection.h"
 #include "ircparser.h"
 #include "servercommandmessage.h"
+#include "serverinfowidget.h"
 
 namespace LeechCraft
 {
@@ -168,6 +169,25 @@ namespace Acetamide
 		result ["SSL"] = ISH_->GetServerOptions ().SSL_;
 
 		return result;
+	}
+
+	void IrcServerCLEntry::InviteToMUC (const QString&, const QString&)
+	{
+	}
+
+	QWidget* IrcServerCLEntry::GetConfigurationWidget ()
+	{
+		return new ServerInfoWidget (this);
+	}
+
+	void IrcServerCLEntry::AcceptConfiguration (QWidget*)
+	{
+		// there is nothing to implement
+	}
+
+	QMap<QString, QString> IrcServerCLEntry::GetISupport () const
+	{
+		return ISH_->GetISupport ();
 	}
 
 };

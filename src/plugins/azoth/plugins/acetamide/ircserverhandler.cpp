@@ -37,6 +37,7 @@
 #include "ircserversocket.h"
 #include "usercommandmanager.h"
 #include "serverresponcemanager.h"
+#include "rplisupportparser.h"
 
 namespace LeechCraft
 {
@@ -45,7 +46,7 @@ namespace Azoth
 namespace Acetamide
 {
 	IrcServerHandler::IrcServerHandler (const ServerOptions& server,
-			IrcAccount *account )
+			IrcAccount *account)
 	: Account_ (account)
 	, ErrorHandler_ (new IrcErrorHandler (this))
 	, IrcParser_ (0)
@@ -62,6 +63,7 @@ namespace Acetamide
 		IrcParser_ = new IrcParser (this);
 		CmdManager_ = new UserCommandManager (this);
 		ServerResponceManager_ = new ServerResponceManager (this);
+		RplISupportParser_ = new RplISupportParser (this);
 		connect (this,
 				SIGNAL (connected (const QString&)),
 				Account_->GetClientConnection ().get (),
@@ -325,9 +327,27 @@ namespace Acetamide
 		}
 	}
 
-	void IrcServerHandler::IncomingNoticeMessage (const QString& msg)
+	void IrcServerHandler::IncomingNoticeMessage (const QString& nick, const QString& msg)
 	{
 		ShowAnswer (msg);
+		QList<NickServIdentify> list = Core::Instance ()
+				.GetNickServIdentifyWithMainParams (ServerOptions_.ServerName_,
+						GetNickName (),
+						nick);
+		if (list.isEmpty ())
+			return;
+
+		Q_FOREACH (const NickServIdentify& nsi, list)
+		{
+			QRegExp authRegExp (nsi.AuthString_,
+					Qt::CaseInsensitive,
+					QRegExp::Wildcard);
+			if (authRegExp.indexIn (msg) == -1)
+				continue;
+
+			SendMessage2Server (nsi.AuthMessage_.split (' '));
+			return;
+		}
 	}
 
 	void IrcServerHandler::ChangeNickname (const QString& nick, 
@@ -685,6 +705,7 @@ namespace Acetamide
 			else
 				IrcParser_->RawCommand (list);
 		}
+		ShowAnswer (msg);
 	}
 
 	void IrcServerHandler::ParseMessageForCommand (const QString& msg,
@@ -964,6 +985,17 @@ namespace Acetamide
 		Q_UNUSED (nick);
 		Q_UNUSED (mode);
 		//TODO but I don't know how it use
+	}
+
+	void IrcServerHandler::ParserISupport (const QString& msg)
+	{
+		if (RplISupportParser_->ParseISupportReply (msg))
+			ISupport_ = RplISupportParser_->GetISupportMap ();
+	}
+
+	QMap<QString, QString> IrcServerHandler::GetISupport () const
+	{
+		return ISupport_;
 	}
 
 	void IrcServerHandler::connectionEstablished ()

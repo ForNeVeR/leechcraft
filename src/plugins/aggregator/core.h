@@ -24,6 +24,7 @@
 #include <QString>
 #include <QMap>
 #include <QPair>
+#include <QList>
 #include <QDateTime>
 #include <interfaces/idownload.h>
 #include <interfaces/core/icoreproxy.h>
@@ -111,6 +112,8 @@ namespace Aggregator
 		AppWideActions AppWideActions_;
 		ItemsWidget *ReprWidget_;
 
+		QList<IDType_t> UpdatesQueue_;
+
 		PluginManager *PluginManager_;
 
 		Core ();
@@ -197,7 +200,6 @@ namespace Aggregator
 				const std::vector<bool>&) const;
 		JobHolderRepresentation* GetJobHolderRepresentation () const;
 		StorageBackend* GetStorageBackend () const;
-		QWebView* CreateWindow ();
 		void GetChannels (channels_shorts_t&) const;
 		void AddFeeds (const feeds_container_t&, const QString&);
 		void SetContextMenu (QMenu*);
@@ -216,6 +218,7 @@ namespace Aggregator
 		void saveSettings ();
 		void handleChannelDataUpdated (Channel_ptr);
 		void handleCustomUpdates ();
+		void rotateUpdatesQueue ();
 	private:
 		void UpdateUnreadItemsNumber () const;
 		void FetchPixmap (const Channel_ptr&);

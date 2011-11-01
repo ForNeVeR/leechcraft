@@ -21,6 +21,7 @@
 #include <QInputDialog>
 #include <QtDebug>
 #include <QXmppCallManager.h>
+#include <util/util.h>
 #include <interfaces/iprotocol.h>
 #include <interfaces/iproxyobject.h>
 #include "glooxprotocol.h"
@@ -39,10 +40,11 @@
 #include "userlocation.h"
 #include "privacylistsconfigdialog.h"
 #include "mediacall.h"
+#include "jabbersearchsession.h"
+#include "bookmarkeditwidget.h"
 
 #ifdef ENABLE_CRYPT
 #include "pgpmanager.h"
-#include <util/util.h>
 #endif
 
 namespace LeechCraft
@@ -74,7 +76,7 @@ namespace Xoox
 				this,
 				SLOT (handleDestroyClient ()),
 				Qt::QueuedConnection);
-		
+
 		connect (PrivacyDialogAction_,
 				SIGNAL (triggered ()),
 				this,
@@ -84,12 +86,12 @@ namespace Xoox
 	void GlooxAccount::Init ()
 	{
 		ClientConnection_.reset (new ClientConnection (JID_ + "/" + Resource_,
-						AccState_, this));
+						this));
 
 		TransferManager_.reset (new TransferManager (ClientConnection_->
 						GetTransferManager (),
 					this));
-		
+
 		connect (ClientConnection_.get (),
 				SIGNAL (gotConsoleLog (const QByteArray&, int)),
 				this,
@@ -103,7 +105,7 @@ namespace Xoox
 				SIGNAL (needPassword ()),
 				this,
 				SLOT (feedClientPassword ()));
-		
+
 		connect (ClientConnection_.get (),
 				SIGNAL (statusChanged (const EntryStatus&)),
 				this,
@@ -150,12 +152,12 @@ namespace Xoox
 				SIGNAL (gotMUCInvitation (QVariantMap, QString, QString)),
 				this,
 				SIGNAL (mucInvitationReceived (QVariantMap, QString, QString)));
-		
+
 		connect (ClientConnection_->GetCallManager (),
 				SIGNAL (callReceived (QXmppCall*)),
 				this,
 				SLOT (handleIncomingCall (QXmppCall*)));
-		
+
 		RegenAccountIcon ();
 	}
 
@@ -210,7 +212,7 @@ namespace Xoox
 	{
 		return ParentProtocol_->GetProtocolID () + "_" + JID_.toUtf8 ();
 	}
-	
+
 	QList<QAction*> GlooxAccount::GetActions () const
 	{
 		QList<QAction*> result;
@@ -240,7 +242,7 @@ namespace Xoox
 
 		if (dia->exec () == QDialog::Rejected)
 			return;
-		
+
 		FillSettings (dia->W ());
 	}
 
@@ -264,8 +266,12 @@ namespace Xoox
 		AccState_.Priority_ = w->GetPriority ();
 		Host_ = w->GetHost ();
 		Port_ = w->GetPort ();
-		
+
 		RegenAccountIcon ();
+
+		const QString& pass = w->GetPassword ();
+		if (!pass.isNull ())
+			Core::Instance ().GetPluginProxy ()->SetPassword (pass, this);
 
 		if (lastState != SOffline)
 			ChangeState (EntryStatus (lastState, AccState_.Status_));
@@ -307,7 +313,7 @@ namespace Xoox
 	{
 		ClientConnection_->AckAuth (entryObj, false);
 	}
-	
+
 	void GlooxAccount::AddEntry (const QString& entryId,
 			const QString& name, const QStringList& groups)
 	{
@@ -338,34 +344,50 @@ namespace Xoox
 	{
 		return TransferManager_.get ();
 	}
-	
+
 	QIcon GlooxAccount::GetAccountIcon () const
 	{
 		return AccountIcon_;
 	}
-	
+
 	QObject* GlooxAccount::GetSelfContact () const
 	{
 		return ClientConnection_ ?
 				ClientConnection_->GetCLEntry (JID_, QString ()) :
 				0;
 	}
-	
+
 	QObject* GlooxAccount::CreateSDSession ()
 	{
 		return new SDSession (this);
 	}
-	
+
+	QObject* GlooxAccount::CreateSearchSession ()
+	{
+		return new JabberSearchSession (this);
+	}
+
+	QString GlooxAccount::GetDefaultSearchServer () const
+	{
+		if (!Host_.isEmpty ())
+			return Host_;
+
+		const QString& second = JID_
+				.split ('@', QString::SkipEmptyParts).value (1);
+		const int slIdx = second.indexOf ('/');
+		return slIdx >= 0 ? second.left (slIdx) : second;
+	}
+
 	IHaveConsole::PacketFormat GlooxAccount::GetPacketFormat () const
 	{
 		return PFXML;
 	}
-	
+
 	void GlooxAccount::SetConsoleEnabled (bool enabled)
 	{
 		ClientConnection_->SetSignaledLog (enabled);
 	}
-	
+
 	void GlooxAccount::PublishTune (const QMap<QString, QVariant>& tuneInfo)
 	{
 		UserTune tune;
@@ -373,19 +395,19 @@ namespace Xoox
 		tune.SetTitle (tuneInfo ["title"].toString ());
 		tune.SetSource (tuneInfo ["source"].toString ());
 		tune.SetLength (tuneInfo ["length"].toInt ());
-		
+
 		ClientConnection_->GetPubSubManager ()->PublishEvent (&tune);
 	}
-	
+
 	void GlooxAccount::SetMood (const QString& moodStr, const QString& text)
 	{
 		UserMood mood;
 		mood.SetMoodStr (moodStr);
 		mood.SetText (text);
-		
+
 		ClientConnection_->GetPubSubManager ()->PublishEvent (&mood);
 	}
-	
+
 	void GlooxAccount::SetActivity (const QString& general,
 			const QString& specific, const QString& text)
 	{
@@ -393,47 +415,170 @@ namespace Xoox
 		activity.SetGeneralStr (general);
 		activity.SetSpecificStr (specific);
 		activity.SetText (text);
-		
+
 		ClientConnection_->GetPubSubManager ()->PublishEvent (&activity);
 	}
-	
+
 	void GlooxAccount::SetGeolocationInfo (const GeolocationInfo_t& info)
 	{
 		UserLocation location;
 		location.SetInfo (info);
 		ClientConnection_->GetPubSubManager ()->PublishEvent (&location);
 	}
-	
+
 	GeolocationInfo_t GlooxAccount::GetUserGeolocationInfo (QObject *obj,
 			const QString& variant) const
 	{
 		EntryBase *entry = qobject_cast<EntryBase*> (obj);
 		if (!entry)
 			return GeolocationInfo_t ();
-		
+
 		return entry->GetGeolocationInfo (variant);
 	}
-	
+
 	ISupportMediaCalls::MediaCallFeatures GlooxAccount::GetMediaCallFeatures () const
 	{
 		return MCFSupportsAudioCalls;
 	}
-	
+
 	QObject* GlooxAccount::Call (const QString& id, const QString& variant)
 	{
+		if (id == qobject_cast<ICLEntry*> (GetSelfContact ())->GetEntryID ())
+		{
+			Core::Instance ().SendEntity (Util::MakeNotification ("LeechCraft",
+						tr ("Why would you call yourself?"),
+						PWarning_));
+
+			return 0;
+		}
+
 		QString target = GlooxCLEntry::JIDFromID (this, id);
+
 		QString var = variant;
 		if (var.isEmpty ())
 		{
 			QObject *entryObj = GetClientConnection ()->
 					GetCLEntry (target, QString ());
 			GlooxCLEntry *entry = qobject_cast<GlooxCLEntry*> (entryObj);
-			var = entry->Variants ().value (0);
+			if (entry)
+				var = entry->Variants ().value (0);
+			else
+				qWarning () << Q_FUNC_INFO
+						<< "null entry for"
+						<< target;
 		}
 		target += '/' + var;
 		return new MediaCall (this, ClientConnection_->GetCallManager ()->call (target));
 	}
-	
+
+	void GlooxAccount::SuggestItems (QList<RIEXItem> items, QObject *to, QString message)
+	{
+		EntryBase *entry = qobject_cast<EntryBase*> (to);
+		if (!entry)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unable to cast"
+					<< to
+					<< "to EntryBase";
+			return;
+		}
+
+		QList<RIEXManager::Item> add;
+		QList<RIEXManager::Item> del;
+		QList<RIEXManager::Item> modify;
+		Q_FOREACH (const RIEXItem& item, items)
+		{
+			switch (item.Action_)
+			{
+			case RIEXItem::AAdd:
+				add << RIEXManager::Item (RIEXManager::Item::AAdd,
+						item.ID_, item.Nick_, item.Groups_);
+				break;
+			case RIEXItem::ADelete:
+				del << RIEXManager::Item (RIEXManager::Item::ADelete,
+						item.ID_, item.Nick_, item.Groups_);
+				break;
+			case RIEXItem::AModify:
+				modify << RIEXManager::Item (RIEXManager::Item::AModify,
+						item.ID_, item.Nick_, item.Groups_);
+				break;
+			default:
+				qWarning () << Q_FUNC_INFO
+						<< "unknown action"
+						<< item.Action_
+						<< "for item"
+						<< item.ID_;
+				break;
+			}
+		}
+
+		if (!add.isEmpty ())
+			ClientConnection_->GetRIEXManager ()->SuggestItems (entry, add, message);
+		if (!modify.isEmpty ())
+			ClientConnection_->GetRIEXManager ()->SuggestItems (entry, modify, message);
+		if (!del.isEmpty ())
+			ClientConnection_->GetRIEXManager ()->SuggestItems (entry, del, message);
+	}
+
+	QWidget* GlooxAccount::GetMUCBookmarkEditorWidget ()
+	{
+		return new BookmarkEditWidget ();
+	}
+
+	QVariantList GlooxAccount::GetBookmarkedMUCs () const
+	{
+		QVariantList result;
+
+		const QXmppBookmarkSet& set = GetBookmarks ();
+
+		Q_FOREACH (const QXmppBookmarkConference& conf, set.conferences ())
+		{
+			const QStringList& split = conf.jid ().split ('@', QString::SkipEmptyParts);
+			if (split.size () != 2)
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "incorrectly split jid for conf"
+						<< conf.jid ()
+						<< split;
+				continue;
+			}
+
+			QVariantMap cm;
+			cm ["HumanReadableName"] = QString ("%1 (%2)")
+					.arg (conf.jid ())
+					.arg (conf.nickName ());
+			cm ["AccountID"] = GetAccountID ();
+			cm ["Nick"] = conf.nickName ();
+			cm ["Room"] = split.at (0);
+			cm ["Server"] = split.at (1);
+			cm ["Autojoin"] = conf.autoJoin ();
+			cm ["StoredName"] = conf.name ();
+			result << cm;
+		}
+
+		return result;
+	}
+
+	void GlooxAccount::SetBookmarkedMUCs (const QVariantList& datas)
+	{
+		QList<QXmppBookmarkConference> mucs;
+		Q_FOREACH (const QVariant& var, datas)
+		{
+			const QVariantMap& map = var.toMap ();
+			QXmppBookmarkConference conf;
+			conf.setAutoJoin (map.value ("Autojoin").toBool ());
+			conf.setJid (map.value ("Room").toString () + '@' + map.value ("Server").toString ());
+			conf.setNickName (map.value ("Nick").toString ());
+			conf.setName (map.value ("StoredName").toString ());
+			mucs << conf;
+		}
+
+		QXmppBookmarkSet set;
+		set.setConferences (mucs);
+		set.setUrls (GetBookmarks ().urls ());
+		SetBookmarks (set);
+	}
+
 #ifdef ENABLE_CRYPT
 	void GlooxAccount::SetPrivateKey (const QCA::PGPKey& key)
 	{
@@ -450,7 +595,7 @@ namespace Xoox
 					<< "doesn't implement ICLEntry";
 			return;
 		}
-		
+
 		ClientConnection_->GetPGPManager ()->SetPublicKey (entry->GetHumanReadableID (), pubKey);
 	}
 
@@ -520,20 +665,20 @@ namespace Xoox
 	{
 		return ClientConnection_->AddODSCLEntry (ods);
 	}
-	
+
 	QXmppBookmarkSet GlooxAccount::GetBookmarks () const
 	{
 		if (!ClientConnection_)
 			return QXmppBookmarkSet ();
-		
+
 		return ClientConnection_->GetBookmarks ();
 	}
-	
+
 	void GlooxAccount::SetBookmarks (const QXmppBookmarkSet& set)
 	{
 		if (!ClientConnection_)
 			return;
-		
+
 		ClientConnection_->SetBookmarks (set);
 	}
 
@@ -613,7 +758,7 @@ namespace Xoox
 			proxy->SetPassword (result, this);
 		return result;
 	}
-	
+
 	void GlooxAccount::RegenAccountIcon ()
 	{
 		AccountIcon_ = QIcon ();
@@ -650,7 +795,7 @@ namespace Xoox
 	{
 		ClientConnection_->SetPassword (GetPassword ());
 	}
-	
+
 	void GlooxAccount::showPrivacyDialog ()
 	{
 		PrivacyListsManager *mgr = ClientConnection_->GetPrivacyListsManager ();
@@ -662,7 +807,7 @@ namespace Xoox
 	{
 		ClientConnection_.reset ();
 	}
-	
+
 	void GlooxAccount::handleIncomingCall (QXmppCall *call)
 	{
 		emit called (new MediaCall (this, call));

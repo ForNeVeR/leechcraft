@@ -27,6 +27,7 @@
 #include <interfaces/iaccount.h>
 #include <interfaces/iextselfinfoaccount.h>
 #include <interfaces/ihaveservicediscovery.h>
+#include <interfaces/ihavesearch.h>
 #include <interfaces/imessage.h>
 #include <interfaces/ihaveconsole.h>
 #include <interfaces/isupporttune.h>
@@ -35,6 +36,7 @@
 #include <interfaces/isupportgeolocation.h>
 #include <interfaces/isupportmediacalls.h>
 #include <interfaces/isupportriex.h>
+#include <interfaces/isupportbookmarks.h>
 #ifdef ENABLE_CRYPT
 #include <interfaces/isupportpgp.h>
 #endif
@@ -58,7 +60,7 @@ namespace Xoox
 		QString Status_;
 		int Priority_;
 	};
-	
+
 	bool operator== (const GlooxAccountState&, const GlooxAccountState&);
 
 	class GlooxProtocol;
@@ -69,6 +71,7 @@ namespace Xoox
 					   , public IAccount
 					   , public IExtSelfInfoAccount
 					   , public IHaveServiceDiscovery
+					   , public IHaveSearch
 					   , public IHaveConsole
 					   , public ISupportTune
 					   , public ISupportMood
@@ -76,6 +79,7 @@ namespace Xoox
 					   , public ISupportGeolocation
 					   , public ISupportMediaCalls
 					   , public ISupportRIEX
+					   , public ISupportBookmarks
 #ifdef ENABLE_CRYPT
 					   , public ISupportPGP
 #endif
@@ -84,6 +88,7 @@ namespace Xoox
 		Q_INTERFACES (LeechCraft::Azoth::IAccount
 				LeechCraft::Azoth::IExtSelfInfoAccount
 				LeechCraft::Azoth::IHaveServiceDiscovery
+				LeechCraft::Azoth::IHaveSearch
 				LeechCraft::Azoth::IHaveConsole
 				LeechCraft::Azoth::ISupportTune
 				LeechCraft::Azoth::ISupportMood
@@ -91,6 +96,7 @@ namespace Xoox
 				LeechCraft::Azoth::ISupportGeolocation
 				LeechCraft::Azoth::ISupportMediaCalls
 				LeechCraft::Azoth::ISupportRIEX
+				LeechCraft::Azoth::ISupportBookmarks
 #ifdef ENABLE_CRYPT
 				LeechCraft::Azoth::ISupportPGP
 #endif
@@ -104,14 +110,14 @@ namespace Xoox
 		QString Resource_;
 		QString Host_;
 		int Port_;
-		
+
 		QIcon AccountIcon_;
 
 		boost::shared_ptr<ClientConnection> ClientConnection_;
 		boost::shared_ptr<TransferManager> TransferManager_;
 
 		GlooxAccountState AccState_;
-		
+
 		QAction *PrivacyDialogAction_;
 	public:
 		GlooxAccount (const QString&, QObject*);
@@ -143,31 +149,43 @@ namespace Xoox
 				const QString&, const QStringList&);
 		void RemoveEntry (QObject*);
 		QObject* GetTransferManager () const;
-		
+
 		// IExtSelfInfoAccount
 		QObject* GetSelfContact () const;
 		QIcon GetAccountIcon () const;
-		
+
 		// IHaveServiceDiscovery
 		QObject* CreateSDSession ();
-		
+
+		// IHaveSearch
+		QObject* CreateSearchSession ();
+		QString GetDefaultSearchServer () const;
+
 		// IHaveConsole
 		PacketFormat GetPacketFormat () const;
 		void SetConsoleEnabled (bool);
-		
+
 		// ISupportTune, ISupportMood, ISupportActivity
 		void PublishTune (const QMap<QString, QVariant>&);
 		void SetMood (const QString&, const QString&);
 		void SetActivity (const QString&, const QString&, const QString&);
-		
+
 		// ISupportGeolocation
 		void SetGeolocationInfo (const GeolocationInfo_t&);
 		GeolocationInfo_t GetUserGeolocationInfo (QObject*, const QString&) const;
-		
+
 		// ISupportMediaCalls
 		MediaCallFeatures GetMediaCallFeatures () const;
 		QObject* Call (const QString& id, const QString& variant);
-		
+
+		// ISupportRIEX
+		void SuggestItems (QList<RIEXItem>, QObject*, QString);
+
+		// ISupportBookmarks
+		QWidget* GetMUCBookmarkEditorWidget ();
+		QVariantList GetBookmarkedMUCs () const;
+		void SetBookmarkedMUCs (const QVariantList&);
+
 #ifdef ENABLE_CRYPT
 		// ISupportPGP
 		void SetPrivateKey (const QCA::PGPKey&);
@@ -212,17 +230,20 @@ namespace Xoox
 		void itemCancelledSubscription (QObject*, const QString&);
 		void itemGrantedSubscription (QObject*, const QString&);
 		void statusChanged (const EntryStatus&);
-		void addContactSuggested (const QString&,
-				const QString&, const QStringList&);
 		void mucInvitationReceived (const QVariantMap&,
 				const QString&, const QString&);
-		
+
+		void bookmarksChanged ();
+
+		void riexItemsSuggested (QList<LeechCraft::Azoth::RIEXItem> items,
+				QObject*, QString);
+
 		void gotConsolePacket (const QByteArray&, int);
-		
+
 		void geolocationInfoChanged (const QString&, QObject*);
-		
+
 		void called (QObject*);
-		
+
 #ifdef ENABLE_CRYPT
 		void signatureVerified (QObject*, bool);
 		void encryptionStateChanged (QObject*, bool);

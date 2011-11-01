@@ -135,6 +135,7 @@ namespace Azoth
 		void handleOfferActionTriggered ();
 		void handleEntryMessage (QObject*);
 		void handleVariantsChanged (QStringList);
+		void handleAvatarChanged (const QImage&);
 		void handleStatusChanged (const EntryStatus&, const QString&);
 		void handleChatPartStateChanged (const ChatPartState&, const QString&);
 		void handleViewLinkClicked (const QUrl&);
@@ -208,8 +209,7 @@ namespace Azoth
 				QObject *chatTab,
 				QObject *entry,
 				int type,
-				QString variant,
-				QString text);
+				QString variant);
 		void hookMessageCreated (LeechCraft::IHookProxy_ptr proxy,
 				QObject *chatTab,
 				QObject *message);

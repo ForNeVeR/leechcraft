@@ -46,6 +46,8 @@
 #include "mooddialog.h"
 #include "locationdialog.h"
 #include "util.h"
+#include "groupsenddialog.h"
+#include "actionsmanager.h"
 
 namespace LeechCraft
 {
@@ -57,6 +59,8 @@ namespace Azoth
 	, MenuButton_ (new QToolButton (this))
 	, ProxyModel_ (new SortFilterProxyModel ())
 	{
+		qRegisterMetaType<QPersistentModelIndex> ("QPersistentModelIndex");
+
 		MainMenu_->setIcon (QIcon (":/plugins/azoth/resources/images/azoth.svg"));
 
 		Ui_.setupUi (this);
@@ -186,6 +190,12 @@ namespace Azoth
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleAccountConsole ()));
+
+		AccountModify_ = new QAction (tr ("Modify..."), this);
+		connect (AccountModify_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleAccountModify ()));
 
 		XmlSettingsManager::Instance ().RegisterObject ("ShowMenuBar",
 				this, "menuBarVisibilityToggled");
@@ -325,9 +335,11 @@ namespace Azoth
 
 	void MainWidget::on_CLTree__customContextMenuRequested (const QPoint& pos)
 	{
-		const QModelIndex& index = Ui_.CLTree_->indexAt (pos);
+		const QModelIndex& index = ProxyModel_->mapToSource (Ui_.CLTree_->indexAt (pos));
 		if (!index.isValid ())
 			return;
+
+		ActionsManager *manager = Core::Instance ().GetActionsManager ();
 
 		QMenu *menu = new QMenu (tr ("Entry context menu"));
 		QList<QAction*> actions;
@@ -337,10 +349,10 @@ namespace Azoth
 		{
 			QObject *obj = index.data (Core::CLREntryObject).value<QObject*> ();
 			ICLEntry *entry = qobject_cast<ICLEntry*> (obj);
-			const QList<QAction*>& allActions = Core::Instance ().GetEntryActions (entry);
+			const QList<QAction*>& allActions = manager->GetEntryActions (entry);
 			Q_FOREACH (QAction *action, allActions)
-				if (Core::Instance ().GetAreasForAction (action)
-						.contains (Core::CLEAAContactListCtxtMenu) ||
+				if (manager->GetAreasForAction (action)
+						.contains (ActionsManager::CLEAAContactListCtxtMenu) ||
 					action->isSeparator ())
 					actions << action;
 			break;
@@ -356,6 +368,18 @@ namespace Azoth
 					this,
 					SLOT (handleCatRenameTriggered ()));
 			actions << rename;
+
+			QAction *sendMsg = new QAction (tr ("Send message..."), menu);
+			QList<QVariant> entries;
+			for (int i = 0, cnt = index.model ()->rowCount (index);
+					i < cnt; ++i)
+				entries << index.child (i, 0).data (Core::CLREntryObject);
+			sendMsg->setProperty ("Azoth/Entries", entries);
+			connect (sendMsg,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (handleSendGroupMsgTriggered ()));
+			actions << sendMsg;
 			break;
 		}
 		case Core::CLETAccount:
@@ -460,6 +484,12 @@ namespace Azoth
 				AccountConsole_->setProperty ("Azoth/AccountObject", objVar);
 				actions << AccountConsole_;
 			}
+
+			actions << Util::CreateSeparator (menu);
+
+			AccountModify_->setProperty ("Azoth/AccountObject", objVar);
+			actions << AccountModify_;
+
 			break;
 		}
 		default:
@@ -593,6 +623,19 @@ namespace Azoth
 				entry->SetGroups (groups);
 			}
 		}
+	}
+
+	void MainWidget::handleSendGroupMsgTriggered ()
+	{
+		QList<QObject*> entries;
+
+		Q_FOREACH (const QVariant& entryVar,
+				sender ()->property ("Azoth/Entries").toList ())
+			entries << entryVar.value<QObject*> ();
+
+		GroupSendDialog *dlg = new GroupSendDialog (entries, this);
+		dlg->setAttribute (Qt::WA_DeleteOnClose, true);
+		dlg->show ();
 	}
 
 	void MainWidget::joinAccountConference ()
@@ -741,6 +784,15 @@ namespace Azoth
 		}
 
 		emit gotConsoleWidget (Account2CW_ [account]);
+	}
+
+	void MainWidget::handleAccountModify ()
+	{
+		IAccount *account = GetAccountFromSender (Q_FUNC_INFO);
+		if (!account)
+			return;
+
+		account->OpenConfigurationDialog ();
 	}
 
 	void MainWidget::handleManageBookmarks ()

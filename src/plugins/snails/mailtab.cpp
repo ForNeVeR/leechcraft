@@ -24,6 +24,7 @@
 #include <util/util.h>
 #include "core.h"
 #include "storage.h"
+#include "mailtreedelegate.h"
 
 namespace LeechCraft
 {
@@ -42,9 +43,10 @@ namespace Snails
 		Ui_.AccountsTree_->setModel (Core::Instance ().GetAccountsModel ());
 
 		MailSortFilterModel_->setDynamicSortFilter (true);
-		MailSortFilterModel_->setSortRole (RSort);
+		MailSortFilterModel_->setSortRole (Roles::Sort);
 		MailSortFilterModel_->setSourceModel (MailModel_);
 		MailSortFilterModel_->sort (2, Qt::DescendingOrder);
+		Ui_.MailTree_->setItemDelegate (new MailTreeDelegate (this));
 		Ui_.MailTree_->setModel (MailSortFilterModel_);
 
 		connect (Ui_.AccountsTree_->selectionModel (),
@@ -104,6 +106,10 @@ namespace Snails
 				SIGNAL (gotNewMessages (QList<Message_ptr>)),
 				this,
 				SLOT (handleGotNewMessages (QList<Message_ptr>)));
+		connect (CurrAcc_.get (),
+				SIGNAL (messageBodyFetched (Message_ptr)),
+				this,
+				SLOT (handleMessageBodyFetched (Message_ptr)));
 
 		QStringList headers;
 		headers << tr ("From")
@@ -125,6 +131,31 @@ namespace Snails
 					message->GetFromEmail () :
 					fromName + " <" + message->GetFromEmail () + ">";
 		}
+
+		QString HTMLize (const QList<QPair<QString, QString>>& adds)
+		{
+			QStringList result;
+
+			Q_FOREACH (const auto& pair, adds)
+			{
+				const bool hasName = !pair.first.isEmpty ();
+
+				QString thisStr;
+
+				if (hasName)
+					thisStr += "<span style='address_name'>" + pair.first + "</span> &lt;";
+
+				thisStr += QString ("<span style='address_email'><a href='mailto:%1'>%1</a></span>")
+						.arg (pair.second);
+
+				if (hasName)
+					thisStr += '>';
+
+				result << thisStr;
+			}
+
+			return result.join (", ");
+		}
 	}
 
 	void MailTab::handleMailSelected (const QModelIndex& sidx)
@@ -137,7 +168,7 @@ namespace Snails
 
 		const QModelIndex& idx = MailSortFilterModel_->mapToSource (sidx);
 		const QByteArray& id = idx.sibling (idx.row (), 0)
-				.data (RID).toByteArray ();
+				.data (Roles::ID).toByteArray ();
 
 		Message_ptr msg;
 		try
@@ -158,30 +189,47 @@ namespace Snails
 			return;
 		}
 
+		msg->SetRead (true);
+		Core::Instance ().GetStorage ()->SaveMessages (CurrAcc_.get (), { msg });
+		updateReadStatus (msg->GetID (), true);
+
 		if (!msg->IsFullyFetched ())
-			CurrAcc_->FetchWholeMessage (msg->GetID ());
+			CurrAcc_->FetchWholeMessage (msg);
 
-		QString html;
-		html += "<em>Subject</em>: %1<br />";
-		html += "<em>From</em>: %2<br />";
-		html += "<em>On</em>: %3<hr />";
-		html += "%4";
+		QString html = Core::Instance ().GetMsgViewTemplate ();
+		html.replace ("{subject}", msg->GetSubject ());
+		html.replace ("{from}", msg->GetFrom ());
+		html.replace ("{fromEmail}", msg->GetFromEmail ());
+		html.replace ("{to}", HTMLize (msg->GetTo ()));
+		html.replace ("{date}", msg->GetDate ().toString ());
 
-		const QString& htmlBody = msg->GetHTMLBody ();
+		const QString& htmlBody = msg->IsFullyFetched () ?
+				msg->GetHTMLBody () :
+				"<em>" + tr ("Fetching the message...") + "</em>";
 
-		Ui_.MailView_->setHtml (html
-				.arg (msg->GetSubject ())
-				.arg (Qt::escape (GetFrom (msg)))
-				.arg (msg->GetDate ().toString ())
-				.arg (htmlBody.isEmpty () ?
-						"<pre>" + Qt::escape (msg->GetBody ()) + "</pre> " :
-						htmlBody));
+		html.replace ("{body}", htmlBody.isEmpty () ?
+					"<pre>" + Qt::escape (msg->GetBody ()) + "</pre>" :
+					htmlBody);
+
+		Ui_.MailView_->setHtml (html);
 	}
 
 	void MailTab::handleFetchNewMail ()
 	{
+		Storage *st = Core::Instance ().GetStorage ();
 		Q_FOREACH (auto acc, Core::Instance ().GetAccounts ())
-			acc->FetchNewHeaders (1);
+			acc->Synchronize (st->HasMessagesIn (acc.get ()) ?
+						Account::FetchNew:
+						Account::FetchAll);
+	}
+
+	void MailTab::handleMessageBodyFetched (Message_ptr msg)
+	{
+		const QModelIndex& cur = Ui_.MailTree_->currentIndex ();
+		if (cur.data (Roles::ID).toByteArray () != msg->GetID ())
+			return;
+
+		handleMailSelected (cur);
 	}
 
 	void MailTab::handleGotNewMessages (QList<Message_ptr> messages)
@@ -198,14 +246,36 @@ namespace Snails
 			row << new QStandardItem (Util::MakePrettySize (message->GetSize ()));
 			MailModel_->appendRow (row);
 
-			row [CFrom]->setData (row [CFrom]->text (), RSort);
-			row [CSubj]->setData (row [CSubj]->text (), RSort);
-			row [CDate]->setData (message->GetDate (), RSort);
-			row [CSize]->setData (message->GetSize (), RSort);
+			row [Columns::From]->setData (row [Columns::From]->text (), Roles::Sort);
+			row [Columns::Subj]->setData (row [Columns::Subj]->text (), Roles::Sort);
+			row [Columns::Date]->setData (message->GetDate (), Roles::Sort);
+			row [Columns::Size]->setData (message->GetSize (), Roles::Sort);
 
-			row [CFrom]->setData (message->GetID (), RID);
+			Q_FOREACH (auto item, row)
+				item->setData (message->GetID (), Roles::ID);
 			MailID2Item_ [message->GetID ()] = row.first ();
+
+			updateReadStatus (message->GetID (), message->IsRead ());
 		}
+	}
+
+	void MailTab::updateReadStatus (const QByteArray& id, bool isRead)
+	{
+		if (!MailID2Item_.contains (id))
+			return;
+
+		QStandardItem *item = MailID2Item_ [id];
+		const QModelIndex& sIdx = item->index ();
+		for (int i = 0; i < Columns::Max; ++i)
+		{
+			QStandardItem *other = MailModel_->
+					itemFromIndex (sIdx.sibling (sIdx.row (), i));
+			other->setData (isRead, Roles::ReadStatus);
+		}
+		QMetaObject::invokeMethod (MailModel_,
+				"dataChanged",
+				Q_ARG (QModelIndex, sIdx.sibling (sIdx.row (), 0)),
+				Q_ARG (QModelIndex, sIdx.sibling (sIdx.row (), Columns::Max - 1)));
 	}
 }
 }

@@ -20,6 +20,7 @@
 #define PLUGINS_SNAILS_CORE_H
 #include <QObject>
 #include <interfaces/structures.h>
+#include <interfaces/core/icoreproxy.h>
 #include "account.h"
 
 class QAbstractItemModel;
@@ -28,6 +29,11 @@ class QModelIndex;
 
 namespace LeechCraft
 {
+namespace Util
+{
+	class ResourceLoader;
+}
+
 namespace Snails
 {
 	class Storage;
@@ -37,15 +43,23 @@ namespace Snails
 	{
 		Q_OBJECT
 
+		ICoreProxy_ptr Proxy_;
+
 		QStandardItemModel *AccountsModel_;
 		QList<Account_ptr> Accounts_;
 
 		Storage *Storage_;
 		ProgressManager *ProgressManager_;
 
+		std::shared_ptr<Util::ResourceLoader> MsgView_;
+
 		Core ();
 	public:
 		static Core& Instance ();
+		void Release ();
+
+		void SetProxy (ICoreProxy_ptr);
+		ICoreProxy_ptr GetProxy () const;
 
 		void SendEntity (const Entity&);
 
@@ -56,6 +70,7 @@ namespace Snails
 
 		Storage* GetStorage () const;
 		ProgressManager* GetProgressManager () const;
+		QString GetMsgViewTemplate () const;
 
 		void AddAccount (Account_ptr);
 	private:

@@ -41,7 +41,10 @@ namespace Snails
 		QMutex *AccMutex_;
 
 		QByteArray ID_;
+
 		QString AccName_;
+		QString UserName_;
+		QString UserEmail_;
 
 		QString Login_;
 		bool UseSASL_;
@@ -61,24 +64,32 @@ namespace Snails
 
 		QString OutLogin_;
 	public:
-		enum Direction
+		enum class Direction
 		{
-			DIn,
-			DOut
+			In,
+			Out
 		};
 
-		enum InType
+		enum class InType
 		{
-			ITIMAP,
-			ITPOP3,
-			ITMaildir
+			IMAP,
+			POP3,
+			Maildir
 		};
 
-		enum OutType
+		enum class OutType
 		{
-			OTSMTP,
-			OTSendmail
+			SMTP,
+			Sendmail
 		};
+
+		enum FetchFlag
+		{
+			FetchAll = 0x01,
+			FetchNew = 0x02
+		};
+
+		Q_DECLARE_FLAGS (FetchFlags, FetchFlag);
 	private:
 		InType InType_;
 		OutType OutType_;
@@ -90,8 +101,9 @@ namespace Snails
 		QString GetServer () const;
 		QString GetType () const;
 
-		void FetchNewHeaders (int);
-		void FetchWholeMessage (const QByteArray&);
+		void Synchronize (FetchFlags);
+		void FetchWholeMessage (Message_ptr);
+		void SendMessage (Message_ptr);
 
 		QByteArray Serialize () const;
 		void Deserialize (const QByteArray&);
@@ -107,21 +119,28 @@ namespace Snails
 
 		QString BuildInURL ();
 		QString BuildOutURL ();
-		QString GetPassImpl ();
+		QString GetPassImpl (Direction);
+		QByteArray GetStoreID (Direction) const;
 	private slots:
 		void buildInURL (QString*);
 		void buildOutURL (QString*);
-		void getPassword (QString*);
+		void getPassword (QString*, Direction = Direction::In);
 		void handleMsgHeaders (QList<Message_ptr>);
+		void handleGotUpdatedMessages (QList<Message_ptr>);
+		void handleMessageBodyFetched (Message_ptr);
 	signals:
 		void mailChanged ();
 		void gotNewMessages (QList<Message_ptr>);
 		void gotProgressListener (ProgressListener_g_ptr);
 		void accountChanged ();
+		void messageBodyFetched (Message_ptr);
 	};
 
 	typedef std::shared_ptr<Account> Account_ptr;
 }
 }
+
+Q_DECLARE_METATYPE (LeechCraft::Snails::Account::FetchFlags);
+Q_DECLARE_METATYPE (LeechCraft::Snails::Account_ptr);
 
 #endif

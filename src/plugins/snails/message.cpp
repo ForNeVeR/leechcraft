@@ -26,6 +26,7 @@ namespace Snails
 {
 	Message::Message (QObject *parent)
 	: QObject (parent)
+	, IsRead_ (false)
 	{
 	}
 
@@ -72,6 +73,16 @@ namespace Snails
 	void Message::SetFromEmail (const QString& fe)
 	{
 		FromEmail_ = fe;
+	}
+
+	QList<QPair<QString, QString>> Message::GetTo () const
+	{
+		return To_;
+	}
+
+	void Message::SetTo (const QList<QPair<QString, QString>>& to)
+	{
+		To_ = to;
 	}
 
 	QDateTime Message::GetDate () const
@@ -124,6 +135,20 @@ namespace Snails
 		HTMLBody_ = body;
 	}
 
+	bool Message::IsRead () const
+	{
+		return IsRead_;
+	}
+
+	void Message::SetRead (bool read)
+	{
+		const bool shouldEmit = read != IsRead_;
+		IsRead_ = read;
+
+		if (shouldEmit)
+			emit readStatusChanged (GetID (), read);
+	}
+
 	void Message::Dump () const
 	{
 		qDebug () << Q_FUNC_INFO
@@ -131,9 +156,11 @@ namespace Snails
 				<< Size_
 				<< From_
 				<< FromEmail_
+				<< To_
 				<< Date_
 				<< Recipients_
 				<< Subject_
+				<< IsRead_
 				<< Body_
 				<< HTMLBody_;
 	}
@@ -148,9 +175,11 @@ namespace Snails
 			<< Size_
 			<< From_
 			<< FromEmail_
+			<< To_
 			<< Date_
 			<< Recipients_
 			<< Subject_
+			<< IsRead_
 			<< Body_
 			<< HTMLBody_;
 
@@ -169,9 +198,11 @@ namespace Snails
 			>> Size_
 			>> From_
 			>> FromEmail_
+			>> To_
 			>> Date_
 			>> Recipients_
 			>> Subject_
+			>> IsRead_
 			>> Body_
 			>> HTMLBody_;
 	}

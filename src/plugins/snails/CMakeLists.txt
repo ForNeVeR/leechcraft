@@ -39,6 +39,8 @@ SET (SRCS
 	progresslistener.cpp
 	storage.cpp
 	progressmanager.cpp
+	mailtreedelegate.cpp
+	composemessagetab.cpp
 	)
 SET (HEADERS
 	snails.h
@@ -54,20 +56,28 @@ SET (HEADERS
 	progresslistener.h
 	storage.h
 	progressmanager.h
+	mailtreedelegate.h
+	composemessagetab.h
 	)
 SET (FORMS
 	mailtab.ui
 	accountslistwidget.ui
 	accountconfigdialog.ui
+	composemessagetab.ui
 	)
-QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
+SET (RESOURCES snailsresources.qrc)
+IF (NOT LC_NO_MOC)
+	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
+ENDIF (NOT LC_NO_MOC)
 QT4_WRAP_UI (UIS_H ${FORMS})
+QT4_ADD_RESOURCES (RCCS ${RESOURCES})
 
 ADD_LIBRARY (leechcraft_snails SHARED
 	${COMPILED_TRANSLATIONS}
 	${SRCS}
 	${MOC_SRCS}
 	${UIS_H}
+	${RCCS}
 	)
 TARGET_LINK_LIBRARIES (leechcraft_snails
 	${QT_LIBRARIES}
@@ -76,3 +86,4 @@ TARGET_LINK_LIBRARIES (leechcraft_snails
 	)
 INSTALL (TARGETS leechcraft_snails DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES snailssettings.xml DESTINATION ${LC_SETTINGS_DEST})
+INSTALL (DIRECTORY share/snails DESTINATION share/leechcraft)

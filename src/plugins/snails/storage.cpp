@@ -63,6 +63,8 @@ namespace Snails
 			file.write (qCompress (msg->Serialize (), 9));
 
 			qApp->processEvents ();
+
+			UpdateCaches (msg);
 		}
 	}
 
@@ -99,6 +101,7 @@ namespace Snails
 				{
 					msg->Deserialize (qUncompress (file.readAll ()));
 					result << msg;
+					UpdateCaches (msg);
 				}
 				catch (const std::exception& e)
 				{
@@ -139,6 +142,7 @@ namespace Snails
 		try
 		{
 			msg->Deserialize (qUncompress (file.readAll ()));
+			UpdateCaches (msg);
 		}
 		catch (const std::exception& e)
 		{
@@ -150,6 +154,31 @@ namespace Snails
 		}
 
 		return msg;
+	}
+
+	QSet<QByteArray> Storage::LoadIDs (Account *acc)
+	{
+		QSet<QByteArray> result;
+
+		const QDir& dir = DirForAccount (acc);
+		Q_FOREACH (const auto& str,
+				dir.entryList (QDir::NoDotAndDotDot | QDir::Dirs))
+		{
+			QDir subdir = dir;
+			if (!subdir.cd (str))
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "unable to cd to"
+						<< str;
+				continue;
+			}
+
+			Q_FOREACH (const auto& str,
+					subdir.entryList (QDir::NoDotAndDotDot | QDir::Files))
+				result << QByteArray::fromHex (str.toUtf8 ());
+		}
+
+		return result;
 	}
 
 	int Storage::GetNumMessages (Account *acc) const
@@ -174,6 +203,19 @@ namespace Snails
 		return result;
 	}
 
+	bool Storage::HasMessagesIn (Account *acc) const
+	{
+		return GetNumMessages (acc);
+	}
+
+	bool Storage::IsMessageRead (Account *acc, const QByteArray& id)
+	{
+		if (IsMessageRead_.contains (id))
+			return IsMessageRead_ [id];
+
+		return LoadMessage (acc, id)->IsRead ();
+	}
+
 	QDir Storage::DirForAccount (Account *acc) const
 	{
 		const QByteArray& id = acc->GetID ().toHex ();
@@ -190,6 +232,11 @@ namespace Snails
 		}
 
 		return dir;
+	}
+
+	void Storage::UpdateCaches (Message_ptr msg)
+	{
+		IsMessageRead_ [msg->GetID ()] = msg->IsRead ();
 	}
 }
 }

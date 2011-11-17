@@ -49,20 +49,22 @@ namespace Snails
 		QSortFilterProxyModel *MailSortFilterModel_;
 		Account_ptr CurrAcc_;
 
-		enum Roles
-		{
-			RID = Qt::UserRole + 1,
-			RSort
-		};
-
 		enum Columns
 		{
-			CFrom,
-			CSubj,
-			CDate,
-			CSize
+			From,
+			Subj,
+			Date,
+			Size,
+			Max
 		};
 	public:
+		enum Roles
+		{
+			ID = Qt::UserRole + 1,
+			Sort,
+			ReadStatus
+		};
+
 		MailTab (const TabClassInfo&, QObject*, QWidget* = 0);
 
 		TabClassInfo GetTabClassInfo () const;
@@ -73,7 +75,9 @@ namespace Snails
 		void handleCurrentAccountChanged (const QModelIndex&);
 		void handleMailSelected (const QModelIndex&);
 		void handleFetchNewMail ();
+		void handleMessageBodyFetched (Message_ptr);
 		void handleGotNewMessages (QList<Message_ptr>);
+		void updateReadStatus (const QByteArray&, bool);
 	signals:
 		void removeTab (QWidget*);
 	};

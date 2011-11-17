@@ -47,6 +47,25 @@ namespace Snails
 		Ui_.AccName_->setText (name);
 	}
 
+	QString AccountConfigDialog::GetUserName () const
+	{
+		return Ui_.UserName_->text ();
+	}
+
+	void AccountConfigDialog::SetUserName (const QString& name)
+	{
+		Ui_.UserName_->setText (name);
+	}
+
+	QString AccountConfigDialog::GetUserEmail () const
+	{
+		return Ui_.UserEmail_->text ();
+	}
+
+	void AccountConfigDialog::SetUserEmail (const QString& email)
+	{
+		Ui_.UserEmail_->setText (email);
+	}
 
 	QString AccountConfigDialog::GetLogin () const
 	{
@@ -65,7 +84,7 @@ namespace Snails
 
 	void AccountConfigDialog::SetInType (Account::InType type)
 	{
-		Ui_.InType_->setCurrentIndex (type);
+		Ui_.InType_->setCurrentIndex (static_cast<int> (type));
 	}
 
 	QString AccountConfigDialog::GetInHost () const
@@ -95,7 +114,7 @@ namespace Snails
 
 	void AccountConfigDialog::SetOutType (Account::OutType type)
 	{
-		Ui_.OutType_->setCurrentIndex (type);
+		Ui_.OutType_->setCurrentIndex (static_cast<int> (type));
 	}
 
 	QString AccountConfigDialog::GetOutHost () const
@@ -203,13 +222,15 @@ namespace Snails
 
 	void AccountConfigDialog::resetInPort ()
 	{
-		QMap<int, QMap<bool, int>> values;
-		values [Account::ITIMAP] [true] = 993;
-		values [Account::ITIMAP] [false] = 143;
-		values [Account::ITPOP3] [true] = 995;
-		values [Account::ITPOP3] [false] = 110;
+		QMap<Account::InType, QMap<bool, int>> values;
+		values [Account::InType::IMAP] [true] = 993;
+		values [Account::InType::IMAP] [false] = 143;
+		values [Account::InType::POP3] [true] = 995;
+		values [Account::InType::POP3] [false] = 110;
 
-		Ui_.InPort_->setValue (values [Ui_.InType_->currentIndex ()] [Ui_.UseTLS_->checkState () == Qt::Checked]);
+		const Account::InType selected = static_cast<Account::InType> (Ui_.InType_->currentIndex ());
+		const bool tls = Ui_.UseTLS_->checkState () == Qt::Checked;
+		Ui_.InPort_->setValue (values [selected] [tls]);
 	}
 }
 }

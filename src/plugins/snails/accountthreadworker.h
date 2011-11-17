@@ -23,6 +23,7 @@
 #include <vmime/net/message.hpp>
 #include "progresslistener.h"
 #include "message.h"
+#include "account.h"
 
 namespace LeechCraft
 {
@@ -42,15 +43,21 @@ namespace Snails
 		vmime::ref<vmime::net::store> MakeStore ();
 		vmime::ref<vmime::net::transport> MakeTransport ();
 		Message_ptr FromHeaders (const vmime::ref<vmime::net::message>&) const;
-		void FetchMessagesPOP3 (int);
+		void FetchMessagesPOP3 (Account::FetchFlags);
+		void FetchMessagesIMAP (Account::FetchFlags, vmime::ref<vmime::net::store>);
+		void SyncIMAPFolders (vmime::ref<vmime::net::store>);
 		QList<Message_ptr> FetchFullMessages (const std::vector<vmime::ref<vmime::net::message>>&);
 	public slots:
-		void fetchNewHeaders (int);
-		void fetchWholeMessage (const QByteArray&);
+		void synchronize (Account::FetchFlags);
+		void fetchWholeMessage (Message_ptr);
+		void sendMessage (Message_ptr);
 	signals:
 		void error (const QString&);
 		void gotProgressListener (ProgressListener_g_ptr);
 		void gotMsgHeaders (QList<Message_ptr>);
+		void messageBodyFetched (Message_ptr);
+		void gotUpdatedMessages (QList<Message_ptr>);
+		void gotFolders (QList<QStringList>);
 	};
 }
 }

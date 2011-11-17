@@ -544,6 +544,9 @@ namespace Azoth
 	bool Core::ShouldCountUnread (const ICLEntry *entry,
 			IMessage *msg)
 	{
+		if (msg->GetObject ()->property ("Azoth/HiddenMessage").toBool ())
+			return false;
+
 		Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
 		emit hookShouldCountUnread (proxy, msg->GetObject ());
 		if (proxy->IsCancelled ())
@@ -2100,6 +2103,9 @@ namespace Azoth
 		emit hookGotMessage (proxy, msgObj);
 		if (proxy->IsCancelled ())
 			return;
+
+		proxy.reset (new Util::DefaultHookProxy);
+		emit hookGotMessage2 (proxy, msgObj);
 
 		if (msg->GetMessageType () != IMessage::MTMUCMessage &&
 				msg->GetMessageType () != IMessage::MTChatMessage)

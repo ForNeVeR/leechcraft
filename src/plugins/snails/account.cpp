@@ -61,7 +61,7 @@ namespace Snails
 
 	QString Account::GetServer () const
 	{
-		return InType_ == ITMaildir ?
+		return InType_ == InType::Maildir ?
 			QString () :
 			InHost_ + ':' + QString::number (InPort_);
 	}
@@ -71,31 +71,44 @@ namespace Snails
 		QMutexLocker l (GetMutex ());
 		switch (InType_)
 		{
-		case ITIMAP:
+		case InType::IMAP:
 			return "IMAP";
-		case ITPOP3:
+		case InType::POP3:
 			return "POP3";
-		case ITMaildir:
+		case InType::Maildir:
 			return "Maildir";
 		default:
 			return "<unknown>";
 		}
 	}
 
-	void Account::FetchNewHeaders (int from)
+	void Account::Synchronize (Account::FetchFlags flags)
 	{
 		QMetaObject::invokeMethod (Thread_->GetWorker (),
-				"fetchNewHeaders",
+				"synchronize",
 				Qt::QueuedConnection,
-				Q_ARG (int, from));
+				Q_ARG (Account::FetchFlags, flags));
 	}
 
-	void Account::FetchWholeMessage (const QByteArray& id)
+	void Account::FetchWholeMessage (Message_ptr msg)
 	{
 		QMetaObject::invokeMethod (Thread_->GetWorker (),
 				"fetchWholeMessage",
 				Qt::QueuedConnection,
-				Q_ARG (QByteArray, id));
+				Q_ARG (Message_ptr, msg));
+	}
+
+	void Account::SendMessage (Message_ptr msg)
+	{
+		if (msg->GetFrom ().isEmpty ())
+			msg->SetFrom (UserName_);
+		if (msg->GetFromEmail ().isEmpty ())
+			msg->SetFromEmail (UserEmail_);
+
+		QMetaObject::invokeMethod (Thread_->GetWorker (),
+				"sendMessage",
+				Qt::QueuedConnection,
+				Q_ARG (Message_ptr, msg));
 	}
 
 	QByteArray Account::Serialize () const
@@ -105,7 +118,7 @@ namespace Snails
 		QByteArray result;
 
 		QDataStream out (&result, QIODevice::WriteOnly);
-		out << static_cast<quint8> (1);
+		out << static_cast<quint8> (2);
 		out << ID_
 			<< AccName_
 			<< Login_
@@ -122,7 +135,9 @@ namespace Snails
 			<< OutPort_
 			<< OutLogin_
 			<< static_cast<quint8> (InType_)
-			<< static_cast<quint8> (OutType_);
+			<< static_cast<quint8> (OutType_)
+			<< UserName_
+			<< UserEmail_;
 
 		return result;
 	}
@@ -133,7 +148,7 @@ namespace Snails
 		quint8 version = 0;
 		in >> version;
 
-		if (version != 1)
+		if (version < 1 || version > 2)
 			throw std::runtime_error (qPrintable ("Unknown version " + QString::number (version)));
 
 		quint8 inType = 0, outType = 0;
@@ -160,6 +175,10 @@ namespace Snails
 
 			InType_ = static_cast<InType> (inType);
 			OutType_ = static_cast<OutType> (outType);
+
+			if (version >= 2)
+				in >> UserName_
+					>> UserEmail_;
 		}
 	}
 
@@ -170,6 +189,8 @@ namespace Snails
 		{
 			QMutexLocker l (GetMutex ());
 			dia->SetName (AccName_);
+			dia->SetUserName (UserName_);
+			dia->SetUserEmail (UserEmail_);
 			dia->SetLogin (Login_);
 			dia->SetUseSASL (UseSASL_);
 			dia->SetSASLRequired (SASLRequired_);
@@ -193,6 +214,8 @@ namespace Snails
 		{
 			QMutexLocker l (GetMutex ());
 			AccName_ = dia->GetName ();
+			UserName_ = dia->GetUserName ();
+			UserEmail_ = dia->GetUserEmail ();
 			Login_ = dia->GetLogin ();
 			UseSASL_ = dia->GetUseSASL ();
 			SASLRequired_ = dia->GetSASLRequired ();
@@ -242,18 +265,18 @@ namespace Snails
 
 		switch (InType_)
 		{
-		case ITIMAP:
+		case InType::IMAP:
 			result = "imap://";
 			break;
-		case ITPOP3:
+		case InType::POP3:
 			result = "pop3://";
 			break;
-		case ITMaildir:
+		case InType::Maildir:
 			result = "maildir://localhost";
 			break;
 		}
 
-		if (InType_ != ITMaildir)
+		if (InType_ != InType::Maildir)
 		{
 			result += Login_;
 			result += ":";
@@ -279,26 +302,41 @@ namespace Snails
 	{
 		QMutexLocker l (GetMutex ());
 
-		QString result;
+		if (OutType_ == OutType::Sendmail)
+			return "sendmail://localhost";
 
-		switch (OutType_)
+		QString result = UseTLS_ ? "smtps://" : "smtp://";
+
+		if (SMTPNeedsAuth_)
 		{
-		case OTSMTP:
-			result = "smtp://";
-			result += OutHost_ + ":" + QString::number (OutPort_);
-			break;
-		case OTSendmail:
-			result = "sendmail://localhost";
-			break;
+			QString pass;
+			if (OutLogin_.isEmpty ())
+			{
+				result += Login_;
+				getPassword (&pass);
+			}
+			else
+			{
+				result += OutLogin_;
+				getPassword (&pass, Direction::Out);
+			}
+			result += ":" + pass;
+
+			result.replace ('@', "%40");
+			result += '@';
 		}
+
+		result += OutHost_ + ":" + QString::number (OutPort_);
+
+		qDebug () << Q_FUNC_INFO << result;
 
 		return result;
 	}
 
-	QString Account::GetPassImpl ()
+	QString Account::GetPassImpl (Direction dir)
 	{
 		QList<QVariant> keys;
-		keys << GetID ();
+		keys << GetStoreID (dir);
 		const QVariantList& result =
 			Util::GetPersistentData (keys, &Core::Instance ());
 		if (result.size () != 1)
@@ -322,6 +360,14 @@ namespace Snails
 		return strVarList.at (0).toString ();
 	}
 
+	QByteArray Account::GetStoreID (Account::Direction dir) const
+	{
+		QByteArray result = GetID ();
+		if (dir == Direction::Out)
+			result += "/out";
+		return result;
+	}
+
 	void Account::buildInURL (QString *res)
 	{
 		*res = BuildInURL ();
@@ -332,9 +378,9 @@ namespace Snails
 		*res = BuildOutURL ();
 	}
 
-	void Account::getPassword (QString *outPass)
+	void Account::getPassword (QString *outPass, Direction dir)
 	{
-		QString pass = GetPassImpl ();
+		QString pass = GetPassImpl (dir);
 		if (!pass.isEmpty ())
 		{
 			*outPass = pass;
@@ -351,7 +397,7 @@ namespace Snails
 			return;
 
 		QList<QVariant> keys;
-		keys << GetID ();
+		keys << GetStoreID (dir);
 
 		QList<QVariant> passwordVar;
 		passwordVar << pass;
@@ -373,6 +419,19 @@ namespace Snails
 		Core::Instance ().GetStorage ()->SaveMessages (this, messages);
 		emit mailChanged ();
 		emit gotNewMessages (messages);
+	}
+
+	void Account::handleGotUpdatedMessages (QList<Message_ptr> messages)
+	{
+		Core::Instance ().GetStorage ()->SaveMessages (this, messages);
+		emit mailChanged ();
+		emit gotNewMessages (messages);
+	}
+
+	void Account::handleMessageBodyFetched (Message_ptr msg)
+	{
+		Core::Instance ().GetStorage ()->SaveMessages (this, { msg });
+		emit messageBodyFetched (msg);
 	}
 }
 }

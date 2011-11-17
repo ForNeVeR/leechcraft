@@ -23,6 +23,7 @@
 #include <QDateTime>
 #include <QStringList>
 #include <QMetaType>
+#include <QPair>
 
 namespace LeechCraft
 {
@@ -36,12 +37,15 @@ namespace Snails
 		quint64 Size_;
 		QString From_;
 		QString FromEmail_;
+		QList<QPair<QString, QString>> To_;
 		QDateTime Date_;
 		QStringList Recipients_;
 		QString Subject_;
 
 		QString Body_;
 		QString HTMLBody_;
+
+		bool IsRead_;
 	public:
 		Message (QObject* = 0);
 
@@ -59,6 +63,9 @@ namespace Snails
 		QString GetFromEmail () const;
 		void SetFromEmail (const QString&);
 
+		QList<QPair<QString, QString>> GetTo () const;
+		void SetTo (const QList<QPair<QString, QString>>&);
+
 		QDateTime GetDate () const;
 		void SetDate (const QDateTime&);
 
@@ -74,10 +81,15 @@ namespace Snails
 		QString GetHTMLBody () const;
 		void SetHTMLBody (const QString&);
 
+		bool IsRead () const;
+		void SetRead (bool);
+
 		void Dump () const;
 
 		QByteArray Serialize () const;
 		void Deserialize (const QByteArray&);
+	signals:
+		void readStatusChanged (const QByteArray&, bool);
 	};
 
 	typedef std::shared_ptr<Message> Message_ptr;

@@ -39,8 +39,5 @@ namespace Laure
 	{
 		return QUrl (Ui_.Url_->text ()).isValid ();
 	}
-
-
-
 }
 }

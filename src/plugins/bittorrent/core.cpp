@@ -56,6 +56,7 @@
 #include <libtorrent/storage.hpp>
 #include <libtorrent/file.hpp>
 #include <libtorrent/magnet_uri.hpp>
+#include <libtorrent/version.hpp>
 #include <interfaces/entitytesthandleresult.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/itagsmanager.h>
@@ -261,13 +262,13 @@ namespace LeechCraft
 						SIGNAL (timeout ()),
 						this,
 						SLOT (checkFinished ()));
-				FinishedTimer_->start (100);
+				FinishedTimer_->start (2000);
 
 				connect (WarningWatchdog_.get (),
 						SIGNAL (timeout ()),
 						this,
 						SLOT (queryLibtorrentForWarnings ()));
-				WarningWatchdog_->start (100);
+				WarningWatchdog_->start (2000);
 
 				connect (ScrapeTimer_.get (),
 						SIGNAL (timeout ()),
@@ -661,14 +662,14 @@ namespace LeechCraft
 				return true;
 			}
 
-			std::auto_ptr<TorrentInfo> Core::GetTorrentStats () const
+			std::unique_ptr<TorrentInfo> Core::GetTorrentStats () const
 			{
 				if (!CheckValidity (CurrentTorrent_))
 					throw std::runtime_error ("Invalid torrent for stats");
 
 				const libtorrent::torrent_handle& handle = Handles_.at (CurrentTorrent_).Handle_;
 
-				std::auto_ptr<TorrentInfo> result (new TorrentInfo);
+				std::unique_ptr<TorrentInfo> result (new TorrentInfo);
 				result->Info_.reset (new libtorrent::torrent_info (handle.get_torrent_info ()));
 				result->Status_ = handle.status ();
 				result->Destination_ = QString::fromUtf8 (handle.save_path ().directory_string ().c_str ());
@@ -2552,8 +2553,13 @@ namespace LeechCraft
 				}
 				else
 					peerProxySettings.type = libtorrent::proxy_settings::none;
-
+#if (LIBTORRENT_VERSION_MINOR == 15 && LIBTORRENT_VERSION_TINY > 4) || LIBTORRENT_VERSION_MINOR > 15
 				Session_->set_proxy (peerProxySettings);
+#else
+				Session_->set_peer_proxy (peerProxySettings);
+				Session_->set_tracker_proxy (peerProxySettings);
+				Session_->set_web_seed_proxy (peerProxySettings);
+#endif
 			}
 
 			void Core::setGeneralSettings ()

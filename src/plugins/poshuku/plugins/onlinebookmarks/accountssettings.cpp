@@ -139,8 +139,6 @@ namespace OnlineBookmarks
 			service->saveAccounts ();
 
 		Core::Instance ().SetActiveAccounts (accounts);
-
-		Core::Instance ().SetQuickUploadButtons ();
 	}
 
 	void AccountsSettings::resizeColumns ()
@@ -161,10 +159,11 @@ namespace OnlineBookmarks
 
 		Core::Instance ().DeletePassword (Item2Account_ [item]->GetObject ());
 		emit accountRemoved (Item2Account_ [item]->GetObject ());
-		Core::Instance ().removeAccount (Item2Account_ [item]->GetObject ());
 
 		AccountsModel_->removeRow (current.row (), parentIndex);
+		Id2Account_.remove (Item2Account_ [item]->GetAccountID ());
 		Item2Account_.remove (item);
+
 		if (!AccountsModel_->rowCount (parentIndex))
 		{
 			Item2Service_.remove (AccountsModel_->itemFromIndex (parentIndex));
@@ -317,8 +316,6 @@ namespace OnlineBookmarks
 			Scheduled_ = false;
 			ScheduleResize ();
 		}
-
-		Core::Instance ().AddAccounts (accounts);
 	}
 
 }

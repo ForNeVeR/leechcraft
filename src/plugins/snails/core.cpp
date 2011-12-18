@@ -32,6 +32,7 @@
 #include "message.h"
 #include "storage.h"
 #include "progressmanager.h"
+#include "accountfoldermanager.h"
 
 namespace LeechCraft
 {
@@ -56,8 +57,13 @@ namespace Snails
 		qRegisterMetaType<Message_ptr> ("Message_ptr");
 		qRegisterMetaType<QList<Message_ptr>> ("QList<LeechCraft::Snails::Message_ptr>");
 		qRegisterMetaType<QList<Message_ptr>> ("QList<Message_ptr>");
+		qRegisterMetaType<AttDescr> ("LeechCraft::Snails::AttDescr");
+		qRegisterMetaType<AttDescr> ("AttDescr");
 		qRegisterMetaType<ProgressListener_g_ptr> ("ProgressListener_g_ptr");
 		qRegisterMetaType<Account::FetchFlags> ("Account::FetchFlags");
+		qRegisterMetaType<QList<QStringList>> ("QList<QStringList>");
+
+		qRegisterMetaTypeStreamOperators<AttDescr> ();
 
 		QStringList headers;
 		headers << tr ("Name")
@@ -152,6 +158,10 @@ namespace Snails
 
 		connect (account.get (),
 				SIGNAL (accountChanged ()),
+				this,
+				SLOT (saveAccounts ()));
+		connect (account->GetFolderManager (),
+				SIGNAL (foldersUpdated ()),
 				this,
 				SLOT (saveAccounts ()));
 	}

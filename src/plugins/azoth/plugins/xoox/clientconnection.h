@@ -48,8 +48,10 @@ class QXmppEntityTimeManager;
 class QXmppDeliveryReceiptsManager;
 class QXmppCaptchaManager;
 class QXmppBobManager;
+#ifdef ENABLE_MEDIACALLS
 class QXmppCallManager;
 class QXmppCall;
+#endif
 
 namespace LeechCraft
 {
@@ -94,7 +96,9 @@ namespace Xoox
 		QXmppDeliveryReceiptsManager *DeliveryReceiptsManager_;
 		QXmppCaptchaManager *CaptchaManager_;
 		QXmppBobManager *BobManager_;
+#ifdef ENABLE_MEDIACALLS
 		QXmppCallManager *CallManager_;
+#endif
 		PubSubManager *PubSubManager_;
 		PrivacyListsManager *PrivacyListsManager_;
 		AdHocCommandManager *AdHocCommandManager_;
@@ -137,6 +141,7 @@ namespace Xoox
 
 		FetchQueue *VCardQueue_;
 		FetchQueue *CapsQueue_;
+		FetchQueue *VersionQueue_;
 
 		int SocketErrorAccumulator_;
 
@@ -184,12 +189,15 @@ namespace Xoox
 
 		QXmppMucManager* GetMUCManager () const;
 		QXmppDiscoveryManager* GetDiscoveryManager () const;
+		QXmppVersionManager* GetVersionManager () const;
 		QXmppTransferManager* GetTransferManager () const;
 		CapsManager* GetCapsManager () const;
 		AnnotationsManager* GetAnnotationsManager () const;
 		PubSubManager* GetPubSubManager () const;
 		PrivacyListsManager* GetPrivacyListsManager () const;
+#ifdef ENABLE_MEDIACALLS
 		QXmppCallManager* GetCallManager () const;
+#endif
 		AdHocCommandManager* GetAdHocCommandManager () const;
 		JabberSearchManager* GetJabberSearchManager () const;
 		UserAvatarManager* GetUserAvatarManager () const;
@@ -223,11 +231,13 @@ namespace Xoox
 		void SendPacketWCallback (const QXmppIq&, QObject*, const QByteArray&);
 		void SendMessage (GlooxMessage*);
 		QXmppClient* GetClient () const;
+		QObject* GetCLEntry (const QString& fullJid) const;
 		QObject* GetCLEntry (const QString& bareJid, const QString& variant) const;
 		GlooxCLEntry* AddODSCLEntry (OfflineDataSource_ptr);
 		QList<QObject*> GetCLEntries () const;
 		void FetchVCard (const QString&);
 		void FetchVCard (const QString&, VCardDialog*);
+		void FetchVersion (const QString&);
 		QXmppBookmarkSet GetBookmarks () const;
 		void SetBookmarks (const QXmppBookmarkSet&);
 		GlooxMessage* CreateMessage (IMessage::MessageType,
@@ -255,6 +265,7 @@ namespace Xoox
 		void handleRosterChanged (const QString&);
 		void handleRosterItemRemoved (const QString&);
 		void handleVCardReceived (const QXmppVCardIq&);
+		void handleVersionReceived (const QXmppVersionIq&);
 		void handlePresenceChanged (const QXmppPresence&);
 		void handleMessageReceived (QXmppMessage);
 		void handlePEPEvent (const QString&, PEPEventBase*);

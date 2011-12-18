@@ -48,6 +48,8 @@ namespace AdiumStyles
 	{
 		StylesLoader_->AddGlobalPrefix ();
 		StylesLoader_->AddLocalPrefix ();
+
+		StylesLoader_->SetCacheParams (2048, 0);
 	}
 
 	QAbstractItemModel* AdiumStyleSource::GetOptionsModel () const
@@ -60,8 +62,11 @@ namespace AdiumStyles
 		const QString& pack = PackProxyModel_->GetOrigName (srcPack);
 		const QString& prefix = pack + "/Contents/Resources/";
 
-		const QString& path = StylesLoader_->
-				GetPath (QStringList (prefix + "main.css"));
+		QString path = StylesLoader_->
+				GetPath (QStringList (prefix + "Header.html"));
+		if (path.isEmpty ())
+			path = StylesLoader_->
+					GetPath (QStringList (prefix + "main.css"));
 		if (path.isEmpty ())
 		{
 			qWarning () << Q_FUNC_INFO
@@ -80,6 +85,8 @@ namespace AdiumStyles
 		{
 			Coloring2Colors_.clear ();
 			LastPack_ = srcPack;
+
+			StylesLoader_->FlushCache ();
 		}
 
 		const QString& pack = PackProxyModel_->GetOrigName (srcPack);
@@ -96,7 +103,7 @@ namespace AdiumStyles
 		Util::QIODevice_ptr css = StylesLoader_->
 				Load (QStringList (prefix + "main.css"));
 
-		if (!header || !footer || !css)
+		if (!header)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "could not load HTML template for pack"
@@ -105,21 +112,23 @@ namespace AdiumStyles
 		}
 
 		if (!header->open (QIODevice::ReadOnly) ||
-				!footer->open (QIODevice::ReadOnly) ||
-				!css->open (QIODevice::ReadOnly))
+				(footer && !footer->open (QIODevice::ReadOnly)) ||
+				(css && !css->open (QIODevice::ReadOnly)))
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unable to open source files for"
 					<< pack
 					<< header->errorString ()
-					<< footer->errorString ()
-					<< css->errorString ();
+					<< (footer ? footer->errorString () : "empty footer")
+					<< (css ? css->errorString () : "empty css");
 			return QString ();
 		}
 
 		Frame2Pack_ [frame] = pack;
 
-		QString cssStr = QString::fromUtf8 (css->readAll ());
+		QString cssStr = css ?
+				QString::fromUtf8 (css->readAll ()) :
+				QString ();
 
 		QString varCssStr;
 		if (!varCss.isEmpty ())
@@ -140,7 +149,8 @@ namespace AdiumStyles
 		result += "</style><title></title></head><body>";
 		result += QString::fromUtf8 (header->readAll ());
 		result += "<div id=\"Chat\"><div id=\"insert\"></div></div>";
-		result += QString::fromUtf8 (footer->readAll ());
+		if (footer)
+			result += QString::fromUtf8 (footer->readAll ());
 		result += "</body></html>";
 
 		ICLEntry *entry = qobject_cast<ICLEntry*> (entryObj);
@@ -190,9 +200,12 @@ namespace AdiumStyles
 		QObject *kindaSender = in ? msg->OtherPart () : reinterpret_cast<QObject*> (42);
 		const bool isNextMsg = Frame2LastContact_.contains (frame) &&
 				kindaSender == Frame2LastContact_ [frame];
+		const bool isSlashMe = msg->GetBody ()
+				.trimmed ().startsWith ("/me ");
 		QString filename;
-		if (msg->GetMessageType () == IMessage::MTChatMessage ||
-				msg->GetMessageType () == IMessage::MTMUCMessage)
+		if ((msg->GetMessageType () == IMessage::MTChatMessage ||
+					msg->GetMessageType () == IMessage::MTMUCMessage) &&
+				!isSlashMe)
 			filename = isNextMsg ?
 					"NextContent.html" :
 					"Content.html";
@@ -200,7 +213,7 @@ namespace AdiumStyles
 			filename = "Action.html";
 
 		if (msg->GetMessageType () != IMessage::MTMUCMessage &&
-			msg->GetMessageType () != IMessage::MTChatMessage)
+				msg->GetMessageType () != IMessage::MTChatMessage)
 			Frame2LastContact_.remove (frame);
 		else if (!isNextMsg)
 			Frame2LastContact_ [frame] = kindaSender;
@@ -230,7 +243,7 @@ namespace AdiumStyles
 		}
 
 		const QString& newSelector = QString ("div[id=\"Chat\"]");
-		const QString& nextSelector = QString ("div[id=\"insert\"]");
+		const QString& nextSelector = QString ("*[id=\"insert\"]");
 		QWebElement chat = frame->findFirstElement (isNextMsg ? nextSelector : newSelector);
 		if (chat.isNull ())
 		{
@@ -450,6 +463,11 @@ namespace AdiumStyles
 			body = richMsg->GetRichBody ();
 		if (body.isEmpty ())
 			body = msg->GetBody ();
+
+		if (body.startsWith ("/me "))
+			body = QString ("* %1 %2")
+					.arg (senderNick)
+					.arg (body.mid (4));
 
 		body = Proxy_->FormatBody (body, msgObj);
 

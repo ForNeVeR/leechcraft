@@ -22,7 +22,6 @@
 #include <QNetworkAccessManager>
 #include <lastfm/Track>
 #include <lastfm.h>
-#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -58,22 +57,29 @@ namespace Laure
 		return Scrobbler_ != NULL;
 	}
 	
+	void LastFMSubmitter::SetPassword (const QString& password)
+	{
+		Password_ = password;
+	}
+	
+	void LastFMSubmitter::SetUsername (const QString& username)
+	{
+		lastfm::ws::Username = username;
+	}
+	
 	const QString ScrobblingSite_ = "http://ws.audioscrobbler.com/2.0/";
 
-	LastFMSubmitter::LastFMSubmitter (ICoreProxy_ptr proxy, QObject* parent)
+	LastFMSubmitter::LastFMSubmitter (QObject *parent)
 	: QObject (parent)
 	{
 		lastfm::ws::ApiKey = "be076efd1c241366f27fde6fd024e567";
 		lastfm::ws::SharedSecret = "8352aead3be59ab319cd4e578d374843";
-		lastfm::ws::Username = XmlSettingsManager::Instance ()
-				.property ("lastfm.login").toString ();
-				
-		QNetworkAccessManager *manager = proxy->GetNetworkAccessManager ();
-		
-		const QString& password = XmlSettingsManager::Instance ()
-				.property ("lastfm.password").toString ();
+	}
+	
+	void LastFMSubmitter::Init (QNetworkAccessManager *manager)
+	{
 		const QString& authToken = AuthToken (lastfm::ws::Username,
-				password);
+				Password_);
 		
 		const QString& api_sig = ApiSig (lastfm::ws::ApiKey, authToken,
 				"auth.getMobileSession", lastfm::ws::Username,
@@ -99,30 +105,26 @@ namespace Laure
 		QDomDocument doc;
 		doc.setContent (QString::fromUtf8 (reply->readAll ()));
 		reply->deleteLater ();
-		QDomNodeList domList = doc.documentElement ()
+		const auto& domList = doc.documentElement ()
 				.elementsByTagName ("key");
-		if (domList.size () > 0)
-		{
-			lastfm::ws::SessionKey = doc.documentElement ()
-					.elementsByTagName ("key").at (0).toElement ()
-					.text ();
+		if (!domList.size ())
+			return;
+		
+		lastfm::ws::SessionKey = domList.at (0).toElement ().text ();
 			
-			Scrobbler_.reset (new lastfm::Audioscrobbler ("tst"));
+		Scrobbler_.reset (new lastfm::Audioscrobbler ("tst"));
 		
-			connect (Scrobbler_.get (),
-					SIGNAL (status (int)),
-					this,
-					SLOT (status (int)));
-		}
-	}
-		
-	void LastFMSubmitter::status (int code)
-	{
-		// code
+		connect (Scrobbler_.get (),
+				SIGNAL (status (int)),
+				this,
+				SIGNAL (status (int)));
 	}
 		
 	void LastFMSubmitter::sendTrack (const MediaMeta& info)
 	{
+		if (!IsConnected ())
+			return;
+		
 		Scrobbler_->submit ();
 		lastfm::Track track;
 		lastfm::MutableTrack mutableTrack (track);
@@ -139,6 +141,9 @@ namespace Laure
 	
 	void LastFMSubmitter::submit ()
 	{
+		if (!IsConnected ())
+			return;
+		
 		Scrobbler_->submit ();
 	}
 

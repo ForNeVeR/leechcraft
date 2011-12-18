@@ -30,6 +30,7 @@
 #include "interfaces/imucperms.h"
 #include "interfaces/iadvancedclentry.h"
 #include "interfaces/imucentry.h"
+#include "interfaces/iauthable.h"
 #include "interfaces/iaccount.h"
 
 #ifdef ENABLE_CRYPT
@@ -143,6 +144,47 @@ namespace Azoth
 			Action2Areas_.remove (action);
 	}
 
+	QString ActionsManager::GetReason (const QString&, const QString& text)
+	{
+		return QInputDialog::getText (0,
+					tr ("Enter reason"),
+					text);
+	}
+
+	void ActionsManager::ManipulateAuth (const QString& id, const QString& text,
+			std::function<void (IAuthable*, const QString&)> func)
+	{
+		QAction *action = qobject_cast<QAction*> (sender ());
+		if (!action)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< sender ()
+					<< "is not a QAction";
+			return;
+		}
+
+		ICLEntry *entry = action->
+				property ("Azoth/Entry").value<ICLEntry*> ();
+		IAuthable *authable =
+				qobject_cast<IAuthable*> (entry->GetObject ());
+		if (!authable)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< entry->GetObject ()
+					<< "doesn't implement IAuthable";
+			return;
+		}
+
+		QString reason;
+		if (action->property ("Azoth/WithReason").toBool ())
+		{
+			reason = GetReason (id, text.arg (entry->GetEntryName ()));
+			if (reason.isEmpty ())
+				return;
+		}
+		func (authable, reason);
+	}
+
 	void ActionsManager::CreateActionsForEntry (ICLEntry *entry)
 	{
 		if (!entry)
@@ -166,6 +208,8 @@ namespace Azoth
 				SLOT (handleActionOpenChatTriggered ()));
 		Entry2Actions_ [entry] ["openchat"] = openChat;
 		Action2Areas_ [openChat] << CLEAAContactListCtxtMenu;
+		if (entry->GetEntryType () == ICLEntry::ETPrivateChat)
+			Action2Areas_ [openChat] << CLEAAChatCtxtMenu;
 
 		if (advEntry)
 		{
@@ -284,7 +328,8 @@ namespace Azoth
 			Entry2Actions_ [entry] ["vcard"] = vcard;
 			Action2Areas_ [vcard] << CLEAAContactListCtxtMenu
 					<< CLEAATabCtxtMenu
-					<< CLEAAToolbar;
+					<< CLEAAToolbar
+					<< CLEAAChatCtxtMenu;
 		}
 
 		IMUCPerms *perms = qobject_cast<IMUCPerms*> (entry->GetParentCLEntry ());
@@ -297,7 +342,8 @@ namespace Azoth
 				{
 					QMenu *changeClass = new QMenu (perms->GetUserString (permClass));
 					Entry2Actions_ [entry] [permClass] = changeClass->menuAction ();
-					Action2Areas_ [changeClass->menuAction ()] << CLEAAContactListCtxtMenu;
+					Action2Areas_ [changeClass->menuAction ()] << CLEAAContactListCtxtMenu
+							<< CLEAAChatCtxtMenu;
 
 					Q_FOREACH (const QByteArray& perm, possible [permClass])
 					{
@@ -324,7 +370,8 @@ namespace Azoth
 					SLOT (handleActionAddContactFromMUC ()));
 			Entry2Actions_ [entry] ["add_contact"] = addContact;
 			Action2Areas_ [addContact] << CLEAAContactListCtxtMenu
-					<< CLEAATabCtxtMenu;
+					<< CLEAATabCtxtMenu
+					<< CLEAAChatCtxtMenu;
 
 			QAction *copyId = new QAction (tr ("Copy ID"), entry->GetObject ());
 			copyId->setProperty ("ActionIcon", "copy");
@@ -333,7 +380,8 @@ namespace Azoth
 					this,
 					SLOT (handleActionCopyMUCPartID ()));
 			Entry2Actions_ [entry] ["copy_id"] = copyId;
-			Action2Areas_ [copyId] << CLEAAContactListCtxtMenu;
+			Action2Areas_ [copyId] << CLEAAContactListCtxtMenu
+					<< CLEAAChatCtxtMenu;
 
 			QAction *sep = Util::CreateSeparator (entry->GetObject ());
 			Entry2Actions_ [entry] ["sep_afterjid"] = sep;
@@ -485,7 +533,7 @@ namespace Azoth
 						const QByteArray& perm = action->property ("Azoth/TargetPerm").toByteArray ();
 						action->setEnabled (mucPerms->MayChangePerm (entryObj,
 									permClass, perm));
-						action->setChecked (perm == mucPerms->GetPerms (entryObj) [permClass]);
+						action->setChecked (mucPerms->GetPerms (entryObj) [permClass].contains (perm));
 					}
 			}
 
@@ -637,32 +685,31 @@ namespace Azoth
 
 	void ActionsManager::handleActionGrantAuthTriggered()
 	{
-		Core::Instance ().ManipulateAuth ("grantauth",
+		ManipulateAuth ("grantauth",
 				tr ("Enter reason for granting authorization to %1:"),
 				&IAuthable::ResendAuth);
 	}
 
 	void ActionsManager::handleActionRevokeAuthTriggered ()
 	{
-		Core::Instance ().ManipulateAuth ("revokeauth",
+		ManipulateAuth ("revokeauth",
 				tr ("Enter reason for revoking authorization from %1:"),
 				&IAuthable::RevokeAuth);
 	}
 
 	void ActionsManager::handleActionUnsubscribeTriggered ()
 	{
-		Core::Instance ().ManipulateAuth ("unsubscribe",
+		ManipulateAuth ("unsubscribe",
 				tr ("Enter reason for unsubscribing from %1:"),
 				&IAuthable::Unsubscribe);
 	}
 
 	void ActionsManager::handleActionRerequestTriggered ()
 	{
-		Core::Instance ().ManipulateAuth ("rerequestauth",
+		ManipulateAuth ("rerequestauth",
 				tr ("Enter reason for rerequesting authorization from %1:"),
 				&IAuthable::RerequestAuth);
 	}
-
 
 #ifdef ENABLE_CRYPT
 	void ActionsManager::handleActionManagePGPTriggered ()

@@ -16,29 +16,51 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_POSHUKU_RESTORESESSIONDIALOG_H
-#define PLUGINS_POSHUKU_RESTORESESSIONDIALOG_H
-#include <QDialog>
-#include "ui_restoresessiondialog.h"
+#ifndef PLUGINS_SNAILS_ACCOUNTFOLDERMANAGER_H
+#define PLUGINS_SNAILS_ACCOUNTFOLDERMANAGER_H
+#include <QObject>
+#include <QStringList>
+#include <QHash>
 
 namespace LeechCraft
 {
-namespace Poshuku
+namespace Snails
 {
-	class RestoreSessionDialog : public QDialog
+	class Account;
+
+	class AccountFolderManager : public QObject
 	{
 		Q_OBJECT
 
-		Ui::RestoreSessionDialog Ui_;
+		friend class Account;
 	public:
-		RestoreSessionDialog (QWidget* = 0);
-		virtual ~RestoreSessionDialog ();
+		enum FolderFlag
+		{
+			FolderSyncable = 0x01,
+			FolderOutgoing = 0x02
+		};
 
-		void AddPair (const QString&, const QString&);
-		QList<int> GetSelectedURLs () const;
-	private slots:
-		void on_SelectAll__released ();
-		void on_SelectNone__released ();
+		Q_DECLARE_FLAGS (FolderFlags, FolderFlag);
+	private:
+		QList<QStringList> Folders_;
+
+		QHash<QStringList, FolderFlags> Folder2Flags_;
+	public:
+		AccountFolderManager (QObject* = 0);
+
+		QList<QStringList> GetFolders () const;
+		QList<QStringList> GetSyncFolders () const;
+		FolderFlags GetFolderFlags (const QStringList&) const;
+	private:
+		void ClearFolderFlags ();
+		void AppendFolderFlags (const QStringList&, FolderFlag);
+
+		void SetFolders (const QList<QStringList>&);
+
+		QByteArray Serialize () const;
+		void Deserialize (const QByteArray&);
+	signals:
+		void foldersUpdated ();
 	};
 }
 }

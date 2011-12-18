@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
+ * Copyright (C) 2011  Minh Ngo
  * Copyright (C) 2006-2011  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,31 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "playlistmodel.h"
+#include "vlcwrappertest.h"
 
-namespace LeechCraft
-{
-namespace Laure
-{
-	const int PlayListColumnCount = 6;
-	
-	PlayListModel::PlayListModel (QObject* parent)
-	: QStandardItemModel (parent)
-	{
-		setColumnCount (PlayListColumnCount);
-		HeaderNames_ << tr ("Artist")
-				<< tr ("Title")
-				<< tr ("Album")
-				<< tr ("Genre")
-				<< tr ("Date");
-		for (int i = 1; i < PlayListColumnCount; ++i)
-			setHeaderData (i, Qt::Horizontal, HeaderNames_ [i - 1]);
-	}
-	
-	Qt::ItemFlags PlayListModel::flags (const QModelIndex& index) const
-	{
-		return Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDropEnabled;
-	}
-}
-}
-
+QTEST_MAIN (VLCWrapperTest)

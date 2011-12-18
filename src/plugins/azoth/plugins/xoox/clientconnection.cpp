@@ -17,8 +17,6 @@
  **********************************************************************/
 
 #include "clientconnection.h"
-#include <boost/bind.hpp>
-#include <boost/fusion/container.hpp>
 #include <QTimer>
 #include <QtDebug>
 #include <QXmppClient.h>
@@ -94,7 +92,9 @@ namespace Xoox
 	, DeliveryReceiptsManager_ (new QXmppDeliveryReceiptsManager)
 	, CaptchaManager_ (new QXmppCaptchaManager)
 	, BobManager_ (new QXmppBobManager)
+#ifdef ENABLE_MEDIACALLS
 	, CallManager_ (new QXmppCallManager)
+#endif
 	, PubSubManager_ (new PubSubManager)
 	, PrivacyListsManager_ (new PrivacyListsManager)
 	, AdHocCommandManager_ (new AdHocCommandManager (this))
@@ -113,10 +113,12 @@ namespace Xoox
 	, CapsManager_ (new CapsManager (this))
 	, IsConnected_ (false)
 	, FirstTimeConnect_ (true)
-	, VCardQueue_ (new FetchQueue (boost::bind (&QXmppVCardManager::requestVCard, &Client_->vCardManager (), _1),
+	, VCardQueue_ (new FetchQueue ([this] (QString str) { Client_->vCardManager ().requestVCard (str); },
 				jid.contains ("gmail.com") ? 1700 : 300, 1, this))
-	, CapsQueue_ (new FetchQueue (boost::bind (&QXmppDiscoveryManager::requestInfo, DiscoveryManager_, _1, ""),
+	, CapsQueue_ (new FetchQueue ([this] (QString str) { DiscoveryManager_->requestInfo (str, ""); },
 				jid.contains ("gmail.com") ? 1000 : 200, 1, this))
+	, VersionQueue_ (new FetchQueue ([this] (QString str) { Client_->versionManager ().requestVersion (str); },
+				jid.contains ("gmail.com") ? 1200 : 250, 1, this))
 	, SocketErrorAccumulator_ (0)
 	{
 		SetOurJID (OurJID_);
@@ -168,7 +170,9 @@ namespace Xoox
 		Client_->addExtension (CaptchaManager_);
 		Client_->addExtension (new LegacyEntityTimeExt);
 		Client_->addExtension (PrivacyListsManager_);
+#ifdef ENABLE_MEDIACALLS
 		Client_->addExtension (CallManager_);
+#endif
 		Client_->addExtension (LastActivityManager_);
 		Client_->addExtension (JabberSearchManager_);
 		Client_->addExtension (RIEXManager_);
@@ -245,6 +249,11 @@ namespace Xoox
 				SIGNAL (vCardReceived (const QXmppVCardIq&)),
 				this,
 				SLOT (handleVCardReceived (const QXmppVCardIq&)));
+
+		connect (&Client_->versionManager (),
+				SIGNAL (versionReceived (const QXmppVersionIq&)),
+				this,
+				SLOT (handleVersionReceived (const QXmppVersionIq&)));
 
 		connect (DeliveryReceiptsManager_,
 				SIGNAL (messageDelivered (const QString&)),
@@ -393,9 +402,8 @@ namespace Xoox
 
 		if (!JoinQueue_.isEmpty ())
 		{
-			QList<JoinQueueItem>::iterator pos = std::find_if (JoinQueue_.begin (), JoinQueue_.end (),
-					boost::bind (std::equal_to<QString> (), jid,
-						boost::bind (&JoinQueueItem::RoomJID_, _1)));
+			auto pos = std::find_if (JoinQueue_.begin (), JoinQueue_.end (),
+					[&jid] (const JoinQueueItem& it) { return it.RoomJID_ == jid; });
 			if (pos != JoinQueue_.end ())
 				JoinQueue_.erase (pos);
 		}
@@ -418,6 +426,11 @@ namespace Xoox
 	QXmppDiscoveryManager* ClientConnection::GetDiscoveryManager () const
 	{
 		return DiscoveryManager_;
+	}
+
+	QXmppVersionManager* ClientConnection::GetVersionManager () const
+	{
+		return &Client_->versionManager ();
 	}
 
 	QXmppTransferManager* ClientConnection::GetTransferManager () const
@@ -445,10 +458,12 @@ namespace Xoox
 		return PrivacyListsManager_;
 	}
 
+#ifdef ENABLE_MEDIACALLS
 	QXmppCallManager* ClientConnection::GetCallManager () const
 	{
 		return CallManager_;
 	}
+#endif
 
 	AdHocCommandManager* ClientConnection::GetAdHocCommandManager () const
 	{
@@ -669,6 +684,15 @@ namespace Xoox
 		return Client_;
 	}
 
+	QObject* ClientConnection::GetCLEntry (const QString& fullJid) const
+	{
+		QString bare;
+		QString variant;
+		Split (fullJid, &bare, &variant);
+
+		return GetCLEntry (bare, variant);
+	}
+
 	QObject* ClientConnection::GetCLEntry (const QString& bareJid, const QString& variant) const
 	{
 		if (RoomHandlers_.contains (bareJid))
@@ -712,6 +736,12 @@ namespace Xoox
 	{
 		AwaitingVCardDialogs_ [jid] = QPointer<VCardDialog> (dia);
 		FetchVCard (jid);
+	}
+
+	void ClientConnection::FetchVersion (const QString& jid)
+	{
+		qDebug () << Q_FUNC_INFO << jid;
+		VersionQueue_->Schedule (jid);
 	}
 
 	QXmppBookmarkSet ClientConnection::GetBookmarks () const
@@ -995,6 +1025,20 @@ namespace Xoox
 			SelfContact_->SetVCard (vcard);
 	}
 
+	void ClientConnection::handleVersionReceived (const QXmppVersionIq& version)
+	{
+		QString jid;
+		QString nick;
+		Split (version.from (), &jid, &nick);
+
+		if (JID2CLEntry_.contains (jid))
+			JID2CLEntry_ [jid]->SetClientVersion (nick, version);
+		else if (RoomHandlers_.contains (jid))
+			RoomHandlers_ [jid]->GetParticipantEntry (nick)->SetClientVersion (QString (), version);
+		else if (OurBareJID_ == jid)
+			SelfContact_->SetClientVersion (nick, version);
+	}
+
 	void ClientConnection::handlePresenceChanged (const QXmppPresence& pres)
 	{
 		if (pres.type () != QXmppPresence::Unavailable &&
@@ -1008,29 +1052,28 @@ namespace Xoox
 		QString resource;
 		Split (pres.from (), &jid, &resource);
 
-		if (!JID2CLEntry_.contains (jid))
+		if (jid == OurBareJID_)
+		{
+			if (OurJID_ == pres.from ())
+				emit statusChanged (PresenceToStatus (pres));
+
+			if (pres.type () == QXmppPresence::Available)
+			{
+				SelfContact_->SetClientInfo (resource, pres);
+				SelfContact_->UpdatePriority (resource, pres.status ().priority ());
+				SelfContact_->SetStatus (PresenceToStatus (pres), resource);
+			}
+			else
+				SelfContact_->RemoveVariant (resource);
+
+			return;
+		}
+		else if (!JID2CLEntry_.contains (jid))
 		{
 			if (ODSEntries_.contains (jid))
 				ConvertFromODS (jid, Client_->rosterManager ().getRosterEntry (jid));
 			else
-			{
-				if (OurJID_ == pres.from ())
-					emit statusChanged (PresenceToStatus (pres));
-
-				if (jid == OurBareJID_)
-				{
-					if (pres.type () == QXmppPresence::Available)
-					{
-						SelfContact_->SetClientInfo (resource, pres);
-						SelfContact_->UpdatePriority (resource, pres.status ().priority ());
-						SelfContact_->SetStatus (PresenceToStatus (pres), resource);
-					}
-					else
-						SelfContact_->RemoveVariant (resource);
-				}
-
 				return;
-			}
 		}
 
 		JID2CLEntry_ [jid]->SetClientInfo (resource, pres);
@@ -1112,7 +1155,9 @@ namespace Xoox
 		QString resource;
 		Split (from, &bare, &resource);
 
-		if (!JID2CLEntry_.contains (bare))
+		if (bare == OurBareJID_)
+			SelfContact_->HandlePEPEvent (resource, event);
+		else if (!JID2CLEntry_.contains (bare))
 		{
 			if (JID2CLEntry_.isEmpty ())
 				InitialEventQueue_ << qMakePair (from, event->Clone ());
@@ -1121,10 +1166,9 @@ namespace Xoox
 						<< "unknown PEP event source"
 						<< from
 						<< JID2CLEntry_.keys ();
-			return;
 		}
-
-		JID2CLEntry_ [bare]->HandlePEPEvent (resource, event);
+		else
+			JID2CLEntry_ [bare]->HandlePEPEvent (resource, event);
 	}
 
 	void ClientConnection::handlePEPAvatarUpdated (const QString& from, const QImage& image)
@@ -1222,7 +1266,7 @@ namespace Xoox
 		}
 
 		if (JoinQueue_.size ())
-			QTimer::singleShot (10000,
+			QTimer::singleShot (3000,
 					this,
 					SLOT (handleAutojoinQueue ()));
 	}
@@ -1237,11 +1281,13 @@ namespace Xoox
 		if (!qobject_cast<IProxyObject*> (proto->GetProxyObject ())->IsAutojoinAllowed ())
 			return;
 
-		QList<QObject*> entries;
-		Q_FOREACH (const JoinQueueItem& item, JoinQueue_)
-			entries << JoinRoom (item.RoomJID_, item.Nickname_);
-		emit gotRosterItems (entries);
-		JoinQueue_.clear ();
+		const JoinQueueItem& it = JoinQueue_.takeFirst ();
+		emit gotRosterItems (QList<QObject*> () << JoinRoom (it.RoomJID_, it.Nickname_));
+
+		if (!JoinQueue_.isEmpty ())
+			QTimer::singleShot (800,
+					this,
+					SLOT (handleAutojoinQueue ()));
 	}
 
 	void ClientConnection::handleDiscoInfo (const QXmppDiscoveryIq& iq)
@@ -1523,6 +1569,7 @@ namespace Xoox
 				entry = new GlooxCLEntry (bareJID, Account_);
 				JID2CLEntry_ [bareJID] = entry;
 				ScheduleFetchVCard (bareJID);
+				FetchVersion (bareJID);
 			}
 		}
 		else
@@ -1547,7 +1594,10 @@ namespace Xoox
 					vcard.email ().isEmpty () &&
 					vcard.firstName ().isEmpty () &&
 					vcard.lastName ().isEmpty ())
+			{
 				ScheduleFetchVCard (bareJID);
+				FetchVersion (bareJID);
+			}
 		}
 		return entry;
 	}

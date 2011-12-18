@@ -20,31 +20,40 @@
 #include "playlistview.h"
 #include <QKeyEvent>
 #include <QHeaderView>
+#include <QStandardItemModel>
 #include <QMenu>
 #include "nowplayingdelegate.h"
 #include "xmlsettingsmanager.h"
-#include "playlistmodel.h"
 
 namespace LeechCraft
 {
 namespace Laure
 {
-	PlayListView::PlayListView (PlayListModel *model, QWidget *parent)
+	const int PlayListColumnCount = 6;
+	
+	PlayListView::PlayListView (QStandardItemModel *model, QWidget *parent)
 	: QTreeView (parent)
 	, PlayListModel_ (model)
 	, CurrentItem_ (-1)
 	{
 		setModel (PlayListModel_);
+		
+		PlayListModel_->setColumnCount (PlayListColumnCount);
+		
+		setEditTriggers (SelectedClicked);
 		setSelectionMode (ContiguousSelection);
 		setAlternatingRowColors (true);
 		hideColumn (0);
 
-		for (int i = 1; i < PlayListModel_->columnCount (); ++i)
-		{
-			const QString& itemName = "Header" + QString::number (i);
-			setColumnHidden (i, !XmlSettingsManager::Instance ()
-					.property (itemName.toAscii ()).toBool ());
-		}
+		handleHideHeaders ();
+		
+		QList<QByteArray> propNames;
+		
+		for (int i = 0; i < PlayListModel_->columnCount (); ++i)
+			propNames.push_back ("Header" + QString::number (i).toAscii ());
+		
+		XmlSettingsManager::Instance ().RegisterObject (propNames, this,
+				"handleHideHeaders");
 
 		setItemDelegate (new NowPlayingDelegate (this));
 		setSizePolicy (QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -57,9 +66,19 @@ namespace Laure
 				SLOT (handleDoubleClicked (QModelIndex)));
 	}
 	
-	void PlayListView::selectRow (int val)
+	void PlayListView::handleHideHeaders ()
 	{
-		setCurrentIndex (model ()->index (val, 0));
+		for (int i = 1; i < PlayListModel_->columnCount (); ++i)
+		{
+			const QString& itemName = "Header" + QString::number (i);
+			setColumnHidden (i, !XmlSettingsManager::Instance ()
+					.property (itemName.toAscii ()).toBool ());
+		}
+	}
+	
+	void PlayListView::selectRow (int row)
+	{
+		setCurrentIndex (model ()->index (row, 0));
 	}
 
 	void PlayListView::AddItem (const MediaMeta& item, const QString& fileName)
@@ -71,16 +90,21 @@ namespace Laure
 		list << new QStandardItem (item.Album_);
 		list << new QStandardItem (item.Genre_);
 		list << new QStandardItem (item.Date_);
+		
+		Q_FOREACH (QStandardItem *itemList, list)
+			itemList->setFlags (Qt::ItemIsSelectable | Qt::ItemIsEnabled
+					| Qt::ItemIsDropEnabled | Qt::ItemIsEditable);
+			
 		PlayListModel_->appendRow (list);
 	}
 	
-	void PlayListView::Play (int row)
+	void PlayListView::MarkPlayingItem (int row)
 	{
-		QStandardItem *it = PlayListModel_->item (CurrentItem_);
+		auto it = PlayListModel_->item (CurrentItem_);
 		if (it)
-			it->setData (false, PlayListModel::IsPlayingRole);
+			it->setData (false, Roles::IsPlayingRole);
 		it = PlayListModel_->item (row);
-		it->setData (true, PlayListModel::IsPlayingRole);
+		it->setData (true, Roles::IsPlayingRole);
 		CurrentItem_ = row;
 	}
 

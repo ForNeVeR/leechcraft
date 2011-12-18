@@ -21,6 +21,9 @@
 #include <QObject>
 #include <vmime/net/session.hpp>
 #include <vmime/net/message.hpp>
+#include <vmime/net/folder.hpp>
+#include <vmime/net/store.hpp>
+#include <interfaces/structures.h>
 #include "progresslistener.h"
 #include "message.h"
 #include "account.h"
@@ -37,6 +40,8 @@ namespace Snails
 
 		Account *A_;
 		vmime::ref<vmime::net::session> Session_;
+		vmime::ref<vmime::net::store> CachedStore_;
+		QTimer *DisconnectTimer_;
 	public:
 		AccountThreadWorker (Account*);
 	private:
@@ -44,15 +49,20 @@ namespace Snails
 		vmime::ref<vmime::net::transport> MakeTransport ();
 		Message_ptr FromHeaders (const vmime::ref<vmime::net::message>&) const;
 		void FetchMessagesPOP3 (Account::FetchFlags);
-		void FetchMessagesIMAP (Account::FetchFlags, vmime::ref<vmime::net::store>);
+		void FetchMessagesIMAP (Account::FetchFlags, const QList<QStringList>&, vmime::ref<vmime::net::store>);
+		void FetchMessagesInFolder (const QStringList&, vmime::ref<vmime::net::folder>);
 		void SyncIMAPFolders (vmime::ref<vmime::net::store>);
 		QList<Message_ptr> FetchFullMessages (const std::vector<vmime::ref<vmime::net::message>>&);
+		ProgressListener* MkPgListener (const QString&);
 	public slots:
-		void synchronize (Account::FetchFlags);
+		void synchronize (Account::FetchFlags, const QList<QStringList>&);
 		void fetchWholeMessage (Message_ptr);
+		void fetchAttachment (Message_ptr, const QString&, const QString&);
 		void sendMessage (Message_ptr);
+		void timeoutDisconnect ();
 	signals:
 		void error (const QString&);
+		void gotEntity (const LeechCraft::Entity&);
 		void gotProgressListener (ProgressListener_g_ptr);
 		void gotMsgHeaders (QList<Message_ptr>);
 		void messageBodyFetched (Message_ptr);

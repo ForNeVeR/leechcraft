@@ -18,7 +18,6 @@
 
 #ifndef PLUGINS_AZOTH_CORE_H
 #define PLUGINS_AZOTH_CORE_H
-#include <boost/function.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <QObject>
 #include <QSet>
@@ -27,6 +26,7 @@
 #ifdef ENABLE_CRYPT
 #include <QtCrypto>
 #endif
+#include <util/resourceloader.h>
 #include <interfaces/core/ihookproxy.h>
 #include <interfaces/ianemitter.h>
 #include "interfaces/iinfo.h"
@@ -113,6 +113,8 @@ namespace Azoth
 		Entry2SmoothAvatarCache_t Entry2SmoothAvatarCache_;
 
 		AnimatedIconManager<QStandardItem*> *ItemIconManager_;
+
+		QMap<State, int> StateCounter_;
 	public:
 		enum ResourceLoaderType
 		{
@@ -233,7 +235,7 @@ namespace Azoth
 		/** Returns the name of the icon from the current iconset for
 		 * the given contact list entry state.
 		 */
-		QString GetIconPathForState (State state) const;
+		Util::QIODevice_ptr GetIconPathForState (State state) const;
 
 		/** Returns an icon from the current iconset for the given
 		 * contact list entry state.
@@ -296,14 +298,6 @@ namespace Azoth
 		 * the given amount, which may be negative.
 		 */
 		void IncreaseUnreadCount (ICLEntry *entry, int amount = 1);
-
-		/** Calls the given func on the sending entry, asking for reason
-		 * for the action, if it should. The text may contain %1, in
-		 * which case it'd be replaced with the result if
-		 * ICLEntry::GetEntryName().
-		 */
-		void ManipulateAuth (const QString& id, const QString& text,
-				boost::function<void (IAuthable*, const QString&)> func);
 	private:
 		/** Adds the protocol object. The object must implement
 		 * IProtocolPlugin interface.
@@ -368,14 +362,6 @@ namespace Azoth
 		 */
 		void RecalculateUnreadForParents (QStandardItem*);
 
-		/** Asks user for reason for the given action, possibly showing
-		 * the given text. The id may be used to distinguish between
-		 * different reason contexts (like kick/ban and authentication
-		 * request), for example, to keep history of reasons and to
-		 * allow the user to choose one.
-		 */
-		QString GetReason (const QString& id, const QString& text);
-
 		void NotifyWithReason (QObject*, const QString&,
 				const char*, const QString&,
 				const QString&, const QString&);
@@ -394,6 +380,8 @@ namespace Azoth
 
 		void FillANFields ();
 
+		void UpdateInitState (State);
+
 #ifdef ENABLE_CRYPT
 		void RestoreKeyForAccount (IAccount*);
 		void RestoreKeyForEntry (ICLEntry*);
@@ -404,6 +392,8 @@ namespace Azoth
 		 */
 		void handleMucJoinRequested ();
 	private slots:
+		void handleNewProtocols (const QList<QObject*>&);
+
 		/** Handles a new account. This account may be both a new one
 		 * (added as a result of user's actions) and already existing
 		 * one (in case it was just read from settings, for example).
@@ -465,6 +455,8 @@ namespace Azoth
 		 * sender() will be used.
 		 */
 		void handleEntryPermsChanged (ICLEntry *entry = 0);
+
+		void handleEntryGenerallyChanged ();
 
 		/** Handles the message receival from contact list entries.
 		 */
@@ -541,6 +533,8 @@ namespace Azoth
 
 		void invalidateSmoothAvatarCache ();
 
+		void flushIconCaches ();
+
 #ifdef ENABLE_CRYPT
 		void handleQCAEvent (int, const QCA::Event&);
 		void handleQCABusyFinished ();
@@ -548,6 +542,7 @@ namespace Azoth
 	signals:
 		void gotEntity (const LeechCraft::Entity&);
 		void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
+		void topStatusChanged (LeechCraft::Azoth::State);
 
 		/** Convenient signal for rethrowing the event of an account
 		 * being added.

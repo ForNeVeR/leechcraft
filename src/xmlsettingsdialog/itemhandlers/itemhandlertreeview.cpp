@@ -17,7 +17,6 @@
  **********************************************************************/
 
 #include "itemhandlertreeview.h"
-#include <boost/bind.hpp>
 #include <QDomElement>
 #include <QLabel>
 #include <QTreeView>
@@ -55,7 +54,8 @@ namespace LeechCraft
 		tree->setHeaderHidden (item.attribute ("hideHeader") == "true");
 
 		Factory_->RegisterDatasourceSetter (prop,
-				boost::bind (&ItemHandlerTreeView::SetDataSource, this, _1, _2));
+				[this] (const QString& str, QAbstractItemModel *m, Util::XmlSettingsDialog*)
+					{ SetDataSource (str, m); });
 		Propname2TreeView_ [prop] = tree;
 
 		QLabel *label = new QLabel (XSD_->GetLabel (item));
@@ -66,7 +66,7 @@ namespace LeechCraft
 
 		int row = lay->rowCount ();
 		lay->addWidget (label, row, 0, Qt::AlignLeft);
-		lay->addWidget (tree, row + 1, 0);
+		lay->addWidget (tree, row + 1, 0, 1, -1);
 	}
 
 	QVariant ItemHandlerTreeView::GetValue (const QDomElement&, QVariant) const

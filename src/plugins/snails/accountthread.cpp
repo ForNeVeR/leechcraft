@@ -20,6 +20,7 @@
 #include <QTimer>
 #include "account.h"
 #include "accountthreadworker.h"
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -39,10 +40,14 @@ namespace Snails
 	{
 		W_ = new AccountThreadWorker (A_);
 
-		QTimer::singleShot (0,
-				W_,
-				SLOT (rebuildSessConfig ()));
+		ConnectSignals ();
 
+		QThread::run ();
+		delete W_;
+	}
+
+	void AccountThread::ConnectSignals ()
+	{
 		connect (W_,
 				SIGNAL (gotMsgHeaders (QList<Message_ptr>)),
 				A_,
@@ -59,9 +64,14 @@ namespace Snails
 				SIGNAL (gotUpdatedMessages (QList<Message_ptr>)),
 				A_,
 				SLOT (handleGotUpdatedMessages (QList<Message_ptr>)));
-
-		QThread::run ();
-		delete W_;
+		connect (W_,
+				SIGNAL (gotFolders (QList<QStringList>)),
+				A_,
+				SLOT (handleGotFolders (QList<QStringList>)));
+		connect (W_,
+				SIGNAL (gotEntity (LeechCraft::Entity)),
+				&Core::Instance (),
+				SIGNAL (gotEntity (LeechCraft::Entity)));
 	}
 }
 }

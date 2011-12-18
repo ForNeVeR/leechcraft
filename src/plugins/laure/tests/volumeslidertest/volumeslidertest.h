@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
+#ifndef PLUGINS_LAURE_VOLUMESLIDERTEST_H
+#define PLUGINS_LAURE_VOLUMESLIDERTEST_H
 #include <QObject>
 #include <QtTest>
 
@@ -24,6 +26,12 @@
 
 using namespace LeechCraft::Laure;
 
+/** @test Provides test units for the VolumeSlider class.
+ * 
+ * @sa VolumeSlider
+ * 
+ *  @author Minh Ngo <nlminhtl@gmail.com>
+ */
 class VolumeSliderTest : public QObject
 {
 	Q_OBJECT
@@ -35,3 +43,5 @@ private slots:
 		QVERIFY (slider.value () == 2);
 	}
 };
+
+#endif // PLUGINS_LAURE_VOLUMESLIDERTEST_H

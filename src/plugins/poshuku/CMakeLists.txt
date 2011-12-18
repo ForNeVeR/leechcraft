@@ -44,7 +44,6 @@ SET (SRCS
 	favoritesdelegate.cpp
 	favoritestreeview.cpp
 	customwebpage.cpp
-	restoresessiondialog.cpp
 	historymodel.cpp
 	storagebackend.cpp
 	sqlstoragebackend.cpp
@@ -93,7 +92,6 @@ SET (HEADERS
 	favoritesdelegate.h
 	favoritestreeview.h
 	customwebpage.h
-	restoresessiondialog.h
 	historymodel.h
 	storagebackend.h
 	sqlstoragebackend.h
@@ -134,7 +132,6 @@ SET (HEADERS
 SET (FORMS
 	browserwidget.ui
 	addtofavoritesdialog.ui
-	restoresessiondialog.ui
 	finddialog.ui
 	screenshotsavedialog.ui
 	cookieseditdialog.ui
@@ -195,6 +192,7 @@ OPTION (ENABLE_POSHUKU_KEYWORDS "Build support of url keywords for Poshuku brows
 OPTION (ENABLE_POSHUKU_ONLINEBOOKMARKS "Build support of online bookmark synchronization for Poshuku browser" ON)
 OPTION (ENABLE_POSHUKU_PINTAB "Build support of pinned tab for Poshuku browser" ON)
 OPTION (ENABLE_POSHUKU_WYFV "Build support of native flash-player's replacement for Poshuku browser" ON)
+OPTION (ENABLE_POSHUKU_POGOOGLUE "Build support for searching selected text in Google" ON)
 
 IF (ENABLE_POSHUKU_CLEANWEB)
 	ADD_SUBDIRECTORY (plugins/cleanweb)
@@ -220,3 +218,6 @@ ENDIF (ENABLE_POSHUKU_ONLINEBOOKMARKS)
 IF (ENABLE_POSHUKU_PINTAB)
 	ADD_SUBDIRECTORY (plugins/pintab)
 ENDIF (ENABLE_POSHUKU_PINTAB)
+IF (ENABLE_POSHUKU_POGOOGLUE)
+	ADD_SUBDIRECTORY (plugins/pogooglue)
+ENDIF (ENABLE_POSHUKU_POGOOGLUE)

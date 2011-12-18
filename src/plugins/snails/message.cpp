@@ -45,6 +45,21 @@ namespace Snails
 		ID_ = id;
 	}
 
+	QList<QStringList> Message::GetFolders () const
+	{
+		return Folders_;
+	}
+
+	void Message::AddFolder (const QStringList& folder)
+	{
+		Folders_ << folder;
+	}
+
+	void Message::SetFolders (const QList<QStringList>& folders)
+	{
+		Folders_ = folders;
+	}
+
 	quint64 Message::GetSize () const
 	{
 		return Size_;
@@ -149,10 +164,26 @@ namespace Snails
 			emit readStatusChanged (GetID (), read);
 	}
 
+	QList<AttDescr> Message::GetAttachments () const
+	{
+		return Attachments_;
+	}
+
+	void Message::AddAttachment (const AttDescr& att)
+	{
+		Attachments_ << att;
+	}
+
+	void Message::SetAttachmentList (const QList<AttDescr>& list)
+	{
+		Attachments_ = list;
+	}
+
 	void Message::Dump () const
 	{
 		qDebug () << Q_FUNC_INFO
 				<< ID_.toHex ()
+				<< Folders_
 				<< Size_
 				<< From_
 				<< FromEmail_
@@ -163,6 +194,9 @@ namespace Snails
 				<< IsRead_
 				<< Body_
 				<< HTMLBody_;
+		qDebug () << Attachments_.size () << "attachments";
+		Q_FOREACH (const auto& att, Attachments_)
+			att.Dump ();
 	}
 
 	QByteArray Message::Serialize () const
@@ -172,6 +206,7 @@ namespace Snails
 		QDataStream str (&result, QIODevice::WriteOnly);
 		str << static_cast<quint8> (1)
 			<< ID_
+			<< Folders_
 			<< Size_
 			<< From_
 			<< FromEmail_
@@ -181,7 +216,8 @@ namespace Snails
 			<< Subject_
 			<< IsRead_
 			<< Body_
-			<< HTMLBody_;
+			<< HTMLBody_
+			<< Attachments_;
 
 		return result;
 	}
@@ -195,6 +231,7 @@ namespace Snails
 			throw std::runtime_error (qPrintable ("Failed to deserialize Message: unknown version " + QString::number (version)));
 
 		str >> ID_
+			>> Folders_
 			>> Size_
 			>> From_
 			>> FromEmail_
@@ -204,7 +241,8 @@ namespace Snails
 			>> Subject_
 			>> IsRead_
 			>> Body_
-			>> HTMLBody_;
+			>> HTMLBody_
+			>> Attachments_;
 	}
 }
 }

@@ -1,7 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011  Minh Ngo
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2011  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,31 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_LAURE_SEPARATEPLAYERWIDGET_H
-#define PLUGINS_LAURE_SEPARATEPLAYERWIDGET_H
-
-#include <QWidget>
-#include <QCloseEvent>
-#include <vlc/vlc.h>
+#include "recinfo.h"
 
 namespace LeechCraft
 {
-namespace Laure
+namespace TabSessManager
 {
-	class SeparatePlayerWidget : public QWidget
+	bool operator== (const RecInfo& r1, const RecInfo& r2)
 	{
-		Q_OBJECT
-		
-		QWidget *PlayerWidget_;
-		libvlc_media_player_t *MP_;
-	public:
-		SeparatePlayerWidget (libvlc_media_player_t *MP,
-				QWidget *playerWidget, QWidget *parent = 0);
-	protected:
-		void closeEvent (QCloseEvent*);
-	private:
-		void changeWidget (QWidget*);
-	};
+		return r1.Name_ == r2.Name_ &&
+				r1.Data_ == r2.Data_;
+	}
 }
 }
-#endif // PLUGINS_LAURE_SEPARATEPLAYERWIDGET_H

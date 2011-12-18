@@ -55,6 +55,8 @@ namespace LeechCraft
 		IPluginsManager* GetPluginsManager () const;
 		QString GetVersion () const;
 		QObject* GetSelf ();
+		void RegisterSkinnable (QAction*);
+		bool IsShuttingDown ();
 	};
 };
 

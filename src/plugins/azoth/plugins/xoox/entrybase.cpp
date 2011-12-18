@@ -177,7 +177,23 @@ namespace Xoox
 
 	QMap<QString, QVariant> EntryBase::GetClientInfo (const QString& var) const
 	{
-		return Variant2ClientInfo_ [var];
+		auto res = Variant2ClientInfo_ [var];
+
+		auto version = Variant2Version_ [var];
+		if (version.name ().isEmpty ())
+			return res;
+
+		QString str;
+		str = version.name ();
+		if (!version.version ().isEmpty ())
+			str += " " + version.version ();
+		if (!version.os ().isEmpty ())
+			str += " (" + version.os () + ")";
+		res ["client_name"] = QString ("%1 (claiming %2)")
+				.arg (res ["client_name"].toString ())
+				.arg (str);
+
+		return res;
 	}
 
 	void EntryBase::MarkMsgsRead ()
@@ -345,7 +361,7 @@ namespace Xoox
 				Location_ [highest] = Location_.take (QString ());
 			if (Variant2ClientInfo_.contains (QString ()))
 			{
-				const QMap<QString, QVariant>& info = Variant2ClientInfo_.take (QString ());
+				const auto& info = Variant2ClientInfo_.take (QString ());
 				QStringList toCopy;
 				toCopy << "user_tune" << "user_mood" << "user_activity";
 				Q_FOREACH (const QString& key, toCopy)
@@ -361,18 +377,27 @@ namespace Xoox
 				wasOffline)
 			emit availableVariantsChanged (vars);
 
+		if ((!existed || wasOffline) && status.State_ != SOffline)
+		{
+			const QString& jid = variant.isEmpty () ?
+					GetJID () :
+					GetJID () + '/' + variant;
+			Account_->GetClientConnection ()->FetchVersion (jid);
+		}
+
 		if (status.State_ != SOffline)
 		{
 			QXmppRosterManager& rm = Account_->
 					GetClientConnection ()->GetClient ()->rosterManager ();
-			const QMap<QString, QXmppPresence>& presences =
-					rm.getAllPresencesForBareJid (GetJID ());
+			const auto& presences = rm.getAllPresencesForBareJid (GetJID ());
 			if (presences.contains (variant))
 			{
 				const int p = presences.value (variant).status ().priority ();
 				Variant2ClientInfo_ [variant] ["priority"] = p;
 			}
 		}
+		else
+			Variant2Version_.remove (variant);
 
 		GlooxMessage *message = 0;
 		if (GetEntryType () == ETPrivateChat)
@@ -481,6 +506,7 @@ namespace Xoox
 			name = "Unknown";
 		}
 		Variant2ClientInfo_ [variant] ["client_name"] = name;
+		Variant2ClientInfo_ [variant] ["raw_client_name"] = name;
 
 		Variant2VerString_ [variant] = ver;
 
@@ -500,6 +526,13 @@ namespace Xoox
 		SetClientInfo (variant, pres.capabilityNode (), pres.capabilityVer ());
 	}
 
+	void EntryBase::SetClientVersion (const QString& variant, const QXmppVersionIq& version)
+	{
+		Variant2Version_ [variant] = version;
+
+		emit entryGenerallyChanged ();
+	}
+
 	GeolocationInfo_t EntryBase::GetGeolocationInfo (const QString& variant) const
 	{
 		return Location_ [variant];
@@ -508,6 +541,11 @@ namespace Xoox
 	QByteArray EntryBase::GetVariantVerString (const QString& var) const
 	{
 		return Variant2VerString_ [var];
+	}
+
+	QXmppVersionIq EntryBase::GetClientVersion (const QString& var) const
+	{
+		return Variant2Version_ [var];
 	}
 
 	QString EntryBase::FormatRawInfo (const QXmppVCardIq& vcard)

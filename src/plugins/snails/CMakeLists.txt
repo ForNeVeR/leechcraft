@@ -41,6 +41,10 @@ SET (SRCS
 	progressmanager.cpp
 	mailtreedelegate.cpp
 	composemessagetab.cpp
+	accountfoldermanager.cpp
+	attdescr.cpp
+	vmimeconversions.cpp
+	outputiodevadapter.cpp
 	)
 SET (HEADERS
 	snails.h
@@ -58,6 +62,10 @@ SET (HEADERS
 	progressmanager.h
 	mailtreedelegate.h
 	composemessagetab.h
+	accountfoldermanager.h
+	attdescr.h
+	vmimeconversions.h
+	outputiodevadapter.h
 	)
 SET (FORMS
 	mailtab.ui

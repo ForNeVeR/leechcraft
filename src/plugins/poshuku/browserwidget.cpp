@@ -22,7 +22,6 @@
 #include <idna.h>
 #endif
 
-#include <boost/bind.hpp>
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/seq/elem.hpp>
 #include <boost/preprocessor/repetition/repeat.hpp>
@@ -131,7 +130,11 @@ namespace Poshuku
 		connect (WebView_,
 				SIGNAL (invalidateSettings ()),
 				this,
-				SIGNAL (invalidateSettings ()));
+				SIGNAL (tabRecoverDataChanged ()));
+		connect (WebView_,
+				SIGNAL (urlChanged (QUrl)),
+				this,
+				SIGNAL (tabRecoverDataChanged ()));
 
 		connect (ReloadTimer_,
 				SIGNAL (timeout ()),
@@ -186,14 +189,14 @@ namespace Poshuku
 		Add2Favorites_->setProperty ("ActionIcon", "poshuku_addbookmark");
 		Add2Favorites_->setEnabled (false);
 
-		ProgressLineEdit *pli = qobject_cast<ProgressLineEdit*> (GetURLEdit ());
-		if (!pli)
+		IAddressBar *iab = qobject_cast<IAddressBar*> (GetURLEdit ());
+		if (!iab)
 			qWarning () << Q_FUNC_INFO
 					<< GetURLEdit ()
-					<< "isn't a ProgressLineEdit object";
+					<< "isn't an IAddressBar object";
 		else
 		{
-			pli->InsertToolButton (Add2Favorites_, 0);
+			iab->InsertAction (Add2Favorites_, 0, true);
 			connect (GetURLEdit (),
 					SIGNAL (textChanged (const QString&)),
 					this,
@@ -344,7 +347,7 @@ namespace Poshuku
 		connect (NotifyWhenFinished_,
 				SIGNAL (triggered ()),
 				this,
-				SIGNAL (invalidateSettings ()));
+				SIGNAL (tabRecoverDataChanged ()));
 		connect (WebView_,
 				SIGNAL (addToFavorites (const QString&, const QString&)),
 				this,
@@ -832,6 +835,45 @@ namespace Poshuku
 		return Core::Instance ().GetTabClass ();
 	}
 
+	void BrowserWidget::SetTabRecoverData (const QByteArray& data)
+	{
+		QUrl url;
+		BrowserWidgetSettings settings;
+
+		QDataStream str (data);
+		str >> url
+			>> settings;
+
+		qDebug () << Q_FUNC_INFO << url;
+		qDebug () << data;
+
+		SetURL (url);
+		SetWidgetSettings (settings);
+	}
+
+	QByteArray BrowserWidget::GetTabRecoverData () const
+	{
+		QByteArray result;
+		QDataStream str (&result, QIODevice::WriteOnly);
+		str << WebView_->url ();
+		str << GetWidgetSettings ();
+		qDebug () << Q_FUNC_INFO << WebView_->url ();
+		qDebug () << result;
+		return result;
+	}
+
+	QString BrowserWidget::GetTabRecoverName () const
+	{
+		return QString ("%1 (%2)")
+				.arg (WebView_->title ())
+				.arg (WebView_->url ().toString ());
+	}
+
+	QIcon BrowserWidget::GetTabRecoverIcon () const
+	{
+		return WebView_->icon ();
+	}
+
 	void BrowserWidget::SetOnLoadScrollPoint (const QPoint& sp)
 	{
 		OnLoadPos_ = sp;
@@ -990,7 +1032,7 @@ namespace Poshuku
 			ReloadTimer_->stop ();
 		}
 
-		emit invalidateSettings ();
+		emit tabRecoverDataChanged ();
 	}
 
 	void BrowserWidget::handleAdd2Favorites ()
@@ -1269,16 +1311,16 @@ namespace Poshuku
 		if (HtmlMode_)
 			return;
 
-		ProgressLineEdit *pli = qobject_cast<ProgressLineEdit*> (GetURLEdit ());
-		if (!pli)
+		IAddressBar *iab = qobject_cast<IAddressBar*> (GetURLEdit ());
+		if (!iab)
 		{
 			qWarning () << Q_FUNC_INFO
-					<< GetURLEdit ()
-					<< "isn't a ProgressLineEdit object";
+				<< GetURLEdit ()
+				<< "isn't an IAddressBar object";
 			return;
 		}
 
-		pli->RemoveToolButton (ExternalLinksAction_);
+		iab->RemoveAction (ExternalLinksAction_);
 
 		ExternalLinks_->clear ();
 
@@ -1326,14 +1368,14 @@ namespace Poshuku
 				act->setData (QVariant::fromValue<LeechCraft::Entity> (e));
 				if (!inserted)
 				{
-					QToolButton *btn = pli->AddToolButton (ExternalLinksAction_);
-					pli->SetVisible (-1, ExternalLinksAction_, true);
+					QToolButton *btn = iab->InsertAction (ExternalLinksAction_);
+					iab->SetVisible (ExternalLinksAction_, true);
 					btn->setMenu (ExternalLinks_);
 					btn->setArrowType (Qt::NoArrow);
 					btn->setPopupMode (QToolButton::InstantPopup);
-					const QString& newStyle = QString ("::menu-indicator { image: url("");}"
-							"::menu-button { image: url(""); }"
-							"::menu-arrow { image: url(data:image/gif;base64,R0lGODlhAQABAPABAP///wAAACH5BAEKAAAALAAAAAABAAEAAAICRAEAOw==);}");
+					const QString newStyle ("::menu-indicator { image: "
+							"url(data:image/gif;base64,R0lGODlhAQABAPABAP///"
+							"wAAACH5BAEKAAAALAAAAAABAAEAAAICRAEAOw==);}");
 					btn->setStyleSheet (btn->styleSheet () + newStyle);
 
 					connect (ExternalLinks_->menuAction (),
@@ -1445,7 +1487,7 @@ namespace Poshuku
 
 		Entity e = Util::MakeNotification ("Poshuku", text, prio);
 		Util::NotificationActionHandler *nh = new Util::NotificationActionHandler (e, this);
-		nh->AddFunction (tr ("Open"), boost::bind (&BrowserWidget::raiseTab, this, this));
+		nh->AddFunction (tr ("Open"), [this] () { emit raiseTab (this); });
 		nh->AddDependentObject (this);
 		emit gotEntity (e);
 	}
@@ -1596,16 +1638,15 @@ namespace Poshuku
 
 	void BrowserWidget::handleUrlTextChanged (const QString& url)
 	{
-		ProgressLineEdit *pli = qobject_cast<ProgressLineEdit*> (GetURLEdit ());
-		if (!pli)
+		IAddressBar *iab = qobject_cast<IAddressBar*> (GetURLEdit ());
+		if (!iab)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< GetURLEdit ()
-					<< "isn't a ProgressLineEdit object";
+					<< "isn't an IAddressBar object";
 			return;
 		}
 		checkPageAsFavorite (url);
-		pli->SetVisible (0, Add2Favorites_, !url.isEmpty ());
 	}
 
 	void BrowserWidget::checkPageAsFavorite (const QString& url)
@@ -1620,14 +1661,17 @@ namespace Poshuku
 			Add2Favorites_->setText (tr ("Remove bookmark"));
 			Add2Favorites_->setToolTip (tr ("Remove bookmark"));
 
-			ProgressLineEdit *pli = qobject_cast<ProgressLineEdit*> (GetURLEdit ());
-			if (!pli)
+			IAddressBar *iab = qobject_cast<IAddressBar*> (GetURLEdit ());
+			if (!iab)
 				qWarning () << Q_FUNC_INFO
 						<< GetURLEdit ()
-						<< "isn't a ProgressLineEdit object";
+						<< "isn't an IAddressBar object";
 			else
-				pli->GetButtonFromAction (Add2Favorites_)->
-						setIcon (Core::Instance ().GetProxy ()->GetIcon ("poshuku_removebookmark"));
+			{
+				QToolButton *btn = iab->GetButtonFromAction (Add2Favorites_);
+				if (btn)
+					btn->setIcon (Core::Instance ().GetProxy ()->GetIcon ("poshuku_removebookmark"));
+			}
 		}
 		else
 		{
@@ -1635,14 +1679,17 @@ namespace Poshuku
 			Add2Favorites_->setText (tr ("Add bookmark"));
 			Add2Favorites_->setToolTip (tr ("Add bookmark"));
 
-			ProgressLineEdit *pli = qobject_cast<ProgressLineEdit*> (GetURLEdit ());
-			if (!pli)
+			IAddressBar *iab = qobject_cast<IAddressBar*> (GetURLEdit ());
+			if (!iab)
 				qWarning () << Q_FUNC_INFO
 						<< GetURLEdit ()
-						<< "isn't a ProgressLineEdit object";
+						<< "isn't an IAddressBar object";
 			else
-				pli->GetButtonFromAction (Add2Favorites_)->
-						setIcon (Core::Instance ().GetProxy ()->GetIcon ("poshuku_addbookmark"));
+			{
+				QToolButton *btn = iab->GetButtonFromAction (Add2Favorites_);
+				if (btn)
+					btn->setIcon (Core::Instance ().GetProxy ()->GetIcon ("poshuku_addbookmark"));
+			}
 		}
 	}
 

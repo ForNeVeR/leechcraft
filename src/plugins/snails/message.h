@@ -24,6 +24,7 @@
 #include <QStringList>
 #include <QMetaType>
 #include <QPair>
+#include "attdescr.h"
 
 namespace LeechCraft
 {
@@ -34,6 +35,7 @@ namespace Snails
 		Q_OBJECT
 
 		QByteArray ID_;
+		QList<QStringList> Folders_;
 		quint64 Size_;
 		QString From_;
 		QString FromEmail_;
@@ -46,6 +48,8 @@ namespace Snails
 		QString HTMLBody_;
 
 		bool IsRead_;
+
+		QList<AttDescr> Attachments_;
 	public:
 		Message (QObject* = 0);
 
@@ -53,6 +57,10 @@ namespace Snails
 
 		QByteArray GetID () const;
 		void SetID (const QByteArray&);
+
+		QList<QStringList> GetFolders () const;
+		void AddFolder (const QStringList&);
+		void SetFolders (const QList<QStringList>&);
 
 		quint64 GetSize () const;
 		void SetSize (quint64);
@@ -83,6 +91,10 @@ namespace Snails
 
 		bool IsRead () const;
 		void SetRead (bool);
+
+		QList<AttDescr> GetAttachments () const;
+		void AddAttachment (const AttDescr&);
+		void SetAttachmentList (const QList<AttDescr>&);
 
 		void Dump () const;
 

@@ -44,6 +44,8 @@ namespace StandardStyles
 	{
 		StylesLoader_->AddGlobalPrefix ();
 		StylesLoader_->AddLocalPrefix ();
+
+		StylesLoader_->SetCacheParams (256, 0);
 	}
 
 	QAbstractItemModel* StandardStyleSource::GetOptionsModel() const
@@ -62,6 +64,8 @@ namespace StandardStyles
 		{
 			Coloring2Colors_.clear ();
 			LastPack_ = pack;
+
+			StylesLoader_->FlushCache ();
 		}
 
 		ICLEntry *entry = qobject_cast<ICLEntry*> (entryObj);
@@ -104,9 +108,13 @@ namespace StandardStyles
 
 	namespace
 	{
-		QString WrapNickPart (const QString& part, const QString& color)
+		QString WrapNickPart (const QString& part,
+				const QString& color, IMessage::MessageType type)
 		{
-			return "<span class='nickname' style='color: " + color + "'>" +
+			const QString& pre = type == IMessage::MTMUCMessage ?
+					"<span class='nickname' style='color: " + color + "'>" :
+					"<span class='nickname'>";
+			return pre +
 					Qt::escape (part) +
 					"</span>";
 		}
@@ -162,10 +170,10 @@ namespace StandardStyles
 
 		const QString& preNick =
 				WrapNickPart (azothSettings->property ("PreNickText").toString (),
-						nickColor);
+						nickColor, msg->GetMessageType ());
 		const QString& postNick =
 				WrapNickPart (azothSettings->property ("PostNickText").toString (),
-						nickColor);
+						nickColor, msg->GetMessageType ());
 
 		QString divClass;
 		QString statusIconName;

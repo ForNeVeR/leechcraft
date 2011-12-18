@@ -18,6 +18,7 @@
 
 #ifndef PLUGINS_AZOTH_ACTIONSMANAGER_H
 #define PLUGINS_AZOTH_ACTIONSMANAGER_H
+#include <functional>
 #include <QObject>
 #include <QHash>
 #include <QMetaType>
@@ -30,6 +31,7 @@ namespace LeechCraft
 namespace Azoth
 {
 	class ICLEntry;
+	class IAuthable;
 
 	class ActionsManager : public QObject
 	{
@@ -44,6 +46,7 @@ namespace Azoth
 			CLEAAContactListCtxtMenu,
 			CLEAAApplicationMenu,
 			CLEAAToolbar,
+			CLEAAChatCtxtMenu,
 			CLEAAMAX
 		};
 	private:
@@ -57,6 +60,9 @@ namespace Azoth
 
 		void HandleEntryRemoved (ICLEntry*);
 	private:
+		QString GetReason (const QString& id, const QString& text);
+		void ManipulateAuth (const QString& id, const QString& text,
+				std::function<void (IAuthable*, const QString&)> func);
 		void CreateActionsForEntry (ICLEntry*);
 		void UpdateActionsForEntry (ICLEntry*);
 	private slots:

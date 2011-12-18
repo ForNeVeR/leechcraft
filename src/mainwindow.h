@@ -26,6 +26,7 @@
 #include <QModelIndex>
 #include <QToolButton>
 #include "ui_leechcraft.h"
+#include "interfaces/core/ihookproxy.h"
 
 class QLabel;
 class QDockWidget;
@@ -80,6 +81,8 @@ namespace LeechCraft
 
 		QMenu *MenuView_;
 		QMenu *MenuTools_;
+
+		bool IsToolBarVisible_;
 	public:
 		MainWindow (QWidget *parent = 0, Qt::WFlags flags = 0);
 		virtual ~MainWindow ();
@@ -99,6 +102,7 @@ namespace LeechCraft
 	protected:
 		virtual void closeEvent (QCloseEvent*);
 		virtual void keyPressEvent (QKeyEvent*);
+		virtual void keyReleaseEvent (QKeyEvent*);
 	private:
 		void InitializeInterface ();
 		void SetStatusBar ();
@@ -119,8 +123,10 @@ namespace LeechCraft
 		void on_ActionFullscreenMode__triggered (bool);
 		void on_ActionLogger__triggered ();
 		void on_MainTabWidget__currentChanged (int);
+		void on_ActionShowToolBar__triggered (bool);
 		void handleShortcutFullscreenMode ();
 		void handleToolButtonStyleChanged ();
+		void handleToolBarManipulationChanged ();
 		void handleNewTabMenuRequested ();
 		void handleRestoreActionAdded (QAction*);
 		void updateSpeedIndicators ();
@@ -131,10 +137,13 @@ namespace LeechCraft
 		void doDelayedInit ();
 		void handleLoadProgress (const QString&);
 	private:
+		void FillQuickLaunch ();
 		void FillTray ();
 		void FillToolMenu ();
 		void InitializeShortcuts ();
 		void ShowMenuAndBar (bool);
+	signals:
+		void hookGonnaFillQuickLaunch (LeechCraft::IHookProxy_ptr);
 	};
 };
 

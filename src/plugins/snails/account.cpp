@@ -28,6 +28,7 @@
 #include "accountthread.h"
 #include "accountthreadworker.h"
 #include "storage.h"
+#include "accountfoldermanager.h"
 
 namespace LeechCraft
 {
@@ -45,6 +46,7 @@ namespace Snails
 	, SMTPNeedsAuth_ (true)
 	, APOP_ (false)
 	, APOPFail_ (false)
+	, FolderManager_ (new AccountFolderManager (this))
 	{
 		Thread_->start (QThread::LowPriority);
 	}
@@ -82,12 +84,18 @@ namespace Snails
 		}
 	}
 
+	AccountFolderManager* Account::GetFolderManager () const
+	{
+		return FolderManager_;
+	}
+
 	void Account::Synchronize (Account::FetchFlags flags)
 	{
 		QMetaObject::invokeMethod (Thread_->GetWorker (),
 				"synchronize",
 				Qt::QueuedConnection,
-				Q_ARG (Account::FetchFlags, flags));
+				Q_ARG (Account::FetchFlags, flags),
+				Q_ARG (QList<QStringList>, FolderManager_->GetSyncFolders ()));
 	}
 
 	void Account::FetchWholeMessage (Message_ptr msg)
@@ -111,6 +119,17 @@ namespace Snails
 				Q_ARG (Message_ptr, msg));
 	}
 
+	void Account::FetchAttachment (Message_ptr msg,
+			const QString& attName, const QString& path)
+	{
+		QMetaObject::invokeMethod (Thread_->GetWorker (),
+				"fetchAttachment",
+				Qt::QueuedConnection,
+				Q_ARG (Message_ptr, msg),
+				Q_ARG (QString, attName),
+				Q_ARG (QString, path));
+	}
+
 	QByteArray Account::Serialize () const
 	{
 		QMutexLocker l (GetMutex ());
@@ -118,7 +137,7 @@ namespace Snails
 		QByteArray result;
 
 		QDataStream out (&result, QIODevice::WriteOnly);
-		out << static_cast<quint8> (2);
+		out << static_cast<quint8> (3);
 		out << ID_
 			<< AccName_
 			<< Login_
@@ -137,7 +156,8 @@ namespace Snails
 			<< static_cast<quint8> (InType_)
 			<< static_cast<quint8> (OutType_)
 			<< UserName_
-			<< UserEmail_;
+			<< UserEmail_
+			<< FolderManager_->Serialize ();
 
 		return result;
 	}
@@ -148,7 +168,7 @@ namespace Snails
 		quint8 version = 0;
 		in >> version;
 
-		if (version < 1 || version > 2)
+		if (version < 1 || version > 3)
 			throw std::runtime_error (qPrintable ("Unknown version " + QString::number (version)));
 
 		quint8 inType = 0, outType = 0;
@@ -179,6 +199,13 @@ namespace Snails
 			if (version >= 2)
 				in >> UserName_
 					>> UserEmail_;
+
+			if (version >= 3)
+			{
+				QByteArray fstate;
+				in >> fstate;
+				FolderManager_->Deserialize (fstate);
+			}
 		}
 	}
 
@@ -206,6 +233,17 @@ namespace Snails
 			dia->SetOutLogin (OutLogin_);
 			dia->SetInType (InType_);
 			dia->SetOutType (OutType_);
+
+			const auto& folders = FolderManager_->GetFolders ();
+			dia->SetAllFolders (folders);
+			const auto& toSync = FolderManager_->GetSyncFolders ();
+			Q_FOREACH (const auto& folder, folders)
+			{
+				const auto flags = FolderManager_->GetFolderFlags (folder);
+				if (flags & AccountFolderManager::FolderOutgoing)
+					dia->SetOutFolder (folder);
+			}
+			dia->SetFoldersToSync (toSync);
 		}
 
 		if (dia->exec () != QDialog::Accepted)
@@ -231,6 +269,14 @@ namespace Snails
 			OutLogin_ = dia->GetOutLogin ();
 			InType_ = dia->GetInType ();
 			OutType_ = dia->GetOutType ();
+
+			FolderManager_->ClearFolderFlags ();
+			const auto& out = dia->GetOutFolder ();
+			if (!out.isEmpty ())
+				FolderManager_->AppendFolderFlags (out, AccountFolderManager::FolderOutgoing);
+
+			Q_FOREACH (const auto& sync, dia->GetFoldersToSync ())
+				FolderManager_->AppendFolderFlags (sync, AccountFolderManager::FolderSyncable);
 		}
 
 		emit accountChanged ();
@@ -426,6 +472,11 @@ namespace Snails
 		Core::Instance ().GetStorage ()->SaveMessages (this, messages);
 		emit mailChanged ();
 		emit gotNewMessages (messages);
+	}
+
+	void Account::handleGotFolders (QList<QStringList> folders)
+	{
+		FolderManager_->SetFolders (folders);
 	}
 
 	void Account::handleMessageBodyFetched (Message_ptr msg)

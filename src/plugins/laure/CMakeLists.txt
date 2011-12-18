@@ -15,20 +15,28 @@ IF (NOT QT_USE_FILE)
 	FIND_PACKAGE (LeechCraft REQUIRED)
 ENDIF (NOT QT_USE_FILE)
 
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-OPTION (TESTS_LAURE "Enable Laure tests" ON)
+OPTION (TESTS_LAURE "Enable Laure tests" OFF)
+OPTION (ENABLE_LASTFM "Enable Last.fm submitter" ON)
 
 SET (QT_USE_QTGUI TRUE)
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
 IF (TESTS_LAURE)
+	ENABLE_TESTING ()
 	SET (QT_USE_QTTEST TRUE)
 ENDIF (TESTS_LAURE)
 
 FIND_PACKAGE (VLC REQUIRED)
 FIND_PACKAGE (LastFM REQUIRED)
 FIND_PACKAGE (MAGIC REQUIRED)
+
+IF (LastFM_FOUND)
+	ADD_DEFINITIONS (-DHAVE_LASTFM)
+ENDIF (LastFM_FOUND)
 
 IF (MAGIC_FOUND)
 	ADD_DEFINITIONS (-DHAVE_MAGIC)
@@ -44,14 +52,15 @@ INCLUDE_DIRECTORIES (
 	${LastFM_INCLUDE_DIR}
 	${MAGIC_INCLUDE_DIR}
 	)
+
 SET (SRCS
+	separateplayer.cpp
+	playbackmodemenu.cpp
 	nowplayingdelegate.cpp
 	volumeslider.cpp
 	vlcwrapper.cpp
-	separateplayerwidget.cpp
 	playlistaddmenu.cpp
 	lastfmsubmitter.cpp
-	playlistmodel.cpp
 	playlistview.cpp
 	xmlsettingsmanager.cpp
 	playlistwidget.cpp
@@ -62,13 +71,13 @@ SET (SRCS
 	laure.cpp
 	)
 SET (HEADERS
+	separateplayer.h
+	playbackmodemenu.h
 	nowplayingdelegate.h
 	volumeslider.h
 	vlcwrapper.h
-	separateplayerwidget.h
 	playlistaddmenu.h
 	lastfmsubmitter.h
-	playlistmodel.h
 	playlistview.h
 	xmlsettingsmanager.h
 	playlistwidget.h
@@ -89,7 +98,14 @@ IF (NOT LC_NO_MOC)
 ENDIF (NOT LC_NO_MOC)
 QT4_WRAP_UI (FORMS_HEADERS ${FORMS})
 QT4_ADD_RESOURCES (RCCS ${RESOURCES})
+CreateTrVars ("laure" "en;ru_RU;uk_UA" TRANSLATIONS COMPILED_TRANSLATIONS)
 
+ADD_CUSTOM_COMMAND (OUTPUT
+	${COMPILED_TRANSLATIONS}
+	COMMAND "${QT_LRELEASE_EXECUTABLE}" ${TRANSLATIONS}
+	DEPENDS ${TRANSLATIONS}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	)
 ADD_LIBRARY (leechcraft_laure SHARED
 	${COMPILED_TRANSLATIONS}
 	${SRCS}
@@ -107,6 +123,7 @@ TARGET_LINK_LIBRARIES (leechcraft_laure
 
 INSTALL (TARGETS leechcraft_laure DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES lauresettings.xml DESTINATION ${LC_SETTINGS_DEST})
+INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 
 SET (LAURE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 

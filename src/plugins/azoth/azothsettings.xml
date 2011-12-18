@@ -10,8 +10,8 @@
 			<label value="Themes" />
 			<item type="combobox" property="StatusIcons" mayHaveDataSource="true" moreThisStuff="StatusIcons">
 				<label value="Status icons:" />
-				<option name="oxygen" default="true">
-					<label value="Oxygen" />
+				<option name="Likey" default="true">
+					<label value="Likey" />
 				</option>
 			</item>
 			<item type="combobox" property="SmileIcons" mayHaveDataSource="true" moreThisStuff="Smiles">
@@ -243,7 +243,7 @@
 			<item type="lineedit" property="DefaultStatus4" translatable="true" default="Please leave me alone now">
 				<label value="DND:" />
 			</item>
-			<item type="lineedit" property="DefaultStatus3" translatable="true" default="Extended away is okay">
+			<item type="lineedit" property="DefaultStatus3" translatable="true" default="Not available is okay">
 				<label value="XA:" />
 			</item>
 			<item type="lineedit" property="DefaultStatus0" translatable="true" default="I turned off my machine to get some life">

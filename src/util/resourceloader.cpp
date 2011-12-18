@@ -23,7 +23,9 @@
 #include <QStandardItemModel>
 #include <QSortFilterProxyModel>
 #include <QFileSystemWatcher>
+#include <QTimer>
 #include <QtDebug>
+#include <QBuffer>
 
 namespace LeechCraft
 {
@@ -36,6 +38,8 @@ namespace LeechCraft
 		, AttrFilters_ (QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)
 		, SortModel_ (new QSortFilterProxyModel (this))
 		, Watcher_ (new QFileSystemWatcher (this))
+		, CacheFlushTimer_ (new QTimer (this))
+		, CachePathContents_ (0)
 		{
 			if (RelativePath_.startsWith ('/'))
 				RelativePath_ = RelativePath_.mid (1);
@@ -50,6 +54,11 @@ namespace LeechCraft
 					SIGNAL (directoryChanged (const QString&)),
 					this,
 					SLOT (handleDirectoryChanged (const QString&)));
+
+			connect (CacheFlushTimer_,
+					SIGNAL (timeout ()),
+					this,
+					SLOT (handleFlushCaches ()));
 		}
 
 		void ResourceLoader::AddLocalPrefix (QString prefix)
@@ -113,6 +122,27 @@ namespace LeechCraft
 						<< RelativePath_;
 		}
 
+		void ResourceLoader::SetCacheParams (int size, int timeout)
+		{
+			if (size <= 0)
+			{
+				CacheFlushTimer_->stop ();
+				CachePathContents_.clear ();
+			}
+			else
+			{
+				if (timeout > 0)
+					CacheFlushTimer_->start (timeout);
+
+				CachePathContents_.setMaxCost (size * 1024);
+			}
+		}
+
+		void ResourceLoader::FlushCache ()
+		{
+			CachePathContents_.clear ();
+		}
+
 		QFileInfoList ResourceLoader::List (const QString& option,
 				const QStringList& nameFilters, QDir::Filters filters) const
 		{
@@ -153,29 +183,77 @@ namespace LeechCraft
 			return QString ();
 		}
 
-		QString ResourceLoader::GetIconPath (const QString& basename) const
+		namespace
 		{
-			QStringList variants;
-			variants << basename + ".svg"
-					<< basename + ".png"
-					<< basename + ".jpg"
-					<< basename + ".gif";
-			return GetPath (variants);
+			QStringList IconizeBasename (const QString& basename)
+			{
+				QStringList variants;
+				variants << basename + ".svg"
+						<< basename + ".png"
+						<< basename + ".jpg"
+						<< basename + ".gif";
+				return variants;
+			}
 		}
 
-		QIODevice_ptr ResourceLoader::Load (const QStringList& pathVariants) const
+		QString ResourceLoader::GetIconPath (const QString& basename) const
+		{
+			return GetPath (IconizeBasename (basename));
+		}
+
+		QIODevice_ptr ResourceLoader::Load (const QStringList& pathVariants, bool open) const
 		{
 			QString path = GetPath (pathVariants);
 			if (path.isNull ())
 				return QIODevice_ptr ();
 
+			if (CachePathContents_.contains (path))
+			{
+				boost::shared_ptr<QBuffer> result (new QBuffer ());
+				result->setData (*CachePathContents_ [path]);
+				if (open)
+					result->open (QIODevice::ReadOnly);
+				return result;
+			}
+
 			boost::shared_ptr<QFile> result (new QFile (path));
+
+			if (!result->isSequential () &&
+					result->size () < CachePathContents_.maxCost () / 2)
+			{
+				if (result->open (QIODevice::ReadOnly))
+				{
+					const QByteArray& data = result->readAll ();
+					CachePathContents_.insert (path, new QByteArray (data), data.size ());
+					result->close ();
+				}
+			}
+
+			if (open)
+				result->open (QIODevice::ReadOnly);
+
 			return result;
 		}
 
-		QIODevice_ptr ResourceLoader::Load (const QString& pathVariant) const
+		QIODevice_ptr ResourceLoader::Load (const QString& pathVariant, bool open) const
 		{
-			return Load (QStringList (pathVariant));
+			return Load (QStringList (pathVariant), open);
+		}
+
+		QIODevice_ptr ResourceLoader::LoadIcon (const QString& basename, bool open) const
+		{
+			return Load (IconizeBasename (basename), open);
+		}
+
+		QPixmap ResourceLoader::LoadPixmap (const QString& basename) const
+		{
+			auto dev = LoadIcon (basename, true);
+			if (!dev)
+				return QPixmap ();
+
+			QPixmap px;
+			px.loadFromData (dev->readAll ());
+			return px;
 		}
 
 		QAbstractItemModel* ResourceLoader::GetSubElemModel () const
@@ -214,6 +292,11 @@ namespace LeechCraft
 					fi.isDir () &&
 					fi.isReadable ())
 				ScanPath (path);
+		}
+
+		void ResourceLoader::handleFlushCaches ()
+		{
+			CachePathContents_.clear ();
 		}
 	}
 }

@@ -35,6 +35,7 @@
 #include "player.h"
 #include "playlistwidget.h"
 #include "xmlsettingsmanager.h"
+#include "separateplayer.h"
 
 namespace LeechCraft
 {
@@ -50,6 +51,42 @@ namespace Laure
 		Ui_.setupUi (this);
 		Ui_.Player_->SetVLCWrapper (VLCWrapper_);
 		
+		SeparatePlayer_.reset (new SeparatePlayer);
+		
+		connect (SeparatePlayer_.get (),
+				SIGNAL (closed ()),
+				this,
+				SLOT (handleSeparatePlayerClosed ()));
+		
+		connect (Ui_.PlayListWidget_,
+				SIGNAL (metaChangedRequest (libvlc_meta_t, QString, int)),
+				VLCWrapper_,
+				SLOT (setMeta (libvlc_meta_t, QString, int)));
+		connect (Ui_.PlayListWidget_,
+				SIGNAL (itemAddedRequest (QString)),
+				VLCWrapper_,
+				SLOT (addRow (QString)));
+		connect (Ui_.PlayListWidget_,
+				SIGNAL (itemRemoved (int)),
+				VLCWrapper_,
+				SLOT (removeRow (int)));
+		connect (Ui_.PlayListWidget_,
+				SIGNAL (playItem (int)),
+				VLCWrapper_,
+				SLOT (playItem (int)));
+		connect (Ui_.PlayListWidget_,
+				SIGNAL (gotEntity (Entity)),
+				this,
+				SIGNAL (gotEntity (Entity)));
+		connect (Ui_.PlayListWidget_,
+				SIGNAL (delegateEntity (Entity, int*, QObject**)),
+				this,
+				SIGNAL (delegateEntity (Entity, int*, QObject**)));
+		connect (Ui_.PlayListWidget_,
+				SIGNAL (playbackModeChanged (PlaybackMode)),
+				VLCWrapper_,
+				SLOT (setPlaybackMode (PlaybackMode)));
+		
 		connect (Ui_.Player_,
 				SIGNAL (timeout ()),
 				this,
@@ -62,6 +99,7 @@ namespace Laure
 				SIGNAL (valueChanged (int)),
 				VLCWrapper_,
 				SLOT (setVolume (int)));
+		
 		connect (VLCWrapper_,
 				SIGNAL (currentTrackMeta (MediaMeta)),
 				this,
@@ -70,10 +108,6 @@ namespace Laure
 				SIGNAL (trackFinished ()),
 				this,
 				SIGNAL (trackFinished ()));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (itemAddedRequest (QString)),
-				VLCWrapper_,
-				SLOT (addRow (QString)));
 		connect (VLCWrapper_,
 				SIGNAL (itemAdded (MediaMeta, QString)),
 				Ui_.PlayListWidget_,
@@ -86,34 +120,17 @@ namespace Laure
 				SIGNAL (delegateEntity (Entity, int*, QObject**)),
 				this,
 				SIGNAL (delegateEntity (Entity, int*, QObject**)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (itemRemoved (int)),
-				VLCWrapper_,
-				SLOT (removeRow (int)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (playItem (int)),
-				VLCWrapper_,
-				SLOT (playItem (int)));
+
 		connect (VLCWrapper_,
 				SIGNAL (itemPlayed (int)),
 				Ui_.PlayListWidget_,
 				SLOT (handleItemPlayed (int)));
+		
 		connect (this,
 				SIGNAL (addItem (QString)),
 				VLCWrapper_,
 				SLOT (addRow (QString)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (gotEntity (Entity)),
-				this,
-				SIGNAL (gotEntity (Entity)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (delegateEntity (Entity, int*, QObject**)),
-				this,
-				SIGNAL (delegateEntity (Entity, int*, QObject**)));
-	}
-	
-	void LaureWidget::Init (ICoreProxy_ptr proxy)
-	{
+		
 		InitToolBar ();
 		InitCommandFrame ();
 	}
@@ -124,21 +141,26 @@ namespace Laure
 		QAction *actionOpenURL = new QAction (tr ("Open URL"), this);
 		QAction *playList = new QAction (tr ("Playlist"), this);
 		QAction *videoMode = new QAction (tr ("Video mode"), this);
+		DetachedVideo_ = new QAction (tr ("Detached video"), this);
 		
 		actionOpenFile->setProperty ("ActionIcon", "folder");
 		actionOpenURL->setProperty ("ActionIcon", "networkmonitor_plugin");
 		playList->setProperty ("ActionIcon", "itemlist");
 		videoMode->setProperty ("ActionIcon", "video");
+		DetachedVideo_->setProperty ("ActionIcon", "fullscreen");
 		
 		playList->setCheckable (true);
 		videoMode->setCheckable (true);
+		DetachedVideo_->setCheckable (true);
 		
 		videoMode->setChecked (true);
+		DetachedVideo_->setChecked (false);
 		
 		ToolBar_->addAction (actionOpenFile);
 		ToolBar_->addAction (actionOpenURL);
 		ToolBar_->addAction (playList);
 		ToolBar_->addAction (videoMode);
+		ToolBar_->addAction (DetachedVideo_);
 		
 		connect (actionOpenFile,
 				SIGNAL (triggered (bool)),
@@ -152,18 +174,14 @@ namespace Laure
 				SIGNAL (triggered (bool)),
 				Ui_.PlayListWidget_,
 				SLOT (setVisible (bool)));
-		connect (this,
-				SIGNAL (playListMode (bool)),
-				playList,
-				SLOT (setChecked (bool)));
 		connect (videoMode,
 				SIGNAL (triggered (bool)),
 				this,
 				SLOT (handleVideoMode (bool)));
-		connect (this,
-				SIGNAL (playListMode (bool)),
-				playList,
-				SLOT (setDisabled (bool)));
+		connect (DetachedVideo_,
+				SIGNAL (triggered (bool)),
+				this,
+				SLOT (handleDetachPlayer (bool)));
 	}
 	
 	void LaureWidget::InitCommandFrame ()
@@ -172,7 +190,7 @@ namespace Laure
 		bar->setToolButtonStyle (Qt::ToolButtonIconOnly);
 		bar->setIconSize (QSize (32, 32));
 		
-		PlayPauseAction *actionPlay = new PlayPauseAction (tr ("Play"), Ui_.CommandFrame_);
+		auto actionPlay = new PlayPauseAction (tr ("Play"), Ui_.CommandFrame_);
 	
 		QAction *actionStop = new QAction (tr ("Stop"), Ui_.CommandFrame_);
 		QAction *actionNext = new QAction (tr ("Next"), Ui_.CommandFrame_);
@@ -227,10 +245,10 @@ namespace Laure
 	
 	void LaureWidget::updateInterface ()
 	{
-		Ui_.VolumeSlider_->setValue (VLCWrapper_->Volume ());
-		Ui_.PositionSlider_->setValue (Ui_.Player_->Position ());
-		const QTime& currTime = Ui_.Player_->Time ();
-		const QTime& length = Ui_.Player_->Length ();
+		Ui_.VolumeSlider_->setValue (VLCWrapper_->GetVolume ());
+		Ui_.PositionSlider_->setValue (Ui_.Player_->GetPosition ());
+		const QTime& currTime = Ui_.Player_->GetTime ();
+		const QTime& length = Ui_.Player_->GetLength ();
 		Ui_.TimeStamp_->setText ("[" + currTime.toString () + "/" + length.toString () + "]");
 	}
 	
@@ -270,21 +288,14 @@ namespace Laure
 	
 	void LaureWidget::handleOpenURL ()
 	{
-		ChooseURLDialog *dialog = new ChooseURLDialog (this);
-		if (dialog->exec () == QDialog::Accepted)
-		{
-			if (dialog->IsUrlValid ())
-				emit addItem (dialog->GetUrl ());
-			else
-				QMessageBox::warning (this,
-						tr ("The URL's not valid"),
-						tr ("The URL's not valid"));
-		}
+		auto dialog = new ChooseURLDialog (this);
+		if (dialog->exec () == QDialog::Accepted && dialog->IsUrlValid ())
+			emit addItem (dialog->GetUrl ());
 	}
 	
-	void LaureWidget::handleOpenMediaContent (const QString& val)
+	void LaureWidget::handleOpenMediaContent (const QString& location)
 	{
-		emit addItem (val);
+		emit addItem (location);
 	}
 	
 	void LaureWidget::handleOpenFile ()
@@ -304,7 +315,26 @@ namespace Laure
 
 		Ui_.Player_->setVisible (checked);
 		Ui_.PlayListWidget_->setVisible (!checked);
-		emit playListMode (!checked);
+	}
+	
+	void LaureWidget::handleDetachPlayer (bool checked)
+	{
+		if (checked)
+		{
+			VLCWrapper_->setWindow (SeparatePlayer_->winId ());
+			SeparatePlayer_->show ();
+		}
+		else
+		{
+			VLCWrapper_->setWindow (Ui_.Player_->winId ());
+			SeparatePlayer_->hide ();
+		}
+	}
+	
+	void LaureWidget::handleSeparatePlayerClosed ()
+	{
+		DetachedVideo_->setChecked (false);
+		handleDetachPlayer (false);
 	}
 }
 }

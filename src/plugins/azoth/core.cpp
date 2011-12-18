@@ -17,7 +17,6 @@
  **********************************************************************/
 
 #include "core.h"
-#include <boost/bind.hpp>
 #include <QIcon>
 #include <QAction>
 #include <QStandardItemModel>
@@ -127,7 +126,8 @@ namespace Azoth
 	, CLModel_ (new CLModel (this))
 	, ChatTabsManager_ (new ChatTabsManager (this))
 	, ActionsManager_ (new ActionsManager (this))
-	, ItemIconManager_ (new AnimatedIconManager<QStandardItem*> (boost::bind (&QStandardItem::setIcon, _1, _2)))
+	, ItemIconManager_ (new AnimatedIconManager<QStandardItem*> ([] (QStandardItem *it, const QIcon& ic)
+						{ it->setIcon (ic); }))
 	, SmilesOptionsModel_ (new SourceTrackingModel<IEmoticonResourceSource> (QStringList (tr ("Smile pack"))))
 	, ChatStylesOptionsModel_ (new SourceTrackingModel<IChatStyleResourceSource> (QStringList (tr ("Chat style"))))
 	, PluginManager_ (new PluginManager)
@@ -170,6 +170,8 @@ namespace Azoth
 		{
 			rl->AddLocalPrefix ();
 			rl->AddGlobalPrefix ();
+
+			rl->SetCacheParams (1000, 0);
 		}
 
 		connect (ChatTabsManager_,
@@ -585,24 +587,12 @@ namespace Azoth
 		{
 			ProtocolPlugins_ << plugin;
 
-			QIcon icon = qobject_cast<IInfo*> (plugin)->GetIcon ();
-			Q_FOREACH (QObject *protoObj, ipp->GetProtocols ())
-			{
-				IProtocol *proto = qobject_cast<IProtocol*> (protoObj);
+			handleNewProtocols (ipp->GetProtocols ());
 
-				Q_FOREACH (QObject *accObj,
-						proto->GetRegisteredAccounts ())
-					addAccount (accObj);
-
-				connect (proto->GetObject (),
-						SIGNAL (accountAdded (QObject*)),
-						this,
-						SLOT (addAccount (QObject*)));
-				connect (proto->GetObject (),
-						SIGNAL (accountRemoved (QObject*)),
-						this,
-						SLOT (handleAccountRemoved (QObject*)));
-			}
+			connect (plugin,
+					SIGNAL (gotNewProtocols (QList<QObject*>)),
+					this,
+					SLOT (handleNewProtocols (QList<QObject*>)));
 		}
 	}
 
@@ -781,6 +771,11 @@ namespace Azoth
 			QUrl url ("azoth://insertnick/");
 			url.addEncodedQueryItem ("nick", QUrl::toPercentEncoding (nick));
 
+			ICLEntry *other = qobject_cast<ICLEntry*> (msg->OtherPart ());
+			if (other)
+				url.addEncodedQueryItem ("entryId",
+						QUrl::toPercentEncoding (other->GetEntryID ()));
+
 			string.append ("<span class='nickname'><a href=\"");
 			string.append (url.toEncoded ());
 			string.append ("\" class='nicklink' style='text-decoration:none; color:");
@@ -945,6 +940,10 @@ namespace Azoth
 				SIGNAL (permsChanged ()),
 				this,
 				SLOT (handleEntryPermsChanged ()));
+		connect (clEntry->GetObject (),
+				SIGNAL (entryGenerallyChanged ()),
+				this,
+				SLOT (handleEntryGenerallyChanged ()));
 		connect (clEntry->GetObject (),
 				SIGNAL (avatarChanged (const QImage&)),
 				this,
@@ -1155,13 +1154,17 @@ namespace Azoth
 		if (mucPerms)
 		{
 			tip += "<hr />";
-			const QMap<QByteArray, QByteArray>& perms =
+			const QMap<QByteArray, QList<QByteArray> >& perms =
 					mucPerms->GetPerms (entry->GetObject ());
 			Q_FOREACH (const QByteArray& permClass, perms.keys ())
 			{
 				tip += mucPerms->GetUserString (permClass);
 				tip += ": ";
-				tip += mucPerms->GetUserString (perms [permClass]);
+
+				QStringList users;
+				Q_FOREACH (const QByteArray& perm, perms [permClass])
+					users << mucPerms->GetUserString (perm);
+				tip += users.join ("; ");
 				tip += "<br />";
 			}
 		}
@@ -1268,12 +1271,12 @@ namespace Azoth
 		const QString& tip = MakeTooltipString (entry);
 
 		const State state = entry->GetStatus ().State_;
-		const QString& icon = GetIconPathForState (state);
+		Util::QIODevice_ptr icon = GetIconPathForState (state);
 
 		Q_FOREACH (QStandardItem *item, Entry2Items_ [entry])
 		{
 			item->setToolTip (tip);
-			ItemIconManager_->SetIcon (item, icon);
+			ItemIconManager_->SetIcon (item, icon.get ());
 		}
 
 		const QString& id = entry->GetEntryID ();
@@ -1308,10 +1311,9 @@ namespace Azoth
 
 		const QString& filename = XmlSettingsManager::Instance ()
 				.property ("StatusIcons").toString () + "/file";
-		const QString& fileIcon = ResourceLoaders_ [RLTStatusIconLoader]->GetIconPath (filename);
-
+		Util::QIODevice_ptr fileIcon = ResourceLoaders_ [RLTStatusIconLoader]->LoadIcon (filename, true);
 		Q_FOREACH (QStandardItem *item, Entry2Items_ [entry])
-			ItemIconManager_->SetIcon (item, fileIcon);
+			ItemIconManager_->SetIcon (item, fileIcon.get ());
 	}
 
 	void Core::IncreaseUnreadCount (ICLEntry* entry, int amount)
@@ -1324,52 +1326,58 @@ namespace Azoth
 			}
 	}
 
-	QString Core::GetIconPathForState (State state) const
+	namespace
 	{
-		QString iconName;
-		switch (state)
+		QString GetStateIconFilename (State state)
 		{
-		case SOnline:
-			iconName = "online";
-			break;
-		case SChat:
-			iconName = "chatty";
-			break;
-		case SAway:
-			iconName = "away";
-			break;
-		case SDND:
-			iconName = "dnd";
-			break;
-		case SXA:
-			iconName = "xa";
-			break;
-		case SOffline:
-			iconName = "offline";
-			break;
-		case SConnecting:
-			iconName = "connect";
-			break;
-		default:
-			iconName = "perr";
-			break;
+			QString iconName;
+			switch (state)
+			{
+			case SOnline:
+				iconName = "online";
+				break;
+			case SChat:
+				iconName = "chatty";
+				break;
+			case SAway:
+				iconName = "away";
+				break;
+			case SDND:
+				iconName = "dnd";
+				break;
+			case SXA:
+				iconName = "xa";
+				break;
+			case SOffline:
+				iconName = "offline";
+				break;
+			case SConnecting:
+				iconName = "connect";
+				break;
+			default:
+				iconName = "perr";
+				break;
+			}
+
+			QString filename = XmlSettingsManager::Instance ()
+					.property ("StatusIcons").toString ();
+			filename += '/';
+			filename += iconName;
+
+			return filename;
 		}
+	}
 
-		QString filename = XmlSettingsManager::Instance ()
-				.property ("StatusIcons").toString ();
-		filename += '/';
-		filename += iconName;
-		QStringList variants;
-		variants << filename + ".svg"
-				<< filename + ".png"
-				<< filename + ".jpg";
-
-		return ResourceLoaders_ [RLTStatusIconLoader]->GetPath (variants);
+	Util::QIODevice_ptr Core::GetIconPathForState (State state) const
+	{
+		const QString& filename = GetStateIconFilename (state);
+		return ResourceLoaders_ [RLTStatusIconLoader]->LoadIcon (filename, true);
 	}
 
 	QIcon Core::GetIconForState (State state) const
 	{
-		return QIcon (GetIconPathForState (state));
+		const QString& filename = GetStateIconFilename (state);
+		return ResourceLoaders_ [RLTStatusIconLoader]->LoadPixmap (filename);
 	}
 
 	QIcon Core::GetAffIcon (const QByteArray& affName) const
@@ -1379,8 +1387,7 @@ namespace Azoth
 		filename += '/';
 		filename += affName;
 
-		const QString& path = ResourceLoaders_ [RLTAffIconLoader]->GetIconPath (filename);
-		return QIcon (path);
+		return QIcon (ResourceLoaders_ [RLTAffIconLoader]->LoadPixmap (filename));
 	}
 
 	QMap<QString, QIcon> Core::GetClientIconForEntry (ICLEntry *entry)
@@ -1396,11 +1403,11 @@ namespace Azoth
 		{
 			const QString& filename = pack + entry->GetClientInfo (variant) ["client_type"].toString ();
 
-			QString path = ResourceLoaders_ [RLTClientIconLoader]->GetIconPath (filename);
-			if (path.isNull ())
-				path = ResourceLoaders_ [RLTClientIconLoader]->GetIconPath (pack + "unknown");
+			QPixmap pixmap = ResourceLoaders_ [RLTClientIconLoader]->LoadPixmap (filename);
+			if (pixmap.isNull ())
+				pixmap = ResourceLoaders_ [RLTClientIconLoader]->LoadPixmap (pack + "unknown");
 
-			result [variant] = QIcon (path);
+			result [variant] = QIcon (pixmap);
 		}
 
 		EntryClientIconCache_ [entry] = result;
@@ -1419,7 +1426,7 @@ namespace Azoth
 		{
 			const QString& name = XmlSettingsManager::Instance ()
 					.property ("SystemIcons").toString () + "/default_avatar";
-			avatar = QImage (ResourceLoaders_ [RLTSystemIconLoader]->GetIconPath (name));
+			avatar = ResourceLoaders_ [RLTSystemIconLoader]->LoadPixmap (name).toImage ();
 		}
 
 		const QImage& scaled = avatar.scaled (size, size,
@@ -1441,47 +1448,6 @@ namespace Azoth
 				i < rc; ++i)
 			sum += category->child (i)->data (CLRUnreadMsgCount).toInt ();
 		category->setData (sum, CLRUnreadMsgCount);
-	}
-
-	QString Core::GetReason (const QString&, const QString& text)
-	{
-		return QInputDialog::getText (0,
-					tr ("Enter reason"),
-					text);
-	}
-
-	void Core::ManipulateAuth (const QString& id, const QString& text,
-			boost::function<void (IAuthable*, const QString&)> func)
-	{
-		QAction *action = qobject_cast<QAction*> (sender ());
-		if (!action)
-		{
-			qWarning () << Q_FUNC_INFO
-					<< sender ()
-					<< "is not a QAction";
-			return;
-		}
-
-		ICLEntry *entry = action->
-				property ("Azoth/Entry").value<ICLEntry*> ();
-		IAuthable *authable =
-				qobject_cast<IAuthable*> (entry->GetObject ());
-		if (!authable)
-		{
-			qWarning () << Q_FUNC_INFO
-					<< entry->GetObject ()
-					<< "doesn't implement IAuthable";
-			return;
-		}
-
-		QString reason;
-		if (action->property ("Azoth/WithReason").toBool ())
-		{
-			reason = GetReason (id, text.arg (entry->GetEntryName ()));
-			if (reason.isEmpty ())
-				return;
-		}
-		func (authable, reason);
 	}
 
 	void Core::RemoveCLItem (QStandardItem *item)
@@ -1599,6 +1565,37 @@ namespace Azoth
 				QStringList ("org.LC.AdvNotifications.IM.StatusChange"));
 	}
 
+	namespace
+	{
+		template<typename T>
+		T FindTop (const QMap<T, int>& map)
+		{
+			T maxT = T ();
+			int max = 0;
+			Q_FOREACH (const T& t, map.keys ())
+			{
+				const int val = map [t];
+				if (val > max)
+				{
+					max = val;
+					maxT = t;
+				}
+			}
+
+			return maxT;
+		}
+	}
+
+	void Core::UpdateInitState (State state)
+	{
+		const State prevTop = FindTop (StateCounter_);
+		++StateCounter_ [state];
+		const State newTop = FindTop (StateCounter_);
+
+		if (newTop != prevTop)
+			emit topStatusChanged (newTop);
+	}
+
 #ifdef ENABLE_CRYPT
 	void Core::RestoreKeyForAccount (IAccount *acc)
 	{
@@ -1672,6 +1669,27 @@ namespace Azoth
 		dia->show ();
 	}
 
+	void Core::handleNewProtocols (const QList<QObject*>& protocols)
+	{
+		Q_FOREACH (QObject *protoObj, protocols)
+		{
+			IProtocol *proto = qobject_cast<IProtocol*> (protoObj);
+
+			Q_FOREACH (QObject *accObj,
+					proto->GetRegisteredAccounts ())
+				addAccount (accObj);
+
+			connect (proto->GetObject (),
+					SIGNAL (accountAdded (QObject*)),
+					this,
+					SLOT (addAccount (QObject*)));
+			connect (proto->GetObject (),
+					SIGNAL (accountRemoved (QObject*)),
+					this,
+					SLOT (handleAccountRemoved (QObject*)));
+		}
+	}
+
 	void Core::addAccount (QObject *accObject)
 	{
 		IAccount *account =
@@ -1697,7 +1715,8 @@ namespace Azoth
 				CLRAccountObject);
 		accItem->setData (QVariant::fromValue<CLEntryType> (CLETAccount),
 				CLREntryType);
-		ItemIconManager_->SetIcon (accItem, GetIconPathForState (account->GetState ().State_));
+		ItemIconManager_->SetIcon (accItem,
+				GetIconPathForState (account->GetState ().State_).get ());
 		CLModel_->appendRow (accItem);
 
 		accItem->setEditable (false);
@@ -1772,6 +1791,8 @@ namespace Azoth
 				QDataStream stream (var.toByteArray ());
 				stream >> s;
 				account->ChangeState (s);
+
+				UpdateInitState (s.State_);
 			}
 		}
 		else
@@ -1955,7 +1976,8 @@ namespace Azoth
 			if (item->data (CLRAccountObject).value<QObject*> () != sender ())
 				continue;
 
-			ItemIconManager_->SetIcon (item, GetIconPathForState (status.State_));
+			ItemIconManager_->SetIcon (item,
+					GetIconPathForState (status.State_).get ());
 			return;
 		}
 
@@ -2076,6 +2098,22 @@ namespace Azoth
 			item->setData (name, CLRAffiliation);
 			item->setToolTip (tip);
 		}
+	}
+
+	void Core::handleEntryGenerallyChanged ()
+	{
+		ICLEntry *entry = qobject_cast<ICLEntry*> (sender ());
+		if (!entry)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< sender ()
+					<< "could not be casted to ICLEntry";
+			return;
+		}
+
+		const QString& tip = MakeTooltipString (entry);
+		Q_FOREACH (QStandardItem *item, Entry2Items_ [entry])
+			item->setToolTip (tip);
 	}
 
 	void Core::handleEntryGotMessage (QObject *msgObj)
@@ -2221,9 +2259,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				boost::bind (static_cast<QWidget* (ChatTabsManager::*) (const ICLEntry*)> (&ChatTabsManager::OpenChat),
-						ChatTabsManager_,
-						parentCL));
+				[parentCL, ChatTabsManager_] () { ChatTabsManager_->OpenChat (parentCL); });
 		nh->AddDependentObject (parentCL->GetObject ());
 
 		emit gotEntity (e);
@@ -2259,15 +2295,9 @@ namespace Azoth
 
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
-		nh->AddFunction (tr ("Authorize"),
-				boost::bind (AuthorizeEntry,
-						entry));
-		nh->AddFunction (tr ("Deny"),
-				boost::bind (DenyAuthForEntry,
-						entry));
-		nh->AddFunction (tr ("View info"),
-				boost::bind (&ICLEntry::ShowInfo,
-						entry));
+		nh->AddFunction (tr ("Authorize"), [this, entry] () { AuthorizeEntry (entry); });
+		nh->AddFunction (tr ("Deny"), [this, entry] () { DenyAuthForEntry (entry); });
+		nh->AddFunction (tr ("View info"), [entry] () { entry->ShowInfo (); });
 		nh->AddDependentObject (entry->GetObject ());
 		emit gotEntity (e);
 	}
@@ -2309,9 +2339,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				boost::bind (static_cast<QWidget* (ChatTabsManager::*) (const ICLEntry*)> (&ChatTabsManager::OpenChat),
-						ChatTabsManager_,
-						entry));
+				[entry, ChatTabsManager_] () { ChatTabsManager_->OpenChat (entry); });
 		nh->AddDependentObject (entry->GetObject ());
 
 		emit gotEntity (e);
@@ -2553,8 +2581,7 @@ namespace Azoth
 		e.Additional_ ["org.LC.Plugins.Azoth.Msg"] = reason;
 
 		Util::NotificationActionHandler *nh = new Util::NotificationActionHandler (e);
-		nh->AddFunction (tr ("Join"), boost::bind (&Core::SuggestJoiningMUC,
-					this, acc, ident));
+		nh->AddFunction (tr ("Join"), [this, acc, ident] () { SuggestJoiningMUC (acc, ident); });
 		nh->AddDependentObject (acc->GetObject ());
 
 		emit gotEntity (e);
@@ -2562,7 +2589,7 @@ namespace Azoth
 
 	void Core::updateStatusIconset ()
 	{
-		QMap<State, QString> State2IconCache_;
+		QMap<State, Util::QIODevice_ptr> State2IconCache_;
 		Q_FOREACH (ICLEntry *entry, Entry2Items_.keys ())
 		{
 			State state = entry->GetStatus ().State_;
@@ -2570,7 +2597,10 @@ namespace Azoth
 				State2IconCache_ [state] = GetIconPathForState (state);
 
 			Q_FOREACH (QStandardItem *item, Entry2Items_ [entry])
-				ItemIconManager_->SetIcon (item, State2IconCache_ [state]);
+			{
+				Util::QIODevice_ptr dev = State2IconCache_ [state];
+				ItemIconManager_->SetIcon (item, dev.get ());
+			}
 		}
 	}
 
@@ -2880,6 +2910,12 @@ namespace Azoth
 
 		Entry2SmoothAvatarCache_.remove (entry);
 		updateItem ();
+	}
+
+	void Core::flushIconCaches ()
+	{
+		Q_FOREACH (boost::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
+			rl->FlushCache ();
 	}
 
 #ifdef ENABLE_CRYPT

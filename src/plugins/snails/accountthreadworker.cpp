@@ -19,6 +19,8 @@
 #include "accountthreadworker.h"
 #include <QMutexLocker>
 #include <QUrl>
+#include <QFile>
+#include <QTimer>
 #include <QtDebug>
 #include <vmime/security/defaultAuthenticator.hpp>
 #include <vmime/security/cert/defaultCertificateVerifier.hpp>
@@ -28,16 +30,18 @@
 #include <vmime/net/message.hpp>
 #include <vmime/utility/datetimeUtils.hpp>
 #include <vmime/dateTime.hpp>
-#include <vmime/charsetConverter.hpp>
 #include <vmime/messageParser.hpp>
 #include <vmime/messageBuilder.hpp>
 #include <vmime/htmlTextPart.hpp>
 #include <vmime/stringContentHandler.hpp>
+#include <util/util.h>
 #include "message.h"
 #include "account.h"
 #include "core.h"
 #include "progresslistener.h"
 #include "storage.h"
+#include "vmimeconversions.h"
+#include "outputiodevadapter.h"
 
 namespace LeechCraft
 {
@@ -118,14 +122,41 @@ namespace Snails
 		std::vector<vmime::ref<vmime::security::cert::X509Certificate>> CertVerifier::TrustedCerts_;
 	}
 
+	class TimerGuard
+	{
+		QTimer *T_;
+		int Timeout_;
+	public:
+		TimerGuard (QTimer *t, int timeout = 30000)
+		: T_ (t)
+		, Timeout_ (timeout)
+		{
+			T_->stop ();
+		}
+
+		~TimerGuard ()
+		{
+			T_->start (Timeout_);
+		}
+	};
+
 	AccountThreadWorker::AccountThreadWorker (Account *parent)
 	: A_ (parent)
+	, DisconnectTimer_ (new QTimer (this))
 	{
 		Session_ = vmime::create<vmime::net::session> ();
+
+		connect (DisconnectTimer_,
+				SIGNAL (timeout ()),
+				this,
+				SLOT (timeoutDisconnect ()));
 	}
 
 	vmime::utility::ref<vmime::net::store> AccountThreadWorker::MakeStore ()
 	{
+		if (CachedStore_)
+			return CachedStore_;
+
 		QString url;
 
 		QMetaObject::invokeMethod (A_,
@@ -140,6 +171,10 @@ namespace Snails
 		st->setProperty ("connection.tls.required", A_->TLSRequired_);
 		st->setProperty ("options.sasl", A_->UseSASL_);
 		st->setProperty ("options.sasl.fallback", A_->SASLRequired_);
+
+		CachedStore_ = st;
+
+		st->connect ();
 
 		return st;
 	}
@@ -185,17 +220,6 @@ namespace Snails
 		trp->setProperty ("options.sasl.fallback", A_->SASLRequired_);
 
 		return trp;
-	}
-
-	namespace
-	{
-		QPair<QString, QString> Mailbox2Strings (const vmime::ref<const vmime::mailbox>& mbox)
-		{
-			return {
-						QString::fromUtf8 (mbox->getName ().getConvertedText (vmime::charsets::UTF_8).c_str ()),
-						QString::fromUtf8 (mbox->getEmail ().c_str ())
-					};
-		}
 	}
 
 	Message_ptr AccountThreadWorker::FromHeaders (const vmime::ref<vmime::net::message>& message) const
@@ -280,8 +304,6 @@ namespace Snails
 	void AccountThreadWorker::FetchMessagesPOP3 (Account::FetchFlags fetchFlags)
 	{
 		auto store = MakeStore ();
-		store->setProperty ("connection.tls", true);
-		store->connect ();
 		auto folder = store->getDefaultFolder ();
 		folder->open (vmime::net::folder::MODE_READ_WRITE);
 
@@ -303,12 +325,8 @@ namespace Snails
 		{
 			auto context = tr ("Fetching headers for %1")
 					.arg (A_->GetName ());
-
-			auto pl = new ProgressListener (context);
-			pl->deleteLater ();
-			emit gotProgressListener (ProgressListener_g_ptr (pl));
-
-			folder->fetchMessages (messages, desiredFlags, pl);
+			folder->fetchMessages (messages,
+					desiredFlags, MkPgListener (context));
 		}
 		catch (const vmime::exceptions::operation_not_supported& ons)
 		{
@@ -338,12 +356,39 @@ namespace Snails
 		emit gotMsgHeaders (newMessages);
 	}
 
-	void AccountThreadWorker::FetchMessagesIMAP (Account::FetchFlags fetchFlags,
-			vmime::ref<vmime::net::store> store)
+	namespace
 	{
-		auto folder = store->getDefaultFolder ();
-		folder->open (vmime::net::folder::MODE_READ_WRITE);
+		vmime::net::folder::path Folder2Path (const QStringList& folder)
+		{
+			if (folder.isEmpty ())
+				return vmime::net::folder::path ("INBOX");
 
+			vmime::net::folder::path path;
+			Q_FOREACH (const auto& comp, folder)
+				path.appendComponent (vmime::word (comp.toUtf8 ().constData (), vmime::charsets::UTF_8));
+			return path;
+		}
+	}
+
+	void AccountThreadWorker::FetchMessagesIMAP (Account::FetchFlags fetchFlags,
+			const QList<QStringList>& origFolders, vmime::ref<vmime::net::store> store)
+	{
+		FetchMessagesInFolder (QStringList ("INBOX"), store->getDefaultFolder ());
+
+		Q_FOREACH (const auto& folder, origFolders)
+		{
+			if (folder == QStringList ("INBOX"))
+				continue;
+
+			auto netFolder = store->getFolder (Folder2Path (folder));
+			FetchMessagesInFolder (folder, netFolder);
+		}
+	}
+
+	void AccountThreadWorker::FetchMessagesInFolder (const QStringList& folderName,
+			vmime::utility::ref<vmime::net::folder> folder)
+	{
+		folder->open (vmime::net::folder::MODE_READ_WRITE);
 		auto messages = folder->getMessages ();
 		if (!messages.size ())
 			return;
@@ -358,11 +403,8 @@ namespace Snails
 			const auto& context = tr ("Fetching headers for %1")
 					.arg (A_->GetName ());
 
-			auto pl = new ProgressListener (context);
-			pl->deleteLater ();
-			emit gotProgressListener (ProgressListener_g_ptr (pl));
-
-			folder->fetchMessages (messages, desiredFlags, pl);
+			folder->fetchMessages (messages,
+					desiredFlags, MkPgListener (context));
 		}
 		catch (const vmime::exceptions::operation_not_supported& ons)
 		{
@@ -376,7 +418,12 @@ namespace Snails
 
 		QList<Message_ptr> newMessages;
 		std::transform (messages.begin (), messages.end (), std::back_inserter (newMessages),
-				[this] (decltype (messages.front ()) msg) { return FromHeaders (msg); });
+				[this, &folderName] (decltype (messages.front ()) msg)
+				{
+					auto res = FromHeaders (msg);
+					res->AddFolder (folderName);
+					return res;
+				});
 
 		QList<Message_ptr> updatedMessages;
 		Q_FOREACH (Message_ptr msg, newMessages)
@@ -386,10 +433,27 @@ namespace Snails
 
 			newMessages.removeAll (msg);
 
+			bool isUpdated = false;
+
 			auto updated = Core::Instance ().GetStorage ()->
 					LoadMessage (A_, msg->GetID ());
-			updated->SetRead (msg->IsRead ());
-			updatedMessages << updated;
+
+			if (updated->IsRead () != msg->IsRead ())
+			{
+				updated->SetRead (msg->IsRead ());
+				isUpdated = true;
+			}
+
+			auto sumFolders = updated->GetFolders ();
+			if (!folderName.isEmpty () &&
+					!sumFolders.contains (folderName))
+			{
+				updated->AddFolder (folderName);
+				isUpdated = true;
+			}
+
+			if (isUpdated)
+				updatedMessages << updated;
 		}
 
 		emit gotMsgHeaders (newMessages);
@@ -398,36 +462,6 @@ namespace Snails
 
 	namespace
 	{
-		template<typename T>
-		QString Stringize (const T& t, const vmime::charset& source)
-		{
-			vmime::string str;
-			vmime::utility::outputStreamStringAdapter out (str);
-			vmime::utility::charsetFilteredOutputStream fout (source,
-					vmime::charset ("utf-8"), out);
-
-			t->extract (fout);
-			fout.flush ();
-
-			return QString::fromUtf8 (str.c_str ());
-		}
-
-		template<typename T>
-		QString Stringize (const T& t)
-		{
-			vmime::string str;
-			vmime::utility::outputStreamStringAdapter out (str);
-
-			t->extract (out);
-
-			return QString::fromUtf8 (str.c_str ());
-		}
-
-		QString Stringize (const vmime::word& w)
-		{
-			return QString::fromUtf8 (w.getConvertedText (vmime::charsets::UTF_8).c_str ());
-		}
-
 		void FullifyHeaderMessage (Message_ptr msg, const vmime::ref<vmime::message>& full)
 		{
 			vmime::messageParser mp (full);
@@ -458,6 +492,17 @@ namespace Snails
 
 			msg->SetBody (plain);
 			msg->SetHTMLBody (html);
+
+			Q_FOREACH (auto att, mp.getAttachmentList ())
+			{
+				const auto& type = att->getType ();
+				if (type.getType () == vmime::mediaTypes::TEXT &&
+						(type.getSubType () == vmime::mediaTypes::TEXT_HTML ||
+						 type.getSubType () == vmime::mediaTypes::TEXT_PLAIN))
+					continue;
+
+				msg->AddAttachment (att);
+			}
 		}
 	}
 
@@ -473,7 +518,7 @@ namespace Snails
 			QStringList pathList;
 			const auto& path = folder->getFullPath ();
 			for (int i = 0; i < path.getSize (); ++i)
-				pathList << Stringize (path.getComponentAt (i));
+				pathList << StringizeCT (path.getComponentAt (i));
 
 			paths << pathList;
 		}
@@ -486,9 +531,7 @@ namespace Snails
 		const auto& context = tr ("Fetching messages for %1")
 					.arg (A_->GetName ());
 
-		auto pl = new ProgressListener (context);
-		pl->deleteLater ();
-		emit gotProgressListener (ProgressListener_g_ptr (pl));
+		auto pl = MkPgListener (context);
 
 		QMetaObject::invokeMethod (pl,
 				"start",
@@ -517,7 +560,15 @@ namespace Snails
 		return newMessages;
 	}
 
-	void AccountThreadWorker::synchronize (Account::FetchFlags flags)
+	ProgressListener* AccountThreadWorker::MkPgListener (const QString& text)
+	{
+		auto pl = new ProgressListener (text);
+		pl->deleteLater ();
+		emit gotProgressListener (ProgressListener_g_ptr (pl));
+		return pl;
+	}
+
+	void AccountThreadWorker::synchronize (Account::FetchFlags flags, const QList<QStringList>& folders)
 	{
 		switch (A_->InType_)
 		{
@@ -526,9 +577,10 @@ namespace Snails
 			break;
 		case Account::InType::IMAP:
 		{
+			TimerGuard g (DisconnectTimer_);
+
 			auto store = MakeStore ();
-			store->connect ();
-			FetchMessagesIMAP (flags, store);
+			FetchMessagesIMAP (flags, folders, store);
 			SyncIMAPFolders (store);
 			break;
 		}
@@ -545,14 +597,15 @@ namespace Snails
 		if (A_->InType_ == Account::InType::POP3)
 			return;
 
+		TimerGuard g (DisconnectTimer_);
+
 		const QByteArray& sid = origMsg->GetID ();
 		vmime::string id (sid.constData ());
 		qDebug () << Q_FUNC_INFO << sid.toHex ();
 
 		auto store = MakeStore ();
-		store->connect ();
 
-		auto folder = store->getDefaultFolder ();
+		auto folder = store->getFolder (Folder2Path (origMsg->GetFolders ().value (0)));
 		folder->open (vmime::net::folder::MODE_READ_WRITE);
 
 		auto messages = folder->getMessages ();
@@ -587,6 +640,72 @@ namespace Snails
 		emit messageBodyFetched (origMsg);
 	}
 
+	void AccountThreadWorker::fetchAttachment (Message_ptr msg,
+			const QString& attName, const QString& path)
+	{
+		if (A_->InType_ == Account::InType::POP3)
+			return;
+
+		TimerGuard g (DisconnectTimer_);
+
+		const auto& msgId = msg->GetID ();
+		vmime::string id (msgId.constData ());
+		qDebug () << Q_FUNC_INFO << msgId.toHex ();
+
+		auto store = MakeStore ();
+
+		auto folder = store->getFolder (Folder2Path (msg->GetFolders ().value (0)));
+		folder->open (vmime::net::folder::MODE_READ_WRITE);
+
+		auto messages = folder->getMessages ();
+		folder->fetchMessages (messages, vmime::net::folder::FETCH_UID);
+
+		auto pos = std::find_if (messages.begin (), messages.end (),
+				[id] (const vmime::ref<vmime::net::message>& message) { return message->getUniqueId () == id; });
+		if (pos == messages.end ())
+		{
+			Q_FOREACH (auto msg, messages)
+				qWarning () << QByteArray (msg->getUniqueId ().c_str ()).toHex ();
+			qWarning () << Q_FUNC_INFO
+					<< "message with ID"
+					<< msgId.toHex ()
+					<< "not found in"
+					<< messages.size ();
+			return;
+		}
+
+		vmime::messageParser mp ((*pos)->getParsedMessage ());
+		Q_FOREACH (const vmime::ref<const vmime::attachment>& att, mp.getAttachmentList ())
+		{
+			if (StringizeCT (att->getName ()) != attName)
+				continue;
+
+			auto data = att->getData ();
+
+			QFile file (path);
+			if (!file.open (QIODevice::WriteOnly))
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "unable to open"
+						<< path
+						<< file.errorString ();
+				return;
+			}
+
+			OutputIODevAdapter adapter (&file);
+			data->extract (adapter,
+					MkPgListener (tr ("Fetching attachment %1...").arg (attName)));
+
+			const auto& e = Util::MakeNotification ("Snails",
+					tr ("Attachment %1 fetched successfully.")
+						.arg (attName),
+					PInfo_);
+			emit gotEntity (e);
+
+			break;
+		}
+	}
+
 	namespace
 	{
 		vmime::mailbox FromPair (const QString& name, const QString& email)
@@ -606,6 +725,8 @@ namespace Snails
 		if (!msg)
 			return;
 
+		TimerGuard g (DisconnectTimer_);
+
 		vmime::messageBuilder mb;
 		mb.setSubject (vmime::text (msg->GetSubject ().toUtf8 ().constData ()));
 		mb.setExpeditor (FromPair (msg->GetFrom (), msg->GetFromEmail ()));
@@ -624,10 +745,7 @@ namespace Snails
 				.arg (Core::Instance ().GetProxy ()->GetVersion ());
 		vMsg->getHeader ()->UserAgent ()->setValue (userAgent.toUtf8 ().constData ());
 
-		auto pl = new ProgressListener (tr ("Sending message %1...").arg (msg->GetSubject ()));
-		pl->deleteLater ();
-		emit gotProgressListener (ProgressListener_g_ptr (pl));
-
+		auto pl = MkPgListener (tr ("Sending message %1...").arg (msg->GetSubject ()));
 		auto transport = MakeTransport ();
 		try
 		{
@@ -643,6 +761,12 @@ namespace Snails
 			return;
 		}
 		transport->send (vMsg, pl);
+	}
+
+	void AccountThreadWorker::timeoutDisconnect ()
+	{
+		CachedStore_->disconnect ();
+		CachedStore_ = vmime::ref<vmime::net::store> ();
 	}
 }
 }

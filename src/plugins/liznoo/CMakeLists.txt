@@ -15,6 +15,8 @@ IF (NOT QT_USE_FILE)
 	FIND_PACKAGE (LeechCraft REQUIRED)
 ENDIF (NOT QT_USE_FILE)
 
+
+
 SET (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 FIND_PACKAGE (Qwt6)
 
@@ -84,9 +86,10 @@ ADD_LIBRARY (leechcraft_liznoo SHARED
 	${MOC_SRCS}
 	${UIS_H}
 	)
+MESSAGE (STATUS "${Qwt6_Qt4_LIBRARY}")
 TARGET_LINK_LIBRARIES (leechcraft_liznoo
 	${QT_LIBRARIES}
 	${LEECHCRAFT_LIBRARIES}
-	${Qwt6_Qt4_LIBRARY}
+	"d:/X-Files/Projects/_Lib/qwt/lib/libqwt.a"
 	)
 INSTALL (TARGETS leechcraft_liznoo DESTINATION ${LC_PLUGINS_DEST})

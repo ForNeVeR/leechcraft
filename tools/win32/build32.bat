@@ -24,21 +24,29 @@ rem Be sure that cmake executable is in your system %PATH%.
 if exist build32 rmdir /s /q build32
 if not exist build32 mkdir build32
 cd build32
-cmake ../../../src  ^
-	-DENABLE_FTP=False %BTYPE% -DENABLE_DBUSMANAGER=False -DENABLE_ANHERO=False ^
-	-DENABLE_LACKMAN=True -DENABLE_SECMAN=True -DENABLE_AZOTH=True ^
-	-DENABLE_SHELLOPEN=True -DENABLE_GLANCE=True -DENABLE_TABSLIST=True ^
-	-DENABLE_GMAILNOTIFIER=True ^
-	-DENABLE_ADVANCEDNOTIFICATIONS=True ^
-	-DENABLE_KNOWHOW=True ^
-	-DENABLE_LAURE=True ^
-	-DENABLE_LIZNOO=True ^
+cmake ../../../src ^
+	-G "MinGW Makefiles" ^
+	%BTYPE% ^
+	-DENABLE_AGGREGATOR=False ^
+	-DENABLE_ANHERO=False ^
+	-DENABLE_AUSCRIE=False ^
+	-DENABLE_DBUSMANAGER=False ^
+	-DENABLE_DEADLYRICS=False ^
+	-DENABLE_HISTORYHOLDER=False ^
+	-DENABLE_HTTP=False ^
+	-DENABLE_KINOTIFY=False ^
+	-DENABLE_LMP=False ^
+	-DENABLE_NETWORKMONITOR=False ^
+	-DENABLE_NEWLIFE=False ^
+	-DENABLE_POSHUKU=False ^
+	-DENABLE_SEEKTHRU=False ^
+	-DENABLE_SUMMARY=False ^
+	-DENABLE_TABPP=False ^
+	-DENABLE_TORRENT=False ^
+	-DENABLE_VGRABBER=False ^
+	-DENABLE_SHELLOPEN=False ^
+	-DENABLE_FTP=False ^
 	-DENABLE_SIDEBAR=True ^
-	-DENABLE_LASTFM=False ^
-	-DRBTorrent_DIR=%TORRENT_DIR% ^
-	-DQXMPP_LOCAL=%QXMPP_LOCAL% ^
-	-DQJSON_DIR=%QJSON_DIR% ^
-	-DSPEEX_DIR=%SPEEX_DIR% ^
-	-DVLC_DIR=%VLC_DIR% ^
-	-DQWT_DIR=%QWT_DIR% 
+	-DENABLE_LIZNOO=True ^
+	-DQWT_DIR="d:\X-Files\Projects\_Lib\qwt"
 pause

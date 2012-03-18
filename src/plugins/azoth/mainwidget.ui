@@ -65,37 +65,6 @@
      </property>
     </widget>
    </item>
-   <item>
-    <widget class="QComboBox" name="RosterMode_">
-     <item>
-      <property name="text">
-       <string>Whole CL</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Current MUC</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="BottomLayout_">
-     <item>
-      <widget class="QLineEdit" name="FastStatusText_"/>
-     </item>
-     <item>
-      <widget class="QToolButton" name="FastStatusButton_">
-       <property name="text">
-        <string/>
-       </property>
-       <property name="popupMode">
-        <enum>QToolButton::MenuButtonPopup</enum>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
   </layout>
   <action name="ActionAddAccount_">
    <property name="text">

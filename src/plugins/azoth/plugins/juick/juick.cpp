@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -180,7 +180,7 @@ namespace Juick
 	}
 
 	void Plugin::hookFormatBodyEnd (IHookProxy_ptr proxy,
-			QObject*, QObject *msgObj)
+			QObject *msgObj)
 	{
 		if(ShouldHandle (msgObj, IMessage::DIn, IMessage::MTChatMessage))
 			proxy->SetValue ("body", FormatBody (proxy->GetValue ("body").toString ()));
@@ -348,4 +348,4 @@ namespace Juick
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_azoth_juick, LeechCraft::Azoth::Juick::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_azoth_juick, LeechCraft::Azoth::Juick::Plugin);

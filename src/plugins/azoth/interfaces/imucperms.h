@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ namespace Azoth
 		 *
 		 * @return The possible permissions for this room.
 		 */
-		virtual QMap<QByteArray, QList<QByteArray> > GetPossiblePerms () const = 0;
+		virtual QMap<QByteArray, QList<QByteArray>> GetPossiblePerms () const = 0;
 
 		/** @brief Returns current permissions for the given participant.
 		 *
@@ -77,7 +77,7 @@ namespace Azoth
 		 * permissions, or NULL to query self.
 		 * @return The current permissions for the given participant.
 		 */
-		virtual QMap<QByteArray, QList<QByteArray> > GetPerms (QObject *participant) const = 0;
+		virtual QMap<QByteArray, QList<QByteArray>> GetPerms (QObject *participant) const = 0;
 
 		/** @brief Returns the name of the affiliation icon.
 		 *

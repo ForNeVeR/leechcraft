@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #ifndef PLUGINS_AZOTH_PLUGINS_XOOX_ROOMPARTICIPANTENTRY_H
 #define PLUGINS_AZOTH_PLUGINS_XOOX_ROOMPARTICIPANTENTRY_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QObject>
 #include <QStringList>
 #include <QXmppMucIq.h>
@@ -72,7 +72,7 @@ namespace Xoox
 		void SetRole (QXmppMucItem::Role);
 	};
 
-	typedef boost::shared_ptr<RoomParticipantEntry> RoomParticipantEntry_ptr;
+	typedef std::shared_ptr<RoomParticipantEntry> RoomParticipantEntry_ptr;
 }
 }
 }

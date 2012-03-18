@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ namespace Xoox
 		Q_OBJECT
 
 		QHash<QByteArray, QStringList> Ver2Features_;
-		QHash<QByteArray, QList<QXmppDiscoveryIq::Identity> > Ver2Identities_;
+		QHash<QByteArray, QList<QXmppDiscoveryIq::Identity>> Ver2Identities_;
 		mutable bool SaveScheduled_;
 	public:
 		CapsDatabase (QObject* = 0);

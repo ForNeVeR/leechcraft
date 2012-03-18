@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,14 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_MESSAGE_H
-#define PLUGINS_SNAILS_MESSAGE_H
+#pragma once
+
 #include <memory>
 #include <QObject>
 #include <QDateTime>
 #include <QStringList>
 #include <QMetaType>
 #include <QPair>
+#include <QHash>
+#include <QSet>
 #include "attdescr.h"
 
 namespace LeechCraft
@@ -37,9 +39,6 @@ namespace Snails
 		QByteArray ID_;
 		QList<QStringList> Folders_;
 		quint64 Size_;
-		QString From_;
-		QString FromEmail_;
-		QList<QPair<QString, QString>> To_;
 		QDateTime Date_;
 		QStringList Recipients_;
 		QString Subject_;
@@ -50,6 +49,20 @@ namespace Snails
 		bool IsRead_;
 
 		QList<AttDescr> Attachments_;
+	public:
+		enum class Address
+		{
+			To,
+			Cc,
+			Bcc,
+			From,
+			ReplyTo
+		};
+
+		typedef QPair<QString, QString> Address_t;
+		typedef QList<Address_t> Addresses_t;
+	private:
+		QHash<Address, Addresses_t> Addresses_;
 	public:
 		Message (QObject* = 0);
 
@@ -65,20 +78,14 @@ namespace Snails
 		quint64 GetSize () const;
 		void SetSize (quint64);
 
-		QString GetFrom () const;
-		void SetFrom (const QString&);
-
-		QString GetFromEmail () const;
-		void SetFromEmail (const QString&);
-
-		QList<QPair<QString, QString>> GetTo () const;
-		void SetTo (const QList<QPair<QString, QString>>&);
+		Address_t GetAddress (Address) const;
+		Addresses_t GetAddresses (Address) const;
+		void AddAddress (Address, const Address_t&);
+		void SetAddress (Address, const Address_t&);
+		void SetAddresses (Address, const Addresses_t&);
 
 		QDateTime GetDate () const;
 		void SetDate (const QDateTime&);
-
-		QStringList GetRecipients () const;
-		void SetRecipients (const QStringList&);
 
 		QString GetSubject () const;
 		void SetSubject (const QString&);
@@ -105,10 +112,13 @@ namespace Snails
 	};
 
 	typedef std::shared_ptr<Message> Message_ptr;
+	typedef QSet<Message_ptr> MessageSet;
+
+	QString GetNiceMail (const Message::Address_t&);
 }
 }
+
+uint qHash (const LeechCraft::Snails::Message_ptr);
 
 Q_DECLARE_METATYPE (LeechCraft::Snails::Message_ptr);
 Q_DECLARE_METATYPE (QList<LeechCraft::Snails::Message_ptr>);
-
-#endif

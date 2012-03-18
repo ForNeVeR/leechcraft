@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ namespace Syncer
 	, Settings_ (QCoreApplication::organizationName (),
 			QCoreApplication::applicationName () + "_Syncer")
 	{
-		qRegisterMetaType<QList<QByteArray> > ("QList<QByteArray>");
+		qRegisterMetaType<QList<QByteArray>> ("QList<QByteArray>");
 
 		connect (DataStorage_,
 				SIGNAL (gotNewDeltas (const Sync::Deltas_t&, const QByteArray&)),

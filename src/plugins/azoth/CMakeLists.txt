@@ -104,6 +104,10 @@ SET (SRCS
 	mucinvitedialog.cpp
 	groupsenddialog.cpp
 	actionsmanager.cpp
+	importmanager.cpp
+	accountactionsmanager.cpp
+	unreadqueuemanager.cpp
+	chatstyleoptionmanager.cpp
 	)
 SET (HEADERS
 	azoth.h
@@ -147,6 +151,10 @@ SET (HEADERS
 	mucinvitedialog.h
 	groupsenddialog.h
 	actionsmanager.h
+	importmanager.h
+	accountactionsmanager.h
+	unreadqueuemanager.h
+	chatstyleoptionmanager.h
 	animatediconmanager.h
 	sourcetrackingmodel.h
 	interfaces/iprotocolplugin.h
@@ -239,6 +247,7 @@ OPTION (ENABLE_AZOTH_HERBICIDE "Build Herbicide, a basic antispam plugin" ON)
 OPTION (ENABLE_AZOTH_HILI "Build HiLi, plugin for customizing conference highlights" ON)
 OPTION (ENABLE_AZOTH_ISTERIQUE "Build Isterique, plugin for decapitalizing all-caps text" ON)
 OPTION (ENABLE_AZOTH_JUICK "Build plugin for the juick.com microblogging service" ON)
+OPTION (ENABLE_AZOTH_KEESO "Build Keeso for TrAnSfOrMiNg TeXt LiKe ThIs" ON)
 OPTION (ENABLE_AZOTH_LASTSEEN "Build plugin for keeping track of the date of contacts' being online" ON)
 OPTION (ENABLE_AZOTH_METACONTACTS "Build support for metacontacts" ON)
 OPTION (ENABLE_AZOTH_MODNOK "Build Modnok for rendering and displaying LaTeX formulas" ON)
@@ -247,8 +256,10 @@ OPTION (ENABLE_AZOTH_OTROID "Build OTRoid for supporting Off-the-Record messagin
 OPTION (ENABLE_AZOTH_P100Q "Build plugin for the psto.net microblogging service" ON)
 OPTION (ENABLE_AZOTH_ROSENTHAL "Build Rosenthal, spellchecker plugin for Azoth" ON)
 OPTION (ENABLE_AZOTH_STANDARDSTYLES "Build support for standard Azoth styles" ON)
+OPTION (ENABLE_AZOTH_VADER "Build support for the MRIM protocol" ON)
 OPTION (ENABLE_AZOTH_XOOX "Build Xoox, the QXmpp-aided XMPP support for Azoth" ON)
 OPTION (ENABLE_AZOTH_XTAZY "Build Xtazy for publishing current user tune" ON)
+OPTION (ENABLE_AZOTH_ZHEET "Build Zheet, the libmsn-based Windows Live support for Azoth" OFF)
 
 IF (ENABLE_AZOTH_ACETAMIDE)
 	ADD_SUBDIRECTORY (plugins/acetamide)
@@ -286,6 +297,9 @@ ENDIF (ENABLE_AZOTH_ISTERIQUE)
 IF (ENABLE_AZOTH_JUICK)
 	ADD_SUBDIRECTORY (plugins/juick)
 ENDIF (ENABLE_AZOTH_JUICK)
+IF (ENABLE_AZOTH_KEESO)
+	ADD_SUBDIRECTORY (plugins/keeso)
+ENDIF (ENABLE_AZOTH_KEESO)
 IF (ENABLE_AZOTH_LASTSEEN)
 	ADD_SUBDIRECTORY (plugins/lastseen)
 ENDIF (ENABLE_AZOTH_LASTSEEN)
@@ -310,9 +324,15 @@ ENDIF (ENABLE_AZOTH_ROSENTHAL)
 IF (ENABLE_AZOTH_STANDARDSTYLES)
 	ADD_SUBDIRECTORY (plugins/standardstyles)
 ENDIF (ENABLE_AZOTH_STANDARDSTYLES)
+IF (ENABLE_AZOTH_VADER)
+	ADD_SUBDIRECTORY (plugins/vader)
+ENDIF (ENABLE_AZOTH_VADER)
 IF (ENABLE_AZOTH_XOOX)
 	ADD_SUBDIRECTORY (plugins/xoox)
 ENDIF (ENABLE_AZOTH_XOOX)
 IF (ENABLE_AZOTH_XTAZY)
 	ADD_SUBDIRECTORY (plugins/xtazy)
 ENDIF (ENABLE_AZOTH_XTAZY)
+IF (ENABLE_AZOTH_ZHEET)
+	ADD_SUBDIRECTORY (plugins/zheet)
+ENDIF (ENABLE_AZOTH_ZHEET)

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,14 +57,33 @@ namespace Xoox
 {
 	EntryBase::EntryBase (GlooxAccount *parent)
 	: QObject (parent)
-	, Commands_ (0)
 	, Account_ (parent)
+	, Commands_ (new QAction (tr ("Commands..."), Account_))
+	, DetectNick_ (new QAction (tr ("Detect nick"), Account_))
 	, HasUnreadMsgs_ (false)
+	, VersionReqsEnabled_ (true)
 	{
 		connect (this,
 				SIGNAL (locationChanged (const QString&, QObject*)),
 				parent,
 				SIGNAL (geolocationInfoChanged (const QString&, QObject*)));
+
+		connect (Commands_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleCommands ()));
+		connect (DetectNick_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleDetectNick ()));
+	}
+
+	EntryBase::~EntryBase ()
+	{
+		qDeleteAll (AllMessages_);
+		qDeleteAll (Actions_);
+		delete Commands_;
+		delete VCardDialog_;
 	}
 
 	QObject* EntryBase::GetObject ()
@@ -86,18 +105,8 @@ namespace Xoox
 	{
 		bool CheckPartFeature (EntryBase *base, const QString& variant)
 		{
-			if (variant.isEmpty ())
-				return true;
-
-			const QByteArray& ver = base->GetVariantVerString (variant);
-			if (ver.isEmpty ())
-				return true;
-
-			const QStringList& feats = Core::Instance ().GetCapsDatabase ()->Get (ver);
-			if (feats.isEmpty ())
-				return true;
-
-			return feats.contains ("http://jabber.org/protocol/chatstates");
+			return XooxUtil::CheckUserFeature (base,
+					variant, "http://jabber.org/protocol/chatstates");
 		}
 	}
 
@@ -106,8 +115,6 @@ namespace Xoox
 		if (!CheckPartFeature (this, variant))
 			return;
 
-		// TODO check if participant supports this XEP.
-		// Need to wait until disco info storage is implemented.
 		QXmppMessage msg;
 		msg.setTo (GetJID () + (variant.isEmpty () ?
 						QString () :
@@ -132,16 +139,10 @@ namespace Xoox
 	QList<QAction*> EntryBase::GetActions () const
 	{
 		QList<QAction*> additional;
-
-		if (!Commands_)
-		{
-			Commands_ = new QAction (tr ("Commands..."), Account_);
-			connect (Commands_,
-					SIGNAL (triggered ()),
-					this,
-					SLOT (handleCommands ()));
-		}
 		additional << Commands_;
+
+		if (GetEntryFeatures () & FSupportsRenames)
+			additional << DetectNick_;
 
 		return additional + Actions_;
 	}
@@ -171,7 +172,9 @@ namespace Xoox
 		if (!VCardDialog_)
 			VCardDialog_ = new VCardDialog (this);
 
-		Account_->GetClientConnection ()->FetchVCard (GetJID (), VCardDialog_);
+		QPointer<VCardDialog> ptr (VCardDialog_);
+		Account_->GetClientConnection ()->FetchVCard (GetJID (),
+				[ptr] (const QXmppVCardIq& iq) { if (ptr) ptr->UpdateInfo (iq); });
 		VCardDialog_->show ();
 	}
 
@@ -199,6 +202,7 @@ namespace Xoox
 	void EntryBase::MarkMsgsRead ()
 	{
 		HasUnreadMsgs_ = false;
+		UnreadMessages_.clear ();
 		emit messagesAreRead ();
 	}
 
@@ -216,14 +220,52 @@ namespace Xoox
 		msg.setBody (text);
 		msg.setTo (to);
 		msg.setType (QXmppMessage::Headline);
-		msg.setAttention (true);
+		msg.setAttentionRequested (true);
 		Account_->GetClientConnection ()->GetClient ()->sendPacket (msg);
+	}
+
+	bool EntryBase::CanSendDirectedStatusNow (const QString& variant)
+	{
+		if (variant.isEmpty ())
+			return true;
+
+		if (GetStatus (variant).State_ != SOffline)
+			return true;
+
+		return false;
+	}
+
+	void EntryBase::SendDirectedStatus (const EntryStatus& state, const QString& variant)
+	{
+		if (!CanSendDirectedStatusNow (variant))
+			return;
+
+		auto conn = Account_->GetClientConnection ();
+
+		QXmppPresence::Type presType = state.State_ == SOffline ?
+				QXmppPresence::Unavailable :
+				QXmppPresence::Available;
+		QXmppPresence pres (presType,
+				QXmppPresence::Status (static_cast<QXmppPresence::Status::Type> (state.State_),
+						state.StatusString_,
+						conn->GetLastState ().Priority_));
+
+		QString to = GetJID ();
+		if (!variant.isEmpty ())
+			to += '/' + variant;
+		pres.setTo (to);
+
+		conn->GetClient ()->addProperCapability (pres);
+		conn->GetClient ()->sendPacket (pres);
 	}
 
 	void EntryBase::HandleMessage (GlooxMessage *msg)
 	{
 		if (msg->GetMessageType () == IMessage::MTChatMessage)
+		{
 			HasUnreadMsgs_ = true;
+			UnreadMessages_ << msg;
+		}
 
 		GlooxProtocol *proto = qobject_cast<GlooxProtocol*> (Account_->GetParentProtocol ());
 		IProxyObject *proxy = qobject_cast<IProxyObject*> (proto->GetProxyObject ());
@@ -377,7 +419,9 @@ namespace Xoox
 				wasOffline)
 			emit availableVariantsChanged (vars);
 
-		if ((!existed || wasOffline) && status.State_ != SOffline)
+		if (VersionReqsEnabled_ &&
+				(!existed || wasOffline) &&
+				status.State_ != SOffline)
 		{
 			const QString& jid = variant.isEmpty () ?
 					GetJID () :
@@ -482,6 +526,11 @@ namespace Xoox
 		return HasUnreadMsgs_;
 	}
 
+	QList<GlooxMessage*> EntryBase::GetUnreadMessages () const
+	{
+		return UnreadMessages_;
+	}
+
 	void EntryBase::SetClientInfo (const QString& variant,
 			const QString& node, const QByteArray& ver)
 	{
@@ -538,6 +587,11 @@ namespace Xoox
 		return Location_ [variant];
 	}
 
+	void EntryBase::SetVersionReqsEnabled (bool enabled)
+	{
+		VersionReqsEnabled_ = enabled;
+	}
+
 	QByteArray EntryBase::GetVariantVerString (const QString& var) const
 	{
 		return Variant2VerString_ [var];
@@ -576,6 +630,35 @@ namespace Xoox
 		}
 
 		return text;
+	}
+
+	void EntryBase::SetNickFromVCard (const QXmppVCardIq& vcard)
+	{
+		if (!vcard.nickName ().isEmpty ())
+		{
+			SetEntryName (vcard.nickName ());
+			return;
+		}
+
+		if (!vcard.fullName ().isEmpty ())
+		{
+			SetEntryName (vcard.fullName ());
+			return;
+		}
+
+		const QString& fn = vcard.firstName ();
+		const QString& mn = vcard.middleName ();
+		const QString& ln = vcard.lastName ();
+		QString name = fn;
+		if (!fn.isEmpty ())
+			name += " ";
+		name += mn;
+		if (!mn.isEmpty ())
+			name += " ";
+		name += ln;
+		name = name.trimmed ();
+		if (!name.isEmpty ())
+			SetEntryName (name);
 	}
 
 	void EntryBase::handleCommands ()
@@ -617,6 +700,13 @@ namespace Xoox
 		ExecuteCommandDialog *dia = new ExecuteCommandDialog (jid, Account_);
 		dia->setAttribute (Qt::WA_DeleteOnClose);
 		dia->show ();
+	}
+
+	void EntryBase::handleDetectNick ()
+	{
+		QPointer<EntryBase> ptr (this);
+		Account_->GetClientConnection ()->FetchVCard (GetJID (),
+				[ptr] (const QXmppVCardIq& iq) { if (ptr) ptr->SetNickFromVCard (iq); });
 	}
 }
 }

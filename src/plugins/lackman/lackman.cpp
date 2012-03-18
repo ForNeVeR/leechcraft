@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include <util/util.h>
 #include <util/tagscompleter.h>
 #include <util/categoryselector.h>
+#include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
 #include <interfaces/core/itagsmanager.h>
@@ -53,6 +54,8 @@ namespace LackMan
 		TabClass_.Features_ = TabFeatures (TFSingle | TFOpenableByRequest);
 
 		Ui_.setupUi (this);
+
+		ShortcutMgr_ = new Util::ShortcutManager (proxy, this);
 
 		TagsModel_ = new QStringListModel (this);
 		Util::TagsCompleter *tc = new Util::TagsCompleter (Ui_.SearchLine_);
@@ -258,6 +261,16 @@ namespace LackMan
 		}
 	}
 
+	void Plugin::SetShortcut (const QString& id, const QKeySequences_t& seqs)
+	{
+		ShortcutMgr_->SetShortcut (id, seqs);
+	}
+
+	QMap<QString, ActionInfo> Plugin::GetActionInfo () const
+	{
+		return ShortcutMgr_->GetActionInfo ();
+	}
+
 	void Plugin::handleTagsUpdated (const QStringList& tags)
 	{
 		TagsModel_->setStringList (tags);
@@ -268,19 +281,16 @@ namespace LackMan
 		TypeFilter_->SetFilterMode (static_cast<TypeFilterProxyModel::FilterMode> (index));
 	}
 
-	namespace
-	{
-		void AddText (QString& text, const QStringList& urls)
-		{
-			Q_FOREACH (const QString& url, urls)
-				text += "<img src='" + url + "' alt='Image' /><br />";
-		}
-	}
-
 	void Plugin::handlePackageSelected (const QModelIndex& index)
 	{
 		QString text;
-		AddText (text, index.data (PackagesModel::PMRThumbnails).toStringList ());
+		auto AddText = [&text] (const QStringList& urls)
+		{
+			Q_FOREACH (const QString& url, urls)
+				text += "<img src='" + url + "' alt='Image' /><br />";
+		};
+
+		AddText (index.data (PackagesModel::PMRThumbnails).toStringList ());
 
 		QString descr = index.data (PackagesModel::PMRLongDescription).toString ();
 		if (!descr.contains ("<br"))
@@ -289,7 +299,7 @@ namespace LackMan
 
 		const QStringList& screens = index.data (PackagesModel::PMRScreenshots).toStringList ();
 		text += "<hr/>";
-		AddText (text, screens);
+		AddText (screens);
 
 		Ui_.Browser_->SetHtml (text);
 
@@ -337,32 +347,39 @@ namespace LackMan
 	void Plugin::BuildActions ()
 	{
 		UpdateAll_ = new QAction (tr ("Update all repos"), this);
-		UpdateAll_->setProperty ("ActionIcon", "refresh");
+		UpdateAll_->setProperty ("ActionIcon", "view-refresh");
+		UpdateAll_->setShortcut (QString ("Ctrl+U"));
 		connect (UpdateAll_,
 				SIGNAL (triggered ()),
 				&Core::Instance (),
 				SLOT (updateAllRequested ()));
+		ShortcutMgr_->RegisterAction ("updaterepos", UpdateAll_);
 
 		UpgradeAll_ = new QAction (tr ("Upgrade all packages"), this);
-		UpgradeAll_->setProperty ("ActionIcon", "fetchall");
+		UpgradeAll_->setProperty ("ActionIcon", "system-software-update");
+		UpgradeAll_->setShortcut (QString ("Ctrl+Shift+U"));
 		connect (UpgradeAll_,
 				SIGNAL (triggered ()),
 				&Core::Instance (),
 				SLOT (upgradeAllRequested ()));
+		ShortcutMgr_->RegisterAction ("upgradeall", UpgradeAll_);
 
 		Apply_ = new QAction (tr ("Apply"), this);
-		Apply_->setProperty ("ActionIcon", "apply");
+		Apply_->setProperty ("ActionIcon", "dialog-ok");
+		Apply_->setShortcut (QString ("Ctrl+G"));
 		connect (Apply_,
 				SIGNAL (triggered ()),
 				&Core::Instance (),
 				SLOT (acceptPending ()));
+		ShortcutMgr_->RegisterAction ("apply", Apply_);
 
 		Cancel_ = new QAction (tr ("Cancel"), this);
-		Cancel_->setProperty ("ActionIcon", "cancel");
+		Cancel_->setProperty ("ActionIcon", "dialog-cancel");
 		connect (Cancel_,
 				SIGNAL (triggered ()),
 				&Core::Instance (),
 				SLOT (cancelPending ()));
+		ShortcutMgr_->RegisterAction ("cancel", Cancel_);
 
 		Toolbar_ = new QToolBar (GetName ());
 		Toolbar_->addAction (UpdateAll_);
@@ -374,4 +391,4 @@ namespace LackMan
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_lackman, LeechCraft::LackMan::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_lackman, LeechCraft::LackMan::Plugin);

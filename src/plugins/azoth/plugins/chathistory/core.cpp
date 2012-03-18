@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ namespace Azoth
 {
 namespace ChatHistory
 {
-	boost::weak_ptr<Core> Core::InstPtr_;
+	std::weak_ptr<Core> Core::InstPtr_;
 
 	Core::Core ()
 	: StorageThread_ (new StorageThread ())
@@ -48,15 +48,16 @@ namespace ChatHistory
 		TabClass_.Description_ = tr ("Chat history viewer for the Azoth IM");
 		TabClass_.Priority_ = 40;
 		TabClass_.Features_ = TFOpenableByRequest;
+		TabClass_.Icon_ = QIcon (":/azoth/chathistory/resources/images/chathistory.svg");
 
 		LoadDisabled ();
 	}
 
-	boost::shared_ptr<Core> Core::Instance ()
+	std::shared_ptr<Core> Core::Instance ()
 	{
 		if (InstPtr_.expired ())
 		{
-			boost::shared_ptr<Core> ptr (new Core);
+			std::shared_ptr<Core> ptr (new Core);
 			InstPtr_ = ptr;
 			return ptr;
 		}
@@ -177,6 +178,16 @@ namespace ChatHistory
 		}
 		else
 			data ["VisibleName"] = entry->GetEntryName ();
+
+		QMetaObject::invokeMethod (StorageThread_->GetStorage (),
+				"addMessage",
+				Qt::QueuedConnection,
+				Q_ARG (QVariantMap, data));
+	}
+
+	void Core::Process (QVariantMap data)
+	{
+		data ["Direction"] = data ["Direction"].toString ().toUpper ();
 
 		QMetaObject::invokeMethod (StorageThread_->GetStorage (),
 				"addMessage",

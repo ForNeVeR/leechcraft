@@ -1,7 +1,7 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2011-2012  Minh Ngo
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_LAURE_LAURE_H
-#define PLUGINS_LAURE_LAURE_H
+#pragma once
 #include <QObject>
 #include <interfaces/iinfo.h>
 #include <interfaces/ihavetabs.h>
@@ -54,11 +53,7 @@ namespace Laure
 
 		TabClasses_t TabClasses_;
 		QList<LaureWidget*> Others_;
-		ICoreProxy_ptr Proxy_;
 		Util::XmlSettingsDialog_ptr XmlSettingsDialog_;
-#ifdef HAVE_LASTFM
-		LastFMSubmitter *LFSubmitter_;
-#endif
 	public:
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
@@ -95,4 +90,3 @@ namespace Laure
 }
 }
 
-#endif

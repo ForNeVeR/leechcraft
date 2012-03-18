@@ -4,29 +4,21 @@
 		<label value="Laure" />
 		<groupbox>
 			<label value="Playlist" />
-			<item type="checkbox" property="Header1" default="true">
+			
+			<item type="checkbox" property="ArtistHeader" default="true">
 				<label value="Show Artist" />
 			</item>
-			<item type="checkbox" property="Header2" default="true">
+			<item type="checkbox" property="TitleHeader" default="true">
 				<label value="Show Title" />
 			</item>
-			<item type="checkbox" property="Header3" default="true">
+			<item type="checkbox" property="AlbumHeader" default="true">
 				<label value="Show Album" />
 			</item>
-			<item type="checkbox" property="Header4" default="true">
+			<item type="checkbox" property="GenreHeader" default="true">
 				<label value="Show Genre" />
 			</item>
-			<item type="checkbox" property="Header5" default="true">
+			<item type="checkbox" property="DateHeader" default="true">
 				<label value="Show Date" />
-			</item>
-		</groupbox>
-		<groupbox>
-			<label value="Last.FM" />
-			<item type="lineedit" property="lastfm.login">
-				<label value="Login:" />
-			</item>
-			<item type="lineedit" property="lastfm.password" password="true">
-				<label value="Password:" />
 			</item>
 		</groupbox>
 	</page>

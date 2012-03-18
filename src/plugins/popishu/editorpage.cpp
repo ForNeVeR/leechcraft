@@ -1,6 +1,6 @@
 /**********************************************************************
 1 * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "editorpage.h"
 #include <iostream>
+#include <algorithm>
 #include <QToolBar>
 #include <QFileDialog>
 #include <QFile>
@@ -272,7 +273,7 @@ namespace LeechCraft
 				return QList<QAction*> ();
 			}
 
-			QMap<QString, QList<QAction*> > EditorPage::GetWindowMenus () const
+			QMap<QString, QList<QAction*>> EditorPage::GetWindowMenus () const
 			{
 				return WindowMenus_;
 			}

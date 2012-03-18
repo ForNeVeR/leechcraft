@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,15 +88,18 @@ namespace LeechCraft
 		virtual ~MainWindow ();
 
 		SeparateTabWidget* GetTabWidget () const;
+		QSplitter* GetMainSplitter () const;
 		IShortcutProxy* GetShortcutProxy () const;
 		void SetAdditionalTitle (const QString&);
 		ToolbarGuard* GetGuard () const;
 		FancyPopupManager* GetFancyPopupManager () const;
 
+		QWidget* GetDockListWidget (Qt::DockWidgetArea) const;
+
 		void ToggleViewActionVisiblity (QDockWidget*, bool);
 
-		void AddMenus (const QMap<QString, QList<QAction*> >&);
-		void RemoveMenus (const QMap<QString, QList<QAction*> >&);
+		void AddMenus (const QMap<QString, QList<QAction*>>&);
+		void RemoveMenus (const QMap<QString, QList<QAction*>>&);
 	public slots:
 		void catchError (QString);
 	protected:

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,11 +32,15 @@ namespace Azoth
 		Q_OBJECT
 
 		Ui::MUCInviteDialog Ui_;
+		bool ManualMode_;
 	public:
 		MUCInviteDialog (IAccount*, QWidget* = 0);
 
 		QString GetID () const;
 		QString GetMessage () const;
+	private slots:
+		void on_Invitee__currentIndexChanged ();
+		void on_Invitee__editTextChanged ();
 	};
 }
 }

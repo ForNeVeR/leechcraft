@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +46,11 @@ class QTranslator;
 
 namespace LeechCraft
 {
+	namespace Util
+	{
+		class ShortcutManager;
+	}
+
 	namespace Plugins
 	{
 		namespace BitTorrent
@@ -81,7 +86,7 @@ namespace LeechCraft
 						IActionsExporter
 						IHaveDiagInfo);
 
-				boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> XmlSettingsDialog_;
+				std::shared_ptr<LeechCraft::Util::XmlSettingsDialog> XmlSettingsDialog_;
 				std::auto_ptr<AddTorrent> AddTorrentDialog_;
 				std::auto_ptr<QTimer> OverallStatsUpdateTimer_;
 				std::auto_ptr<QTime> LastPeersUpdate_;
@@ -112,7 +117,7 @@ namespace LeechCraft
 				SpeedSelectorAction *DownSelectorAction_,
 						*UpSelectorAction_;
 
-				QMap<QString, QAction*> ActionID2Action_;
+				Util::ShortcutManager *ShortcutMgr_;
 
 				enum
 				{
@@ -176,7 +181,7 @@ namespace LeechCraft
 				void SetTags (int, const QStringList&);
 
 				// IHaveSettings
-				boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> GetSettingsDialog () const;
+				std::shared_ptr<LeechCraft::Util::XmlSettingsDialog> GetSettingsDialog () const;
 
 				// IHaveShortcuts
 				void SetShortcut (const QString&, const QKeySequences_t&);

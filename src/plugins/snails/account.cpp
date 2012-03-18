@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <QDataStream>
 #include <QInputDialog>
 #include <QMutex>
+#include <QStandardItemModel>
 #include <util/util.h>
 #include "core.h"
 #include "accountconfigdialog.h"
@@ -29,6 +30,7 @@
 #include "accountthreadworker.h"
 #include "storage.h"
 #include "accountfoldermanager.h"
+#include "mailmodelmanager.h"
 
 namespace LeechCraft
 {
@@ -42,11 +44,16 @@ namespace Snails
 	, UseSASL_ (false)
 	, SASLRequired_ (false)
 	, UseTLS_ (true)
-	, TLSRequired_ (false)
+	, UseSSL_ (false)
+	, InSecurityRequired_ (false)
+	, OutSecurity_ (SecurityType::SSL)
+	, OutSecurityRequired_ (false)
 	, SMTPNeedsAuth_ (true)
 	, APOP_ (false)
 	, APOPFail_ (false)
 	, FolderManager_ (new AccountFolderManager (this))
+	, FoldersModel_ (new QStandardItemModel (this))
+	, MailModelMgr_ (new MailModelManager (this))
 	{
 		Thread_->start (QThread::LowPriority);
 	}
@@ -89,13 +96,58 @@ namespace Snails
 		return FolderManager_;
 	}
 
+	QAbstractItemModel* Account::GetMailModel () const
+	{
+		return MailModelMgr_->GetModel ();
+	}
+
+	QAbstractItemModel* Account::GetFoldersModel () const
+	{
+		return FoldersModel_;
+	}
+
+	void Account::ShowFolder (const QModelIndex& idx)
+	{
+		MailModelMgr_->clear ();
+
+		const QStringList& path = idx.data (FoldersRole::Path).toStringList ();
+		if (path.isEmpty ())
+			return;
+
+		MailModelMgr_->SetCurrentFolder (path);
+
+		QList<Message_ptr> messages;
+		const auto& ids = Core::Instance ().GetStorage ()->LoadIDs (this, path);
+		Q_FOREACH (const auto& id, ids)
+			messages << Core::Instance ().GetStorage ()->LoadMessage (this, id);
+
+		MailModelMgr_->appendMessages (messages);
+
+		Synchronize (path);
+	}
+
 	void Account::Synchronize (Account::FetchFlags flags)
 	{
+		MailModelMgr_->clear ();
+		MailModelMgr_->SetCurrentFolder (QStringList ("INBOX"));
+
+		auto folders = FolderManager_->GetSyncFolders ();
+		if (folders.isEmpty ())
+			folders << QStringList ("INBOX");
 		QMetaObject::invokeMethod (Thread_->GetWorker (),
 				"synchronize",
 				Qt::QueuedConnection,
 				Q_ARG (Account::FetchFlags, flags),
-				Q_ARG (QList<QStringList>, FolderManager_->GetSyncFolders ()));
+				Q_ARG (QList<QStringList>, folders));
+	}
+
+	void Account::Synchronize (const QStringList& path)
+	{
+		QMetaObject::invokeMethod (Thread_->GetWorker (),
+				"synchronize",
+				Qt::QueuedConnection,
+				Q_ARG (Account::FetchFlags, FetchFlag::FetchAll),
+				Q_ARG (QList<QStringList>, { path }));
 	}
 
 	void Account::FetchWholeMessage (Message_ptr msg)
@@ -108,10 +160,12 @@ namespace Snails
 
 	void Account::SendMessage (Message_ptr msg)
 	{
-		if (msg->GetFrom ().isEmpty ())
-			msg->SetFrom (UserName_);
-		if (msg->GetFromEmail ().isEmpty ())
-			msg->SetFromEmail (UserEmail_);
+		auto pair = msg->GetAddress (Message::Address::From);
+		if (pair.first.isEmpty ())
+			pair.first = UserName_;
+		if (pair.second.isEmpty ())
+			pair.second = UserEmail_;
+		msg->SetAddress (Message::Address::From, pair);
 
 		QMetaObject::invokeMethod (Thread_->GetWorker (),
 				"sendMessage",
@@ -130,6 +184,11 @@ namespace Snails
 				Q_ARG (QString, path));
 	}
 
+	void Account::UpdateReadStatus (const QByteArray& id, bool isRead)
+	{
+		MailModelMgr_->UpdateReadStatus (id, isRead);
+	}
+
 	QByteArray Account::Serialize () const
 	{
 		QMutexLocker l (GetMutex ());
@@ -137,14 +196,17 @@ namespace Snails
 		QByteArray result;
 
 		QDataStream out (&result, QIODevice::WriteOnly);
-		out << static_cast<quint8> (3);
+		out << static_cast<quint8> (5);
 		out << ID_
 			<< AccName_
 			<< Login_
 			<< UseSASL_
 			<< SASLRequired_
 			<< UseTLS_
-			<< TLSRequired_
+			<< UseSSL_
+			<< InSecurityRequired_
+			<< static_cast<qint8> (OutSecurity_)
+			<< OutSecurityRequired_
 			<< SMTPNeedsAuth_
 			<< APOP_
 			<< APOPFail_
@@ -168,7 +230,7 @@ namespace Snails
 		quint8 version = 0;
 		in >> version;
 
-		if (version < 1 || version > 3)
+		if (version < 1 || version > 5)
 			throw std::runtime_error (qPrintable ("Unknown version " + QString::number (version)));
 
 		quint8 inType = 0, outType = 0;
@@ -180,9 +242,24 @@ namespace Snails
 				>> Login_
 				>> UseSASL_
 				>> SASLRequired_
-				>> UseTLS_
-				>> TLSRequired_
-				>> SMTPNeedsAuth_
+				>> UseTLS_;
+
+			if (version >= 4)
+				in >> UseSSL_;
+			else
+				UseSSL_ = !UseTLS_;
+
+			in >> InSecurityRequired_;
+
+			if (version >= 5)
+			{
+				qint8 type = 0;
+				in >> type
+					>> OutSecurityRequired_;
+				OutSecurity_ = static_cast<SecurityType> (type);
+			}
+
+			in >> SMTPNeedsAuth_
 				>> APOP_
 				>> APOPFail_
 				>> InHost_
@@ -221,8 +298,19 @@ namespace Snails
 			dia->SetLogin (Login_);
 			dia->SetUseSASL (UseSASL_);
 			dia->SetSASLRequired (SASLRequired_);
-			dia->SetUseTLS (UseTLS_);
-			dia->SetTLSRequired (TLSRequired_);
+
+			if (UseSSL_)
+				dia->SetInSecurity (SecurityType::SSL);
+			else if (UseTLS_)
+				dia->SetInSecurity (SecurityType::TLS);
+			else
+				dia->SetInSecurity (SecurityType::No);
+
+			dia->SetInSecurityRequired (InSecurityRequired_);
+
+			dia->SetOutSecurity (OutSecurity_);
+			dia->SetOutSecurityRequired (OutSecurityRequired_);
+
 			dia->SetSMTPAuth (SMTPNeedsAuth_);
 			dia->SetAPOP (APOP_);
 			dia->SetAPOPRequired (APOPFail_);
@@ -257,8 +345,22 @@ namespace Snails
 			Login_ = dia->GetLogin ();
 			UseSASL_ = dia->GetUseSASL ();
 			SASLRequired_ = dia->GetSASLRequired ();
-			UseTLS_ = dia->GetUseTLS ();
-			TLSRequired_ = dia->GetTLSRequired ();
+
+			UseSSL_ = false;
+			UseTLS_ = false;
+			switch (dia->GetInSecurity ())
+			{
+			case SecurityType::SSL:
+				UseSSL_ = true;
+				break;
+			case SecurityType::TLS:
+				UseTLS_ = true;
+				break;
+			case SecurityType::No:
+				break;
+			}
+
+			InSecurityRequired_ = dia->GetInSecurityRequired ();
 			SMTPNeedsAuth_ = dia->GetSMTPAuth ();
 			APOP_ = dia->GetAPOP ();
 			APOPFail_ = dia->GetAPOPRequired ();
@@ -312,7 +414,7 @@ namespace Snails
 		switch (InType_)
 		{
 		case InType::IMAP:
-			result = "imap://";
+			result = UseSSL_ ? "imaps://" : "imap://";
 			break;
 		case InType::POP3:
 			result = "pop3://";
@@ -326,6 +428,7 @@ namespace Snails
 		{
 			result += Login_;
 			result += ":";
+			result.replace ('@', "%40");
 
 			QString pass;
 			getPassword (&pass);
@@ -334,10 +437,6 @@ namespace Snails
 		}
 
 		result += InHost_;
-
-		// TODO
-		//if (InType_ != ITMaildir)
-			//result += ":" + QString::number (InPort_);
 
 		qDebug () << Q_FUNC_INFO << result;
 
@@ -351,7 +450,7 @@ namespace Snails
 		if (OutType_ == OutType::Sendmail)
 			return "sendmail://localhost";
 
-		QString result = UseTLS_ ? "smtps://" : "smtp://";
+		QString result = OutSecurity_ == SecurityType::SSL ? "smtps://" : "smtp://";
 
 		if (SMTPNeedsAuth_)
 		{
@@ -372,7 +471,7 @@ namespace Snails
 			result += '@';
 		}
 
-		result += OutHost_ + ":" + QString::number (OutPort_);
+		result += OutHost_;
 
 		qDebug () << Q_FUNC_INFO << result;
 
@@ -464,19 +563,56 @@ namespace Snails
 	{
 		Core::Instance ().GetStorage ()->SaveMessages (this, messages);
 		emit mailChanged ();
-		emit gotNewMessages (messages);
+
+		MailModelMgr_->appendMessages (messages);
 	}
 
 	void Account::handleGotUpdatedMessages (QList<Message_ptr> messages)
 	{
 		Core::Instance ().GetStorage ()->SaveMessages (this, messages);
 		emit mailChanged ();
-		emit gotNewMessages (messages);
+
+		MailModelMgr_->appendMessages (messages);
+	}
+
+	void Account::handleGotOtherMessages (QList<QByteArray> ids, QStringList folder)
+	{
+		qDebug () << Q_FUNC_INFO << ids.size ();
+		QList<Message_ptr> msgs;
+		Q_FOREACH (auto id, ids)
+			msgs << Core::Instance ().GetStorage ()->LoadMessage (this, id);
+
+		MailModelMgr_->appendMessages (msgs);
+	}
+
+	namespace
+	{
+		QStandardItem* BuildFolderItem (QStringList folder, QStandardItem *root)
+		{
+			if (folder.isEmpty ())
+				return root;
+
+			const QString name = folder.takeFirst ();
+			for (int i = 0; i < root->rowCount (); ++i)
+				if (root->child (i)->text () == name)
+					return BuildFolderItem (folder, root->child (i));
+
+			QStandardItem *item = new QStandardItem (name);
+			root->appendRow (item);
+			return BuildFolderItem (folder, item);
+		}
 	}
 
 	void Account::handleGotFolders (QList<QStringList> folders)
 	{
 		FolderManager_->SetFolders (folders);
+
+		FoldersModel_->clear ();
+		Q_FOREACH (const QStringList& folder, folders)
+		{
+			auto item = BuildFolderItem (folder, FoldersModel_->invisibleRootItem ());
+			item->setData (folder, FoldersRole::Path);
+		}
 	}
 
 	void Account::handleMessageBodyFetched (Message_ptr msg)

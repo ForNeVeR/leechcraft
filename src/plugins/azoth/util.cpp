@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,10 +19,12 @@
 #include "util.h"
 #include <QString>
 #include <QWizard>
+#include <util/util.h>
 #include <interfaces/structures.h>
 #include "interfaces/iclentry.h"
 #include "interfaces/iaccount.h"
 #include "addaccountwizardfirstpage.h"
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -53,6 +55,7 @@ namespace Azoth
 	void InitiateAccountAddition(QWidget *parent)
 	{
 		QWizard *wizard = new QWizard (parent);
+		wizard->setAttribute (Qt::WA_DeleteOnClose);
 		wizard->setWindowTitle (QObject::tr ("Add account"));
 		wizard->addPage (new AddAccountWizardFirstPage (wizard));
 
@@ -73,6 +76,10 @@ namespace Azoth
 		const QString& id = entry->GetHumanReadableID ();
 		account->Authorize (entry->GetObject ());
 		account->RequestAuth (id);
+
+		const auto& e = Util::MakeANCancel ("org.LeechCraft.Azoth",
+				"org.LC.Plugins.Azoth.AuthRequestFrom/" + entry->GetEntryID ());
+		Core::Instance ().SendEntity (e);
 	}
 
 	void DenyAuthForEntry (ICLEntry *entry)
@@ -87,6 +94,10 @@ namespace Azoth
 			return;
 		}
 		account->DenyAuth (entry->GetObject ());
+
+		const auto& e = Util::MakeANCancel ("org.LeechCraft.Azoth",
+				"org.LC.Plugins.Azoth.AuthRequestFrom/" + entry->GetEntryID ());
+		Core::Instance ().SendEntity (e);
 	}
 }
 }

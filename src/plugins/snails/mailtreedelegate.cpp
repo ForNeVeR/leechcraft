@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "mailtreedelegate.h"
 #include <QPainter>
 #include "mailtab.h"
+#include "mailmodelmanager.h"
 
 namespace LeechCraft
 {
@@ -32,7 +33,7 @@ namespace Snails
 	void MailTreeDelegate::paint (QPainter *painter,
 			const QStyleOptionViewItem& item, const QModelIndex& index) const
 	{
-		const bool isRead = index.data (MailTab::Roles::ReadStatus).toBool ();
+		const bool isRead = index.data (MailModelManager::MailRole::ReadStatus).toBool ();
 
 		if (isRead)
 			QStyledItemDelegate::paint (painter, item, index);

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,16 +88,16 @@ namespace ChatHistory
 		Toolbar_->addAction (tr ("Previous"),
 				this,
 				SLOT (previousHistory ()))->
-					setProperty ("ActionIcon", "back");
+					setProperty ("ActionIcon", "go-previous");
 		Toolbar_->addAction (tr ("Next"),
 				this,
 				SLOT (nextHistory ()))->
-					setProperty ("ActionIcon", "forward");
+					setProperty ("ActionIcon", "go-next");
 		Toolbar_->addSeparator ();
 		Toolbar_->addAction (tr ("Clear"),
 				this,
 				SLOT (clearHistory ()))->
-					setProperty ("ActionIcon", "remove");
+					setProperty ("ActionIcon", "list-remove");
 
 		Core::Instance ()->GetOurAccounts ();
 	}
@@ -206,7 +206,8 @@ namespace ChatHistory
 
 		if (ourFocus)
 		{
-			const QModelIndex& idx = ContactsModel_->indexFromItem (ourFocus);
+			QModelIndex idx = ContactsModel_->indexFromItem (ourFocus);
+			idx = SortFilter_->mapFromSource (idx);
 			Ui_.Contacts_->selectionModel ()->
 					setCurrentIndex (idx, QItemSelectionModel::SelectCurrent);
 		}

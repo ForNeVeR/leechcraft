@@ -41,8 +41,9 @@ namespace TabsList
 
 		ShowList_ = new QAction (tr ("List of tabs"),
 				Proxy_->GetMainWindow ());
-		ShowList_->setProperty ("ActionIcon", "itemlist");
+		ShowList_->setProperty ("ActionIcon", "view-list-details");
 		ShowList_->setShortcut (QString ("Ctrl+Shift+L"));
+		ShowList_->setProperty ("Action/ID", GetUniqueID () + "_showlist");
 		connect (ShowList_,
 				SIGNAL (triggered ()),
 				this,
@@ -212,4 +213,4 @@ namespace TabsList
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_tabslist, LeechCraft::TabsList::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_tabslist, LeechCraft::TabsList::Plugin);

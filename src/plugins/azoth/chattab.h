@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <QDateTime>
 #include <interfaces/core/ihookproxy.h>
 #include <interfaces/ihavetabs.h>
+#include <interfaces/ihaverecoverabletabs.h>
 #include "interfaces/azothcommon.h"
 #include "ui_chattab.h"
 
@@ -41,16 +42,16 @@ namespace Azoth
 
 	class ChatTab : public QWidget
 				  , public ITabWidget
+				  , public IRecoverableTab
 	{
 		Q_OBJECT
-		Q_INTERFACES (ITabWidget)
+		Q_INTERFACES (ITabWidget IRecoverableTab)
 
 		static QObject *S_ParentMultiTabs_;
 
 		Ui::ChatTab Ui_;
 		QToolBar *TabToolbar_;
 		QAction *ToggleRichText_;
-		QAction *SendFile_;
 		QAction *Call_;
 #ifdef ENABLE_CRYPT
 		QAction *EnableEncryption_;
@@ -105,9 +106,14 @@ namespace Azoth
 		void TabMadeCurrent ();
 		void TabLostCurrent ();
 
+		QByteArray GetTabRecoverData () const;
+		QString GetTabRecoverName () const;
+		QIcon GetTabRecoverIcon () const;
+
 		void HandleMUCParticipantsChanged ();
 
 		QObject* GetCLEntry () const;
+		QString GetSelectedVariant () const;
 	public slots:
 		void prepareMessageText (const QString&);
 		void appendMessageText (const QString&);
@@ -121,10 +127,10 @@ namespace Azoth
 		void on_MsgEdit__textChanged ();
 		void on_SubjectButton__toggled (bool);
 		void on_SubjChange__released ();
+		void on_View__loadFinished (bool);
 		void handleClearChat ();
 		void handleRichTextToggled ();
 		void handleQuoteSelection ();
-		void handleSendFile ();
 #ifdef ENABLE_MEDIACALLS
 		void handleCallRequested ();
 		void handleCall (QObject*);
@@ -144,12 +150,13 @@ namespace Azoth
 		void handleViewLinkClicked (const QUrl&);
 		void handleHistoryUp ();
 		void handleHistoryDown ();
-		void handleAddToBookmarks ();
-		void handleConfigureMUC ();
 		void typeTimeout ();
 
 		void handleGotLastMessages (QObject*, const QList<QObject*>&);
 
+		void handleSendButtonVisible ();
+		void handleRichFormatterPosition ();
+		void handleFontSettingsChanged ();
 		void handleFontSizeChanged ();
 	private:
 		template<typename T>
@@ -160,6 +167,7 @@ namespace Azoth
 		void HandleMUC ();
 		void InitExtraActions ();
 		void InitMsgEdit ();
+		void RegisterSettings ();
 
 		void RequestLogs ();
 
@@ -198,6 +206,8 @@ namespace Azoth
 		void changeTabIcon (QWidget*, const QIcon&);
 		void needToClose (ChatTab*);
 		void entryMadeCurrent (QObject*);
+
+		void tabRecoverDataChanged ();
 
 		// Hooks
 		void hookChatTabCreated (LeechCraft::IHookProxy_ptr proxy,

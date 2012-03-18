@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #ifndef PLUGINS_LACKMAN_CORE_H
 #define PLUGINS_LACKMAN_CORE_H
-#include <boost/shared_ptr.hpp>
 #include <QObject>
 #include <QModelIndex>
 #include <interfaces/iinfo.h>

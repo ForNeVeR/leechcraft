@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,8 @@ namespace AdvancedNotifications
 	, EnableAction_ (new QAction (tr ("Enable sound notifications"), this))
 	{
 		EnableAction_->setCheckable (true);
-		EnableAction_->setProperty ("ActionIcon", "bell");
+		EnableAction_->setProperty ("ActionIcon", "preferences-desktop-sound");
+		EnableAction_->setProperty ("Action/ID", "org.LeechCraft.AdvancedNotifications.EnableSound");
 
 		connect (EnableAction_,
 				SIGNAL (toggled (bool)),

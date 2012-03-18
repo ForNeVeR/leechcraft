@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,19 +42,19 @@ namespace LeechCraft
 		Ui_.ListContents_->setLayout (new QVBoxLayout);
 		Ui_.DialogContents_->setLayout (new QVBoxLayout);
 
-		ActionBack_->setProperty ("ActionIcon", "back");
+		ActionBack_->setProperty ("ActionIcon", "go-previous");
 		connect (ActionBack_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleBackRequested ()));
 
-		ActionApply_->setProperty ("ActionIcon", "apply");
+		ActionApply_->setProperty ("ActionIcon", "dialog-ok");
 		connect (ActionApply_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleApply ()));
 
-		ActionCancel_->setProperty ("ActionIcon", "cancel");
+		ActionCancel_->setProperty ("ActionIcon", "dialog-cancel");
 		connect (ActionCancel_,
 				SIGNAL (triggered ()),
 				this,
@@ -63,13 +63,13 @@ namespace LeechCraft
 
 	namespace
 	{
-		QList<QPair<QString, QString> > GetFirstClassPlugins (IPlugin2 *ip2)
+		QList<QPair<QString, QString>> GetFirstClassPlugins (IPlugin2 *ip2)
 		{
 			const QSet<QByteArray>& classes = ip2->GetPluginClasses ();
 			const QObjectList& pReady = Core::Instance ()
 					.GetPluginManager ()->GetAllCastableRoots<IPluginReady*> ();
 
-			QList<QPair<QString, QString> > result;
+			QList<QPair<QString, QString>> result;
 
 			Q_FOREACH (QObject *obj, pReady)
 			{
@@ -110,15 +110,15 @@ namespace LeechCraft
 			return origSplit.join (" ");
 		}
 
-		QMap<QObject*, QList<QPair<QString, QString> > > BuildGroups (const QObjectList& settables)
+		QMap<QObject*, QList<QPair<QString, QString>>> BuildGroups (const QObjectList& settables)
 		{
-			QMap<QObject*, QList<QPair<QString, QString> > > result;
+			QMap<QObject*, QList<QPair<QString, QString>>> result;
 			Q_FOREACH (QObject *obj, settables)
 			{
 				IPlugin2 *ip2 = qobject_cast<IPlugin2*> (obj);
-				const QList<QPair<QString, QString> >& firstClass = ip2 ?
+				const auto& firstClass = ip2 ?
 						GetFirstClassPlugins (ip2) :
-						QList<QPair<QString, QString> > ();
+						QList<QPair<QString, QString>> ();
 
 				if (obj == Core::Instance ().GetCoreInstanceObject ())
 					result [obj] << qMakePair (QString ("LeechCraft"), QString ());
@@ -137,15 +137,13 @@ namespace LeechCraft
 		const QObjectList& settables = Core::Instance ()
 				.GetPluginManager ()->GetAllCastableRoots<IHaveSettings*> ();
 
-		const QMap<QObject*, QList<QPair<QString, QString> > >& obj2groups = BuildGroups (settables);
-		QSet<QPair<QString, QString> > allGroups;
-		QList<QPair<QString, QString> > list;
-		Q_FOREACH (list, obj2groups.values ())
-			allGroups += QSet<QPair<QString, QString> >::fromList (list);
+		const auto& obj2groups = BuildGroups (settables);
+		QSet<QPair<QString, QString>> allGroups;
+		Q_FOREACH (auto list, obj2groups.values ())
+			allGroups += QSet<QPair<QString, QString>>::fromList (list);
 
 		QMap<QString, QGroupBox*> group2box;
-		QPair<QString, QString> pair;
-		Q_FOREACH (pair, allGroups)
+		Q_FOREACH (auto pair, allGroups)
 		{
 			QGroupBox *box = new QGroupBox (pair.first);
 			box->setLayout (new Util::FlowLayout);
@@ -171,7 +169,7 @@ namespace LeechCraft
 			const QIcon& icon = ii->GetIcon ().isNull () ?
 					QIcon (":/resources/images/defaultpluginicon.svg") :
 					ii->GetIcon ();
-			Q_FOREACH (pair, obj2groups [obj])
+			Q_FOREACH (auto pair, obj2groups [obj])
 			{
 				QToolButton *butt = new QToolButton;
 				butt->setToolButtonStyle (Qt::ToolButtonTextUnderIcon);
@@ -225,17 +223,8 @@ namespace LeechCraft
 		return Toolbar_;
 	}
 
-	void SettingsTab::handleSettingsCalled ()
+	void SettingsTab::showSettingsFor (QObject *obj)
 	{
-		QObject *obj = sender ()->property ("SettableObject").value<QObject*> ();
-		if (!obj)
-		{
-			qWarning () << Q_FUNC_INFO
-					<< "empty object"
-					<< sender ();
-			return;
-		}
-
 		CurrentIHS_ = obj;
 
 		IInfo *ii = qobject_cast<IInfo*> (obj);
@@ -257,6 +246,21 @@ namespace LeechCraft
 		Toolbar_->addSeparator ();
 		Toolbar_->addAction (ActionApply_);
 		Toolbar_->addAction (ActionCancel_);
+	}
+
+	void SettingsTab::handleSettingsCalled ()
+	{
+		QObject *obj = sender ()->property ("SettableObject").value<QObject*> ();
+		if (!obj)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "empty object"
+					<< sender ();
+			return;
+		}
+
+		handleBackRequested ();
+		showSettingsFor (obj);
 	}
 
 	void SettingsTab::handleBackRequested ()

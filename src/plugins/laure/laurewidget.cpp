@@ -1,7 +1,7 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2011-2012  Minh Ngo
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
  **********************************************************************/
 
 #include "laurewidget.h"
+#include <QFileInfo>
+#include <QFileInfoList>
 #include <QAction>
 #include <QFileDialog>
 #include <QDebug>
@@ -27,6 +29,7 @@
 #include <QTime>
 #include <QKeyEvent>
 #include <QTimer>
+#include <QMenu>
 #include <interfaces/core/icoreproxy.h>
 #include "laure.h"
 #include "playpauseaction.h"
@@ -37,6 +40,7 @@
 #include "xmlsettingsmanager.h"
 #include "separateplayer.h"
 
+
 namespace LeechCraft
 {
 namespace Laure
@@ -46,34 +50,25 @@ namespace Laure
 	LaureWidget::LaureWidget (QWidget *parent, Qt::WindowFlags f)
 	: QWidget (parent, f)
 	, ToolBar_ (new QToolBar (this))
-	, VLCWrapper_ (new VLCWrapper (this))
-	{	
+	, VLCWrapper_ (new VLCWrapper)
+	, SeparatePlayer_ (new SeparatePlayer)
+	, DetachedVideo_ (new QAction (tr ("Detached video"), this))
+	, PlayListAction_ (new QAction (tr ("Playlist"), this))
+	, SubtitleAction_ (new QAction (tr ("Subtitle"), this))
+	, SubtitleMenu_ (new QMenu (this))
+	{
 		Ui_.setupUi (this);
-		Ui_.Player_->SetVLCWrapper (VLCWrapper_);
 		
-		SeparatePlayer_.reset (new SeparatePlayer);
+		Ui_.PlayListWidget_->Init (VLCWrapper_);
+		Ui_.Player_->SetVLCWrapper (VLCWrapper_);
 		
 		connect (SeparatePlayer_.get (),
 				SIGNAL (closed ()),
 				this,
 				SLOT (handleSeparatePlayerClosed ()));
 		
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (metaChangedRequest (libvlc_meta_t, QString, int)),
-				VLCWrapper_,
-				SLOT (setMeta (libvlc_meta_t, QString, int)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (itemAddedRequest (QString)),
-				VLCWrapper_,
-				SLOT (addRow (QString)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (itemRemoved (int)),
-				VLCWrapper_,
-				SLOT (removeRow (int)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (playItem (int)),
-				VLCWrapper_,
-				SLOT (playItem (int)));
+		VLCWrapper *wrapper = VLCWrapper_.get ();
+
 		connect (Ui_.PlayListWidget_,
 				SIGNAL (gotEntity (Entity)),
 				this,
@@ -82,10 +77,6 @@ namespace Laure
 				SIGNAL (delegateEntity (Entity, int*, QObject**)),
 				this,
 				SIGNAL (delegateEntity (Entity, int*, QObject**)));
-		connect (Ui_.PlayListWidget_,
-				SIGNAL (playbackModeChanged (PlaybackMode)),
-				VLCWrapper_,
-				SLOT (setPlaybackMode (PlaybackMode)));
 		
 		connect (Ui_.Player_,
 				SIGNAL (timeout ()),
@@ -97,59 +88,60 @@ namespace Laure
 				SLOT (setPosition (int)));
 		connect (Ui_.VolumeSlider_,
 				SIGNAL (valueChanged (int)),
-				VLCWrapper_,
+				wrapper,
 				SLOT (setVolume (int)));
-		
-		connect (VLCWrapper_,
-				SIGNAL (currentTrackMeta (MediaMeta)),
-				this,
-				SIGNAL (currentTrackMeta (MediaMeta)));
-		connect (VLCWrapper_,
-				SIGNAL (trackFinished ()),
-				this,
-				SIGNAL (trackFinished ()));
-		connect (VLCWrapper_,
-				SIGNAL (itemAdded (MediaMeta, QString)),
-				Ui_.PlayListWidget_,
-				SLOT (handleItemAdded (MediaMeta, QString)));
-		connect (VLCWrapper_,
+				
+		connect (wrapper,
 				SIGNAL (gotEntity (Entity)),
 				this,
 				SIGNAL (gotEntity (Entity)));
-		connect (VLCWrapper_,
+		
+		connect (wrapper,
 				SIGNAL (delegateEntity (Entity, int*, QObject**)),
 				this,
 				SIGNAL (delegateEntity (Entity, int*, QObject**)));
-
-		connect (VLCWrapper_,
-				SIGNAL (itemPlayed (int)),
-				Ui_.PlayListWidget_,
-				SLOT (handleItemPlayed (int)));
+		connect (wrapper,
+				SIGNAL (currentItemMeta (MediaMeta)),
+				this,
+				SLOT (updateSubtitleMenu (MediaMeta)));
 		
 		connect (this,
 				SIGNAL (addItem (QString)),
-				VLCWrapper_,
+				wrapper,
 				SLOT (addRow (QString)));
+		
+		const int playlistWidth = XmlSettingsManager::Instance ()
+				.property ("PlayListWidgetWidth").toInt ();
+		
+		Ui_.Splitter_->setSizes (QList<int> () << size ().width () << playlistWidth);
 		
 		InitToolBar ();
 		InitCommandFrame ();
+	}
+	
+	LaureWidget::~LaureWidget ()
+	{
+		XmlSettingsManager::Instance ().setProperty ("PlayListWidgetWidth",
+				Ui_.PlayListWidget_->size ().width ());
 	}
 	
 	void LaureWidget::InitToolBar ()
 	{
 		QAction *actionOpenFile = new QAction (tr ("Open File"), this);
 		QAction *actionOpenURL = new QAction (tr ("Open URL"), this);
-		QAction *playList = new QAction (tr ("Playlist"), this);
+		PlayListAction_ = new QAction (tr ("Playlist"), this);
 		QAction *videoMode = new QAction (tr ("Video mode"), this);
 		DetachedVideo_ = new QAction (tr ("Detached video"), this);
+		SubtitleAction_ = new QAction (tr ("Subtitle"), this);
 		
 		actionOpenFile->setProperty ("ActionIcon", "folder");
-		actionOpenURL->setProperty ("ActionIcon", "networkmonitor_plugin");
-		playList->setProperty ("ActionIcon", "itemlist");
-		videoMode->setProperty ("ActionIcon", "video");
-		DetachedVideo_->setProperty ("ActionIcon", "fullscreen");
+		actionOpenURL->setProperty ("ActionIcon", "document-open-remote");
+		PlayListAction_->setProperty ("ActionIcon", "format-list-unordered");
+		videoMode->setProperty ("ActionIcon", "tool-animator");
+		DetachedVideo_->setProperty ("ActionIcon", "view-fullscreen");
+		SubtitleAction_->setProperty ("ActionIcon", "preferences-desktop-font");
 		
-		playList->setCheckable (true);
+		PlayListAction_->setCheckable (true);
 		videoMode->setCheckable (true);
 		DetachedVideo_->setCheckable (true);
 		
@@ -158,9 +150,13 @@ namespace Laure
 		
 		ToolBar_->addAction (actionOpenFile);
 		ToolBar_->addAction (actionOpenURL);
-		ToolBar_->addAction (playList);
+		ToolBar_->addAction (PlayListAction_);
 		ToolBar_->addAction (videoMode);
 		ToolBar_->addAction (DetachedVideo_);
+		ToolBar_->addAction (SubtitleAction_);
+		
+		SubtitleAction_->setMenu (SubtitleMenu_);
+		SubtitleAction_->setMenuRole (QAction::ApplicationSpecificRole);
 		
 		connect (actionOpenFile,
 				SIGNAL (triggered (bool)),
@@ -170,7 +166,7 @@ namespace Laure
 				SIGNAL (triggered (bool)),
 				this,
 				SLOT (handleOpenURL ()));
-		connect (playList,
+		connect (PlayListAction_,
 				SIGNAL (triggered (bool)),
 				Ui_.PlayListWidget_,
 				SLOT (setVisible (bool)));
@@ -182,6 +178,68 @@ namespace Laure
 				SIGNAL (triggered (bool)),
 				this,
 				SLOT (handleDetachPlayer (bool)));
+		connect (SubtitleAction_,
+				SIGNAL (triggered (bool)),
+				this,
+				SLOT (showSubtitleMenu ()));
+	}
+
+	void LaureWidget::showSubtitleMenu ()
+	{
+		SubtitleMenu_->popup (QCursor::pos ());
+	}
+	
+	void LaureWidget::updateSubtitleMenu (const MediaMeta& meta)
+	{
+		const bool isVideo = meta.Type_ == libvlc_track_video;
+		SubtitleMenu_->clear ();
+		SubtitleAction_->setVisible (isVideo);
+		if (!isVideo)
+			return;
+		
+		const QFileInfo metaFileInfo = QFileInfo (meta.Location_.path ());
+		const QString& baseName = metaFileInfo.baseName ();
+		QDir dir (metaFileInfo.dir ());
+		
+		dir.setFilter (QDir::Files | QDir::NoSymLinks);
+		dir.setSorting (QDir::Reversed);
+		dir.setNameFilters (QStringList ()
+				<< baseName + "*.srt"
+				<< baseName + "*.ass");
+		const QFileInfoList& list = dir.entryInfoList ();
+		
+		VLCWrapper *wrapper = VLCWrapper_.get ();
+		Q_FOREACH (const QFileInfo& file, list)
+		{
+			QAction *subtitleMenuAction = new QAction (file.fileName (), SubtitleMenu_);
+			subtitleMenuAction->setData (file.absoluteFilePath ());
+			SubtitleMenu_->addAction (subtitleMenuAction);
+			
+			connect (subtitleMenuAction,
+					SIGNAL (triggered (bool)),
+					wrapper,
+					SLOT (setSubtitle ()));
+		}
+		
+		QAction *otherSubtitle = new QAction (tr ("Other subtitle..."), SubtitleMenu_);
+		SubtitleMenu_->addAction (otherSubtitle);
+		
+		connect (otherSubtitle,
+				SIGNAL (triggered (bool)),
+				this,
+				SLOT (subtitleDialog ()));
+	}
+	
+	void LaureWidget::subtitleDialog ()
+	{
+		const QString& fileName = QFileDialog::getOpenFileName (this,
+				tr ("Open subtitles"), QDir::homePath (),
+				tr ("Subtitles (*.srt *.ass);;All (*)"));
+		
+		if (fileName.isEmpty ())
+			return;
+		
+		VLCWrapper_->setSubtitle (fileName);
 	}
 	
 	void LaureWidget::InitCommandFrame ()
@@ -191,25 +249,25 @@ namespace Laure
 		bar->setIconSize (QSize (32, 32));
 		
 		auto actionPlay = new PlayPauseAction (tr ("Play"), Ui_.CommandFrame_);
-	
 		QAction *actionStop = new QAction (tr ("Stop"), Ui_.CommandFrame_);
 		QAction *actionNext = new QAction (tr ("Next"), Ui_.CommandFrame_);
 		QAction *actionPrev = new QAction (tr ("Previous"), Ui_.CommandFrame_);
 		
-		actionStop->setProperty ("ActionIcon", "media_stop");
-		actionNext->setProperty ("ActionIcon", "media_skip_forward");
-		actionPrev->setProperty ("ActionIcon", "media_skip_backward");
+		actionStop->setProperty ("ActionIcon", "media-playback-stop");
+		actionNext->setProperty ("ActionIcon", "media-skip-forward");
+		actionPrev->setProperty ("ActionIcon", "media-skip-backward");
 		
 		bar->addAction (actionPrev);
 		bar->addAction (actionPlay);
 		bar->addAction (actionStop);
 		bar->addAction (actionNext);
 		
-		connect (VLCWrapper_,
+		VLCWrapper *wrapper = VLCWrapper_.get ();
+		connect (wrapper,
 				SIGNAL (paused ()),
 				actionPlay,
 				SLOT (handlePause ()));
-		connect (VLCWrapper_,
+		connect (wrapper,
 				SIGNAL (itemPlayed (int)),
 				actionPlay,
 				SLOT (handlePlay ()));
@@ -219,23 +277,23 @@ namespace Laure
 				SLOT (handlePause ()));
 		connect (actionStop,
 				SIGNAL (triggered (bool)),
-				VLCWrapper_,
+				wrapper,
 				SLOT (stop ()));
 		connect (actionNext,
 				SIGNAL (triggered (bool)),
-				VLCWrapper_,
+				wrapper,
 				SLOT (next ()));
 		connect (actionPrev,
 				SIGNAL (triggered (bool)),
-				VLCWrapper_,
+				wrapper,
 				SLOT (prev ()));
 		connect (actionPlay,
 				SIGNAL (play ()),
-				VLCWrapper_,
+				wrapper,
 				SLOT (play ()));
 		connect (actionPlay,
 				SIGNAL (pause ()),
-				VLCWrapper_,
+				wrapper,
 				SLOT (pause ()));
 		connect (this,
 				SIGNAL (playPause ()),
@@ -259,7 +317,7 @@ namespace Laure
 
 	TabClassInfo LaureWidget::GetTabClassInfo () const
 	{
-		return qobject_cast<Plugin *> (S_ParentMultiTabs_)->GetTabClasses ().first ();
+		return qobject_cast<Plugin*> (S_ParentMultiTabs_)->GetTabClasses ().first ();
 	}
 	
 	QObject* LaureWidget::ParentMultiTabs ()
@@ -309,10 +367,21 @@ namespace Laure
 	void LaureWidget::handleVideoMode (bool checked)
 	{
 		if (checked)
+		{
+			const int playlistWidth = XmlSettingsManager::Instance ()
+					.property ("PlayListWidgetWidth").toInt ();
 			Ui_.Splitter_->addWidget (Ui_.PlayListWidget_);
+			PlayListAction_->setChecked (false);
+			Ui_.Splitter_->setSizes (QList<int> () << size ().width () << playlistWidth);
+		}
 		else
+		{
+			XmlSettingsManager::Instance ().setProperty ("PlayListWidgetWidth",
+					Ui_.PlayListWidget_->size ().width ());
 			Ui_.GlobalGridLayout_->addWidget (Ui_.PlayListWidget_, 0, 1, 1, 4);
-
+		}
+		
+		PlayListAction_->setEnabled (checked);
 		Ui_.Player_->setVisible (checked);
 		Ui_.PlayListWidget_->setVisible (!checked);
 	}

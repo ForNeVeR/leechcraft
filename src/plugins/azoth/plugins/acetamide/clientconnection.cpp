@@ -45,22 +45,6 @@ namespace Acetamide
 		ProxyObject_ = qobject_cast<IProxyObject*> (proxyObj);
 	}
 
-	QObject* ClientConnection::GetCLEntry (const QString& id,
-			const QString& nickname) const
-	{
-		if (ServerHandlers_.contains (id) && nickname.isEmpty ())
-			return ServerHandlers_ [id]->GetCLEntry ();
-		else if (!nickname.isEmpty ())
-			return ServerHandlers_ [id]->GetParticipantEntry (nickname)
-					.get ();
-		else
-			Q_FOREACH (IrcServerHandler *ish, ServerHandlers_.values ())
-				if (ish->IsChannelExists (id))
-					return ish->GetChannelHandler (id)->GetCLEntry ();
-
-		return NULL;
-	}
-
 	void ClientConnection::Sinchronize ()
 	{
 	}
@@ -86,7 +70,7 @@ namespace Acetamide
 				QString::number (server.ServerPort_);
 
 		IrcServerHandler *ish = new IrcServerHandler (server, Account_);
-		
+
 		ish->SetConsoleEnabled (IsConsoleEnabled_);
 		if (IsConsoleEnabled_)
 			connect (ish,
@@ -100,7 +84,7 @@ namespace Acetamide
 					this,
 					SLOT (handleLog (IMessage::Direction, const QString&)));
 		ServerHandlers_ [serverId] = ish;
-		
+
 		ish->ConnectToServer ();
 	}
 
@@ -146,13 +130,13 @@ namespace Acetamide
 
 			res << QVariant::fromValue (result);
 		}
-		XmlSettingsManager::Instance().setProperty ("Bookmarks",
+		XmlSettingsManager::Instance ().setProperty ("Bookmarks",
 				QVariant::fromValue (res));
 	}
 
 	QList<IrcBookmark> ClientConnection::GetBookmarks () const
 	{
-		QList<QVariant> list = XmlSettingsManager::Instance().Property ("Bookmarks",
+		QList<QVariant> list = XmlSettingsManager::Instance ().Property ("Bookmarks",
 				QList<QVariant> ()).toList ();
 
 		QList<IrcBookmark> bookmarks;
@@ -175,39 +159,27 @@ namespace Acetamide
 		return bookmarks;
 	}
 
-	IrcServerHandler* ClientConnection::GetIrcServerHandler (const QString& id)
+	IrcServerHandler* ClientConnection::GetIrcServerHandler (const QString& id) const
 	{
 		return ServerHandlers_ [id];
 	}
 
-	void ClientConnection::ClosePrivateChat (QString serverId,
-			const QString& nick)
-	{
-		ServerHandlers_ [serverId]->ClosePrivateChat (nick);
-	}
-
-	void ClientConnection::CloseServer (const QString& serverId)
-	{
-		if (ServerHandlers_.contains (serverId))
-			ServerHandlers_ [serverId]->DisconnectFromServer ();
-	}
-
 	void ClientConnection::DisconnectFromAll ()
 	{
-		Q_FOREACH (IrcServerHandler *ish, ServerHandlers_.values ())
-			ish->DisconnectFromServer ();
+		Q_FOREACH (auto ish, ServerHandlers_.values ())
+			ish->SendQuit ();
 	}
 
 	void ClientConnection::QuitServer (const QStringList& list)
 	{
-		IrcServerHandler *ish = ServerHandlers_ [list.last ()];
+		auto ish = ServerHandlers_ [list.last ()];
 		ish->DisconnectFromServer ();
 	}
 
 	void ClientConnection::SetConsoleEnabled (bool enabled)
 	{
 		IsConsoleEnabled_ = enabled;
-		Q_FOREACH (IrcServerHandler *srv, ServerHandlers_.values ())
+		Q_FOREACH (auto srv, ServerHandlers_.values ())
 		{
 			srv->SetConsoleEnabled (enabled);
 			if (enabled)
@@ -224,10 +196,51 @@ namespace Acetamide
 		}
 	}
 
+	void ClientConnection::ClosePrivateChat (const QString& serverID, QString nick)
+	{
+		if (ServerHandlers_.contains (serverID))
+			ServerHandlers_ [serverID]->ClosePrivateChat (nick);
+	}
+
+	void ClientConnection::FetchVCard (const QString& serverId, const QString& nick)
+	{
+		if (!ServerHandlers_.contains (serverId))
+			return;
+
+		ServerHandlers_ [serverId]->VCardRequest (nick);
+	}
+
+	void ClientConnection::SetAway (bool away, const QString& message)
+	{
+		QString msg = message;
+		if (msg.isEmpty ())
+			msg = GetStatusStringForState (SAway);
+
+		if (!away)
+			msg.clear ();
+
+		QList<IrcServerHandler*> handlers = ServerHandlers_.values ();
+		std::for_each (handlers.begin (), handlers.end (),
+				[msg] (decltype (handlers.front ()) handler)
+				{
+					handler->SetAway (msg);
+				});
+	}
+
+	QString ClientConnection::GetStatusStringForState (State state)
+	{
+		const QString& statusKey = "DefaultStatus" + QString::number (state);
+		return ProxyObject_->GetSettingsManager ()->
+				property (statusKey.toUtf8 ()).toString ();
+	}
+
 	void ClientConnection::serverConnected (const QString& serverId)
 	{
 		if (Account_->GetState ().State_ == SOffline)
+		{
 			Account_->ChangeState (EntryStatus (SOnline, QString ()));
+			Account_->SetState (EntryStatus (SOnline, QString ()));
+		}
 		emit gotRosterItems (QList<QObject*> () <<
 				ServerHandlers_ [serverId]->GetCLEntry ());
 	}
@@ -236,9 +249,9 @@ namespace Acetamide
 	{
 		Account_->handleEntryRemoved (ServerHandlers_ [serverId]->
 				GetCLEntry ());
-		ServerHandlers_.remove (serverId);
+		ServerHandlers_.take (serverId)->deleteLater ();
 		if (!ServerHandlers_.count ())
-			Account_->ChangeState (EntryStatus (SOffline,
+			Account_->SetState (EntryStatus (SOffline,
 					QString ()));
 	}
 
@@ -258,6 +271,7 @@ namespace Acetamide
 				PCritical_);
 		Core::Instance ().SendEntity (e);
 		Account_->ChangeState (EntryStatus (SOffline, QString ()));
+		Account_->SetState (EntryStatus (SOffline, QString ()));
 	}
 
 	void ClientConnection::handleLog (IMessage::Direction type, const QString& msg)

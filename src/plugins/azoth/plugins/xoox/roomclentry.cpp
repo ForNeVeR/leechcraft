@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -294,17 +294,17 @@ namespace Xoox
 		RH_->GetRoom ()->sendInvitation (id, msg);
 	}
 
-	QMap<QByteArray, QList<QByteArray> > RoomCLEntry::GetPossiblePerms () const
+	QMap<QByteArray, QList<QByteArray>> RoomCLEntry::GetPossiblePerms () const
 	{
 		return Perms_;
 	}
 
-	QMap<QByteArray, QList<QByteArray> > RoomCLEntry::GetPerms (QObject *participant) const
+	QMap<QByteArray, QList<QByteArray>> RoomCLEntry::GetPerms (QObject *participant) const
 	{
 		if (!participant)
 			participant = RH_->GetSelf ();
 
-		QMap<QByteArray, QList<QByteArray> > result;
+		QMap<QByteArray, QList<QByteArray>> result;
 		RoomParticipantEntry *entry = qobject_cast<RoomParticipantEntry*> (participant);
 		if (!entry)
 		{

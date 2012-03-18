@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ namespace ChatHistory
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon ();
+		return QIcon (":/azoth/chathistory/resources/images/chathistory.svg");
 	}
 
 	QSet<QByteArray> Plugin::GetPluginClasses () const
@@ -96,9 +96,9 @@ namespace ChatHistory
 		return QList<QAction*> ();
 	}
 
-	QMap<QString, QList<QAction*> > Plugin::GetMenuActions () const
+	QMap<QString, QList<QAction*>> Plugin::GetMenuActions () const
 	{
-		QMap<QString, QList<QAction*> > result;
+		QMap<QString, QList<QAction*>> result;
 		result ["Azoth"] << ActionHistory_;
 		return result;
 	}
@@ -155,6 +155,11 @@ namespace ChatHistory
 		RequestedLogs_ [accId] [entryId] = entryObj;
 	}
 
+	void Plugin::AddRawMessage (const QVariantMap& map)
+	{
+		Core::Instance ()->Process (map);
+	}
+
 	void Plugin::initPlugin (QObject *proxy)
 	{
 		Core::Instance ()->SetPluginProxy (proxy);
@@ -169,24 +174,24 @@ namespace ChatHistory
 		QStringList ours;
 		ours << "contactListContextMenu"
 			<< "tabContextMenu";
-		if (action->property ("ActionIcon") == "history")
+		if (action->property ("ActionIcon") == "view-history")
 			ours << "toolbar";
 
 		proxy->SetReturnValue (proxy->GetReturnValue ().toStringList () + ours);
+	}
+
+	void Plugin::hookEntryActionsRemoved (IHookProxy_ptr, QObject *entry)
+	{
+		delete Entry2ActionHistory_.take (entry);
+		delete Entry2ActionEnableHistory_.take (entry);
 	}
 
 	void Plugin::hookEntryActionsRequested (IHookProxy_ptr proxy, QObject *entry)
 	{
 		if (!Entry2ActionHistory_.contains (entry))
 		{
-			connect (entry,
-					SIGNAL (destroyed ()),
-					this,
-					SLOT (handleEntryDestroyed ()),
-					Qt::UniqueConnection);
-
 			QAction *action = new QAction (tr ("History..."), entry);
-			action->setProperty ("ActionIcon", "history");
+			action->setProperty ("ActionIcon", "view-history");
 			action->setProperty ("Azoth/ChatHistory/IsGood", true);
 			action->setProperty ("Azoth/ChatHistory/Entry",
 					QVariant::fromValue<QObject*> (entry));
@@ -198,12 +203,6 @@ namespace ChatHistory
 		}
 		if (!Entry2ActionEnableHistory_.contains (entry))
 		{
-			connect (entry,
-					SIGNAL (destroyed ()),
-					this,
-					SLOT (handleEntryDestroyed ()),
-					Qt::UniqueConnection);
-
 			QAction *action = new QAction (tr ("Logging enabled"), entry);
 			action->setCheckable (true);
 			action->setChecked (Core::Instance ()->IsLoggingEnabled (entry));
@@ -341,13 +340,8 @@ namespace ChatHistory
 
 		Core::Instance ()->SetLoggingEnabled (obj, enable);
 	}
-
-	void Plugin::handleEntryDestroyed ()
-	{
-		Entry2ActionHistory_.remove (sender ());
-	}
 }
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_azoth_chathistory, LeechCraft::Azoth::ChatHistory::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_azoth_chathistory, LeechCraft::Azoth::ChatHistory::Plugin);

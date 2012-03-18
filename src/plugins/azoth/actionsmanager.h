@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ namespace Azoth
 	{
 		Q_OBJECT
 
-		typedef QHash<const ICLEntry*, QHash<QByteArray, QAction*> > Entry2Actions_t;
+		typedef QHash<const ICLEntry*, QHash<QByteArray, QAction*>> Entry2Actions_t;
 		Entry2Actions_t Entry2Actions_;
 	public:
 		enum CLEntryActionArea
@@ -50,7 +50,7 @@ namespace Azoth
 			CLEAAMAX
 		};
 	private:
-		typedef QHash<const QAction*, QList<CLEntryActionArea> > Action2Areas_t;
+		typedef QHash<const QAction*, QList<CLEntryActionArea>> Action2Areas_t;
 		Action2Areas_t Action2Areas_;
 	public:
 		ActionsManager (QObject* = 0);
@@ -68,8 +68,10 @@ namespace Azoth
 	private slots:
 		void handleActionOpenChatTriggered ();
 		void handleActionDrawAttention ();
+		void handleActionSendFile ();
 		void handleActionRenameTriggered ();
 		void handleActionChangeGroupsTriggered ();
+		void handleActionSendDirectedStatusTriggered ();
 		void handleActionRemoveTriggered ();
 		void handleActionGrantAuthTriggered ();
 		void handleActionRevokeAuthTriggered ();
@@ -82,6 +84,8 @@ namespace Azoth
 		void handleActionVCardTriggered ();
 		void handleActionInviteTriggered ();
 		void handleActionLeaveTriggered ();
+		void handleActionAddToBookmarks ();
+		void handleActionConfigureMUC ();
 		void handleActionAuthorizeTriggered ();
 		void handleActionDenyAuthTriggered ();
 		void handleActionAddContactFromMUC ();
@@ -90,6 +94,8 @@ namespace Azoth
 	signals:
 		void hookEntryActionAreasRequested (LeechCraft::IHookProxy_ptr proxy,
 				QObject *action,
+				QObject *entry);
+		void hookEntryActionsRemoved (LeechCraft::IHookProxy_ptr proxy,
 				QObject *entry);
 		void hookEntryActionsRequested (LeechCraft::IHookProxy_ptr proxy,
 				QObject *entry);

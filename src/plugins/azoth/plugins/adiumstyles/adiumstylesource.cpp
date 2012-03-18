@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include <interfaces/iprotocol.h>
 #include <interfaces/iextselfinfoaccount.h>
 #include "packproxymodel.h"
+#include "plistparser.h"
 
 namespace LeechCraft
 {
@@ -75,7 +76,17 @@ namespace AdiumStyles
 			return QUrl ();
 		}
 
-		return QUrl::fromLocalFile (path);
+		return QUrl::fromLocalFile (QFileInfo (path).absolutePath () + '/');
+	}
+
+	namespace
+	{
+		void FixSelfClosing (QString& str)
+		{
+			QRegExp rx ("<div([^>]*)/>");
+			rx.setMinimal (true);
+			str.replace (rx, "<div\\1></div>");
+		}
 	}
 
 	QString AdiumStyleSource::GetHTMLTemplate (const QString& srcPack,
@@ -84,13 +95,22 @@ namespace AdiumStyles
 		if (srcPack != LastPack_)
 		{
 			Coloring2Colors_.clear ();
+			Frame2LastContact_.clear ();
 			LastPack_ = srcPack;
 
 			StylesLoader_->FlushCache ();
 		}
 
+		connect (frame,
+				SIGNAL (destroyed ()),
+				this,
+				SLOT (handleFrameDestroyed ()),
+				Qt::UniqueConnection);
+
 		const QString& pack = PackProxyModel_->GetOrigName (srcPack);
 		const QString& varCss = PackProxyModel_->GetVariant (srcPack);
+
+		Frame2Pack_ [frame] = pack;
 
 		Frame2LastContact_.remove (frame);
 
@@ -102,56 +122,47 @@ namespace AdiumStyles
 				Load (QStringList (prefix + "Footer.html"));
 		Util::QIODevice_ptr css = StylesLoader_->
 				Load (QStringList (prefix + "main.css"));
+		Util::QIODevice_ptr tmpl = StylesLoader_->
+				Load (QStringList (prefix + "Template.html"));
 
-		if (!header)
-		{
-			qWarning () << Q_FUNC_INFO
-					<< "could not load HTML template for pack"
-					<< pack;
-			return QString ();
-		}
-
-		if (!header->open (QIODevice::ReadOnly) ||
+		if ((header && !header->open (QIODevice::ReadOnly)) ||
 				(footer && !footer->open (QIODevice::ReadOnly)) ||
 				(css && !css->open (QIODevice::ReadOnly)))
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unable to open source files for"
 					<< pack
-					<< header->errorString ()
+					<< (header ? header->errorString () : "empty header")
 					<< (footer ? footer->errorString () : "empty footer")
 					<< (css ? css->errorString () : "empty css");
 			return QString ();
 		}
 
-		Frame2Pack_ [frame] = pack;
-
-		QString cssStr = css ?
-				QString::fromUtf8 (css->readAll ()) :
-				QString ();
-
+		const QUrl& baseUrl = GetBaseURL (srcPack);
 		QString varCssStr;
 		if (!varCss.isEmpty ())
-		{
-			Util::QIODevice_ptr varCssDev = StylesLoader_->
-					Load (QStringList (prefix + "Variants/" + varCss + ".css"));
-			if (varCssDev && varCssDev->open (QIODevice::ReadOnly))
-			{
-				varCssStr = QString::fromUtf8 (varCssDev->readAll ());
-				varCssStr.remove ("../");
-			}
-		}
+			varCssStr = "Variants/" + varCss + ".css";
+		else
+			varCssStr = "main.css";
 
 		QString result;
-		result = "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">";
-		result += "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" /><style type=\"text/css\">";
-		result += cssStr + varCssStr;
-		result += "</style><title></title></head><body>";
-		result += QString::fromUtf8 (header->readAll ());
-		result += "<div id=\"Chat\"><div id=\"insert\"></div></div>";
-		if (footer)
-			result += QString::fromUtf8 (footer->readAll ());
-		result += "</body></html>";
+		if (tmpl && tmpl->open (QIODevice::ReadOnly))
+			result = QString::fromUtf8 (tmpl->readAll ());
+		else
+		{
+			QFile file (":/plugins/azoth/plugins/adiumstyles/resources/html/Template.html");
+			file.open (QIODevice::ReadOnly);
+			result = QString::fromUtf8 (file.readAll ());
+		}
+
+		QMap<QString, QString> map;
+		map ["Path"] = baseUrl.toString ();
+		map ["CSS"] = "@import url( \"main.css\" );";
+		if (!varCssStr.isEmpty ())
+			map ["VariantCSS"] = baseUrl.resolved (QUrl (varCssStr)).toString ();
+		map ["Header"] = header ? header->readAll () : QString ();
+		map ["Footer"] = footer ? footer->readAll () : QString ();
+		PercentTemplate (result, map);
 
 		ICLEntry *entry = qobject_cast<ICLEntry*> (entryObj);
 		if (!entry)
@@ -162,12 +173,25 @@ namespace AdiumStyles
 			return result;
 		}
 
-		result.replace ("%chatName%", entry->GetEntryName ());
-		if (result.contains ("%incomingIconPath%"))
-			result.replace ("%incomingIconPath%",
-					Util::GetAsBase64Src (entry->GetAvatar ()));
+		ParseGlobalTemplate (result, entry);
+		FixSelfClosing (result);
 
 		return result;
+	}
+
+	namespace
+	{
+		IMessage::Direction GetMsgDirection (IMessage *msg)
+		{
+			if (msg->GetMessageType () != IMessage::MTMUCMessage)
+				return msg->GetDirection ();
+
+			IMUCEntry *muc = qobject_cast<IMUCEntry*> (msg->ParentCLEntry ());
+			ICLEntry *part = qobject_cast<ICLEntry*> (msg->OtherPart ());
+			return muc->GetNick () == part->GetEntryName () ?
+					IMessage::DOut :
+					IMessage::DIn;
+		}
 	}
 
 	bool AdiumStyleSource::AppendMessage (QWebFrame *frame,
@@ -192,16 +216,27 @@ namespace AdiumStyles
 			return false;
 		}
 
-		const bool in = msg->GetDirection () == IMessage::DIn;
-		const QString& prefix = pack + "/Contents/Resources/" +
-				(in ? "Incoming" : "Outgoing") +
-				'/';
+		connect (msgObj,
+				SIGNAL (destroyed ()),
+				this,
+				SLOT (handleMessageDestroyed ()));
+
+		const bool in = GetMsgDirection (msg) == IMessage::DIn;
 
 		QObject *kindaSender = in ? msg->OtherPart () : reinterpret_cast<QObject*> (42);
-		const bool isNextMsg = Frame2LastContact_.contains (frame) &&
-				kindaSender == Frame2LastContact_ [frame];
+
 		const bool isSlashMe = msg->GetBody ()
 				.trimmed ().startsWith ("/me ");
+		const bool alwaysNotNext = isSlashMe ||
+				!(msg->GetMessageType () == IMessage::MTChatMessage || msg->GetMessageType () == IMessage::MTMUCMessage);
+		const bool isNextMsg = !alwaysNotNext &&
+				Frame2LastContact_.contains (frame) &&
+				kindaSender == Frame2LastContact_ [frame];
+
+		const QString& prefix = pack + "/Contents/Resources/" +
+				(in || isSlashMe ? "Incoming" : "Outgoing") +
+				'/';
+
 		QString filename;
 		if ((msg->GetMessageType () == IMessage::MTChatMessage ||
 					msg->GetMessageType () == IMessage::MTMUCMessage) &&
@@ -215,8 +250,10 @@ namespace AdiumStyles
 		if (msg->GetMessageType () != IMessage::MTMUCMessage &&
 				msg->GetMessageType () != IMessage::MTChatMessage)
 			Frame2LastContact_.remove (frame);
-		else if (!isNextMsg)
+		else if (!isNextMsg && !alwaysNotNext)
 			Frame2LastContact_ [frame] = kindaSender;
+		else if (alwaysNotNext)
+			Frame2LastContact_.remove (frame);
 
 		Util::QIODevice_ptr content = StylesLoader_->
 				Load (QStringList (prefix + filename));
@@ -242,28 +279,38 @@ namespace AdiumStyles
 			return false;
 		}
 
-		const QString& newSelector = QString ("div[id=\"Chat\"]");
-		const QString& nextSelector = QString ("*[id=\"insert\"]");
-		QWebElement chat = frame->findFirstElement (isNextMsg ? nextSelector : newSelector);
-		if (chat.isNull ())
+		QString templ = QString::fromUtf8 (content->readAll ());
+		FixSelfClosing (templ);
+		QString bodyS = ParseMsgTemplate (templ, prefix, frame, msgObj, info);
+		QString body;
+		body.reserve (bodyS.size () * 1.2);
+		for (int i = 0, size = bodyS.size (); i < size; ++i)
 		{
-			qWarning () << Q_FUNC_INFO
-					<< "no div for insertion could be found";
-			return false;
+			switch (bodyS.at (i).unicode ())
+			{
+			case L'\"':
+				body += "\\\"";
+				break;
+			case L'\n':
+				body += "\\n";
+				break;
+			case L'\t':
+				body += "\\t";
+				break;
+			case L'\\':
+				body += "\\\\";
+				break;
+			case L'\r':
+				body += "\\r";
+				break;
+			default:
+				body += bodyS.at (i);
+				break;
+			}
 		}
 
-		const QString& templ = QString::fromUtf8 (content->readAll ());
-		const QString& body = ParseTemplate (templ, prefix, frame, msgObj, info);
-		if (isNextMsg)
-			chat.setOuterXml (body);
-		else
-		{
-			QWebElement next = frame->findFirstElement (nextSelector);
-			if (!next.isNull ())
-				next.removeFromDocument ();
-
-			chat.appendInside (body);
-		}
+		const QString& command = isNextMsg ? "appendNextMessage(\"%1\");" : "appendMessage(\"%1\");";
+		frame->evaluateJavaScript (command.arg (body));
 
 		if (templ.contains ("%stateElementId%"))
 		{
@@ -301,7 +348,68 @@ namespace AdiumStyles
 	{
 	}
 
-	QString AdiumStyleSource::ParseTemplate (QString templ, const QString& base,
+	void AdiumStyleSource::PercentTemplate (QString& result, const QMap<QString, QString>& map) const
+	{
+		QRegExp rx ("(?:%@){1}");
+		const int count = result.count (rx);
+
+		QStringList rpls (map ["Path"]);
+		if (count == 5)
+			rpls << map ["CSS"];
+		rpls << map ["VariantCSS"]
+			<< map ["Header"]
+			<< map ["Footer"];
+
+		int i = 0;
+		int pos = 0;
+		while ((pos = rx.indexIn (result, pos)) != -1 && i < rpls.size ())
+		{
+			result.replace (pos, 2, rpls [i]);
+			pos += rpls [i].length ();
+			i++;
+		}
+	}
+
+	void AdiumStyleSource::ParseGlobalTemplate (QString& result, ICLEntry *entry) const
+	{
+		auto acc = qobject_cast<IAccount*> (entry->GetParentAccount ());
+		auto extSelf = qobject_cast<IExtSelfInfoAccount*> (entry->GetParentAccount ());
+
+		ICLEntry *selfEntry = extSelf ?
+				qobject_cast<ICLEntry*> (extSelf->GetSelfContact ()) :
+				0;
+
+		result.replace ("%chatName%", entry->GetEntryName ());
+		result.replace ("%sourceName%", acc->GetOurNick ());
+		result.replace ("%destinationName%", entry->GetHumanReadableID ());
+		result.replace ("%destinationDisplayName%", entry->GetEntryName ());
+
+		const QImage& defAvatar = GetDefaultAvatar ();
+
+		auto safeIconReplace = [&result] (const QString& pattern,
+				QImage px, const QImage& def = QImage ())
+		{
+			if (result.contains (pattern))
+				result.replace (pattern, Util::GetAsBase64Src (px.isNull () ? def : px));
+		};
+		safeIconReplace ("%incomingIconPath%",
+				entry->GetAvatar (), defAvatar);
+		safeIconReplace ("%outgoingIconPath%",
+				selfEntry ? selfEntry->GetAvatar () : defAvatar, defAvatar);
+
+		result.replace ("%timeOpened%",
+				QDateTime::currentDateTime ().toString (Qt::SystemLocaleLongDate));
+
+		QRegExp openedRx ("%timeOpened\\{(.*?)\\}%");
+		int pos = 0;
+		while ((pos = openedRx.indexIn (result, pos)) != -1)
+			result.replace (pos, openedRx.matchedLength (),
+					QDateTime::currentDateTime ().toString (openedRx.cap (1)));
+
+		result.replace ("%dateOpened%", QDate::currentDate ().toString (Qt::SystemLocaleLongDate));
+	}
+
+	QString AdiumStyleSource::ParseMsgTemplate (QString templ, const QString& base,
 			QWebFrame*, QObject *msgObj, const ChatMsgAppendInfo& info)
 	{
 		const bool isHighlightMsg = info.IsHighlightMsg_;
@@ -381,11 +489,13 @@ namespace AdiumStyles
 		{
 			IExtSelfInfoAccount *self = qobject_cast<IExtSelfInfoAccount*> (acc->GetObject ());
 			if (self)
-				image = qobject_cast<ICLEntry*> (self->GetSelfContact ())->GetAvatar ();
+				image = self->GetSelfAvatar ();
 		}
 
 		if (image.isNull ())
 			image = QImage (StylesLoader_->GetPath (QStringList (base + "buddy_icon.png")));
+		if (image.isNull ())
+			image = GetDefaultAvatar ();
 		if (image.isNull ())
 			qWarning () << Q_FUNC_INFO
 					<< "image is still null, though tried"
@@ -493,6 +603,38 @@ namespace AdiumStyles
 		return QString::number (reinterpret_cast<long int> (msgObj));
 	}
 
+	QImage AdiumStyleSource::GetDefaultAvatar () const
+	{
+		const QString& defAvatarName = Proxy_->GetSettingsManager ()->
+				property ("SystemIcons").toString () + "/default_avatar";
+		auto sysLdr = Proxy_->GetResourceLoader (IProxyObject::PRLSystemIcons);
+		return sysLdr->LoadPixmap (defAvatarName).toImage ();
+	}
+
+	PListParser_ptr AdiumStyleSource::GetPListParser (const QString& pack) const
+	{
+		if (PListParsers_.contains (pack))
+			return PListParsers_ [pack];
+
+		auto plist = std::make_shared<PListParser> ();
+		try
+		{
+			const QString& name = pack + "/Contents/Info.plist";
+			const auto& path = StylesLoader_->GetPath (QStringList (name));
+			plist->Parse (path);
+		}
+		catch (const PListParseError& e)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "error parsing PList for"
+					<< pack
+					<< e.GetStr ();
+			return PListParser_ptr ();
+		}
+		PListParsers_ [pack] = plist;
+		return plist;
+	}
+
 	void AdiumStyleSource::handleMessageDelivered ()
 	{
 		QWebFrame *frame = Msg2Frame_.take (sender ());
@@ -526,6 +668,11 @@ namespace AdiumStyles
 				SIGNAL (messageDelivered ()),
 				this,
 				SLOT (handleMessageDelivered ()));
+	}
+
+	void AdiumStyleSource::handleMessageDestroyed ()
+	{
+		Msg2Frame_.remove (sender ());
 	}
 
 	void AdiumStyleSource::handleFrameDestroyed ()

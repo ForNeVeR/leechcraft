@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ namespace WYFV
 		Q_INTERFACES (IInfo IHaveSettings IPlugin2
 				LeechCraft::Poshuku::IFlashOverrider)
 
-		boost::shared_ptr<Util::XmlSettingsDialog> SettingsDialog_;
+		std::shared_ptr<Util::XmlSettingsDialog> SettingsDialog_;
 		std::auto_ptr<QTranslator> Translator_;
 	public:
 		void Init (ICoreProxy_ptr);
@@ -59,7 +59,7 @@ namespace WYFV
 		QStringList Uses () const;
 		void SetProvider (QObject*, const QString&);
 
-		boost::shared_ptr<Util::XmlSettingsDialog> GetSettingsDialog () const;
+		std::shared_ptr<Util::XmlSettingsDialog> GetSettingsDialog () const;
 
 		QSet<QByteArray> GetPluginClasses () const;
 

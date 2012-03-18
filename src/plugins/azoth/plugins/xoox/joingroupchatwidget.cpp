@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -134,6 +134,20 @@ namespace Xoox
 				Ui_.Room_->text ().isEmpty () ||
 				Ui_.Server_->text ().isEmpty ();
 		emit validityChanged (!notOk);
+	}
+
+	void JoinGroupchatWidget::on_ViewRooms__released ()
+	{
+		if (!SelectedAccount_)
+			return;
+
+		const QString& server = Ui_.Server_->text ();
+		SelectedAccount_->CreateSDForResource (server);
+	}
+
+	void JoinGroupchatWidget::on_Server__textChanged (const QString& str)
+	{
+		Ui_.ViewRooms_->setEnabled (SelectedAccount_ && !str.isEmpty ());
 	}
 }
 }

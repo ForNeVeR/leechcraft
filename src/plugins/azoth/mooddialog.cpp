@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -130,7 +130,7 @@ namespace Azoth
 				
 		Ui_.Mood_->addItem (tr ("<clear>"));
 		
-		QMap<QString, QPair<QVariant, QIcon> > list;
+		QMap<QString, QPair<QVariant, QIcon>> list;
 		
 		for (uint i = 0; i < sizeof (moodStr) / sizeof (moodStr [0]); ++i)
 		{

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #ifndef PLUGINS_AZOTH_CORE_H
 #define PLUGINS_AZOTH_CORE_H
+#include <functional>
 #include <boost/scoped_ptr.hpp>
 #include <QObject>
 #include <QSet>
@@ -29,7 +30,8 @@
 #include <util/resourceloader.h>
 #include <interfaces/core/ihookproxy.h>
 #include <interfaces/ianemitter.h>
-#include "interfaces/iinfo.h"
+#include <interfaces/iinfo.h>
+#include "interfaces/iclentry.h"
 #include "interfaces/azothcommon.h"
 #include "interfaces/imucentry.h"
 #include "interfaces/iprotocol.h"
@@ -47,11 +49,11 @@ namespace LeechCraft
 namespace Util
 {
 	class ResourceLoader;
+	class ShortcutManager;
 }
+
 namespace Azoth
 {
-
-	struct EntryStatus;
 	class ICLEntry;
 	class IAccount;
 	class IMessage;
@@ -65,8 +67,10 @@ namespace Azoth
 	class CallManager;
 	class EventsNotifier;
 	class ActionsManager;
-
+	class ImportManager;
 	class CLModel;
+	class ServiceDiscoveryWidget;
+	class UnreadQueueManager;
 
 	class Core : public QObject
 	{
@@ -98,7 +102,9 @@ namespace Azoth
 
 		QHash<IAccount*, QDateTime> LastAccountStatusChange_;
 
-		typedef QHash<ICLEntry*, QList<QStandardItem*> > Entry2Items_t;
+		QHash<IAccount*, EntryStatus> SavedStatus_;
+
+		typedef QHash<ICLEntry*, QList<QStandardItem*>> Entry2Items_t;
 		Entry2Items_t Entry2Items_;
 
 		ActionsManager *ActionsManager_;
@@ -106,7 +112,7 @@ namespace Azoth
 		typedef QHash<QString, QObject*> ID2Entry_t;
 		ID2Entry_t ID2Entry_;
 
-		typedef QHash<ICLEntry*, QMap<QString, QIcon> > EntryClientIconCache_t;
+		typedef QHash<ICLEntry*, QMap<QString, QIcon>> EntryClientIconCache_t;
 		EntryClientIconCache_t EntryClientIconCache_;
 
 		typedef QHash<ICLEntry*, QImage> Entry2SmoothAvatarCache_t;
@@ -126,16 +132,18 @@ namespace Azoth
 			RLTMoodIconLoader
 		};
 	private:
-		QMap<ResourceLoaderType, boost::shared_ptr<Util::ResourceLoader> > ResourceLoaders_;
-		boost::shared_ptr<SourceTrackingModel<IEmoticonResourceSource> > SmilesOptionsModel_;
-		boost::shared_ptr<SourceTrackingModel<IChatStyleResourceSource> > ChatStylesOptionsModel_;
+		QMap<ResourceLoaderType, std::shared_ptr<Util::ResourceLoader>> ResourceLoaders_;
+		std::shared_ptr<SourceTrackingModel<IEmoticonResourceSource>> SmilesOptionsModel_;
+		std::shared_ptr<SourceTrackingModel<IChatStyleResourceSource>> ChatStylesOptionsModel_;
 
-		boost::shared_ptr<PluginManager> PluginManager_;
-		boost::shared_ptr<ProxyObject> PluginProxyObject_;
-
-		boost::shared_ptr<TransferJobManager> XferJobManager_;
-		boost::shared_ptr<CallManager> CallManager_;
-		boost::shared_ptr<EventsNotifier> EventsNotifier_;
+		std::shared_ptr<PluginManager> PluginManager_;
+		std::shared_ptr<ProxyObject> PluginProxyObject_;
+		std::shared_ptr<TransferJobManager> XferJobManager_;
+		std::shared_ptr<CallManager> CallManager_;
+		std::shared_ptr<EventsNotifier> EventsNotifier_;
+		std::shared_ptr<ImportManager> ImportManager_;
+		std::shared_ptr<UnreadQueueManager> UnreadQueueManager_;
+		std::shared_ptr<Util::ShortcutManager> ShortcutManager_;
 
 		Core ();
 	public:
@@ -147,7 +155,8 @@ namespace Azoth
 			CLREntryCategory,
 			CLRUnreadMsgCount,
 			CLRRole,
-			CLRAffiliation
+			CLRAffiliation,
+			CLRNumOnline
 		};
 
 		enum CLEntryType
@@ -162,7 +171,7 @@ namespace Azoth
 				*/
 			CLETContact
 		};
-	public:
+
 		static Core& Instance ();
 		void Release ();
 
@@ -174,7 +183,8 @@ namespace Azoth
 		Util::ResourceLoader* GetResourceLoader (ResourceLoaderType) const;
 		QAbstractItemModel* GetSmilesOptionsModel () const;
 		IEmoticonResourceSource* GetCurrentEmoSource () const;
-		QAbstractItemModel* GetChatStylesOptionsModel ();
+		QAbstractItemModel* GetChatStylesOptionsModel () const;
+		Util::ShortcutManager* GetShortcutManager () const;
 
 		QSet<QByteArray> GetExpectedPluginClasses () const;
 		void AddPlugin (QObject*);
@@ -187,7 +197,7 @@ namespace Azoth
 
 		QAbstractItemModel* GetCLModel () const;
 		ChatTabsManager* GetChatTabsManager () const;
-		QList<IAccount*> GetAccounts () const;
+		QList<IAccount*> GetAccounts (std::function<bool (IProtocol*)> = [] (IProtocol*) { return true; }) const;
 		QList<IProtocol*> GetProtocols () const;
 
 #ifdef ENABLE_CRYPT
@@ -274,6 +284,7 @@ namespace Azoth
 		 * @return Entry's avatar scaled to the given size.
 		 */
 		QImage GetAvatar (ICLEntry *entry, int size);
+		QImage GetDefaultAvatar (int size);
 
 		ActionsManager* GetActionsManager () const;
 
@@ -362,9 +373,13 @@ namespace Azoth
 		 */
 		void RecalculateUnreadForParents (QStandardItem*);
 
+		void RecalculateOnlineForCat (QStandardItem*);
+
 		void NotifyWithReason (QObject*, const QString&,
 				const char*, const QString&,
 				const QString&, const QString&);
+
+		void HandlePowerNotification (Entity);
 
 		/** Removes one item representing the given CL entry.
 		 */
@@ -391,6 +406,8 @@ namespace Azoth
 		 * plugin's IProtocol::InitiateMUCJoin() function.
 		 */
 		void handleMucJoinRequested ();
+
+		void handleShowNextUnread ();
 	private slots:
 		void handleNewProtocols (const QList<QObject*>&);
 
@@ -429,6 +446,8 @@ namespace Azoth
 		/** Handles the status change of an account to new status.
 		 */
 		void handleAccountStatusChanged (const EntryStatus& status);
+
+		void handleAccountRenamed (const QString&);
 
 		/** Handles the status change of a CL entry to new status.
 		 */
@@ -517,6 +536,8 @@ namespace Azoth
 		 */
 		void handleClearUnreadMsgCount (QObject *object);
 
+		void handleGotSDSession (QObject*);
+
 		void handleFileOffered (QObject*);
 		void handleJobDeoffered (QObject*);
 
@@ -554,6 +575,8 @@ namespace Azoth
 		 */
 		void accountRemoved (IAccount*);
 
+		void gotSDWidget (ServiceDiscoveryWidget*);
+
 		// Plugin API
 		void hookAddingCLEntryBegin (LeechCraft::IHookProxy_ptr proxy,
 				QObject *entry);
@@ -571,10 +594,8 @@ namespace Azoth
 				QString nick,
 				QObject *message);
 		void hookFormatBodyBegin (LeechCraft::IHookProxy_ptr proxy,
-				QObject *chatTab,
 				QObject *message);
 		void hookFormatBodyEnd (LeechCraft::IHookProxy_ptr proxy,
-				QObject *chatTab,
 				QObject *message);
 		void hookGonnaHandleSmiles (LeechCraft::IHookProxy_ptr proxy,
 				QString body,

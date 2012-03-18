@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,34 +16,43 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_LIZNOO_LIZNOO_H
-#define PLUGINS_LIZNOO_LIZNOO_H
+#pragma once
+
 #include <QObject>
 #include <QLinkedList>
 #include <interfaces/iinfo.h>
+#include <interfaces/ihavesettings.h>
 #include <interfaces/iactionsexporter.h>
 #include "batteryhistory.h"
+#include "batteryinfo.h"
 
 namespace LeechCraft
 {
 namespace Liznoo
 {
-	class DBusThread;
 	class BatteryHistoryDialog;
+	class PlatformLayer;
 
 	class Plugin : public QObject
 				 , public IInfo
+				 , public IHaveSettings
 				 , public IActionsExporter
 	{
 		Q_OBJECT
-		Q_INTERFACES (IInfo IActionsExporter)
+		Q_INTERFACES (IInfo IHaveSettings IActionsExporter)
 
 		ICoreProxy_ptr Proxy_;
-		DBusThread *Thread_;
+
+		Util::XmlSettingsDialog_ptr XSD_;
+
+		PlatformLayer *PL_;
 		QMap<QString, QAction*> Battery2Action_;
 		QMap<QString, BatteryInfo> Battery2LastInfo_;
 		QMap<QString, BatteryHistoryDialog*> Battery2Dialog_;
 		QMap<QString, QLinkedList<BatteryHistory>> Battery2History_;
+
+		QAction *Suspend_;
+		QAction *Hibernate_;
 	public:
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
@@ -53,17 +62,26 @@ namespace Liznoo
 		QString GetInfo () const;
 		QIcon GetIcon () const;
 
+		Util::XmlSettingsDialog_ptr GetSettingsDialog () const;
+
 		QList<QAction*> GetActions (ActionsEmbedPlace) const;
+		QMap<QString, QList<QAction*>> GetMenuActions () const;
+	private:
+		void UpdateAction (const BatteryInfo&);
+		void CheckNotifications (const BatteryInfo&);
 	private slots:
 		void handleBatteryInfo (Liznoo::BatteryInfo);
 		void handleUpdateHistory ();
 		void handleHistoryTriggered ();
 		void handleBatteryDialogDestroyed ();
-		void handleThreadStarted ();
+		void handlePlatformStarted ();
+
+		void handleSuspendRequested ();
+		void handleHibernateRequested ();
 	signals:
+		void gotEntity (const LeechCraft::Entity&);
 		void gotActions (QList<QAction*>, LeechCraft::ActionsEmbedPlace);
 	};
 }
 }
 
-#endif

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -334,7 +334,7 @@ namespace Aggregator
 		bool unreadOnly = Ui_.UnreadOnly_->checkState () == Qt::Checked;
 		QStringList categories = Selector_->GetSelections ();
 
-		QMap<ChannelShort, QList<Item_ptr> > items2write;
+		QMap<ChannelShort, QList<Item_ptr>> items2write;
 		QStringList authors;
 
 		Q_FOREACH (QModelIndex row, rows)

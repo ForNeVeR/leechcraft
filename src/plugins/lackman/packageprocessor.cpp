@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,37 +17,22 @@
  **********************************************************************/
 
 #include "packageprocessor.h"
+#include <stdexcept>
 #include <QFile>
 #include <QDirIterator>
 #include <QFileInfo>
-#include <stdexcept>
 #include <util/util.h>
 #include "core.h"
 #include "externalresourcemanager.h"
 #include "storage.h"
 
-#if QT_VERSION < 0x040700
-uint qHash (const QUrl& url)
-{
-	return qHash (url.toEncoded ());
-}
-#endif
-
 namespace LeechCraft
 {
 namespace LackMan
 {
-	namespace
-	{
-		QDir GetDBDir ()
-		{
-			return Util::CreateIfNotExists ("lackman/filesdb/");
-		}
-	}
-
 	PackageProcessor::PackageProcessor (QObject *parent)
 	: QObject (parent)
-	, DBDir_ (GetDBDir ())
+	, DBDir_ (Util::CreateIfNotExists ("lackman/filesdb/"))
 	{
 	}
 
@@ -330,6 +315,23 @@ namespace LackMan
 		QString path = Core::Instance ()
 				.GetExtResourceManager ()->GetResourcePath (url);
 
+		PackageShortInfo info;
+		try
+		{
+			info = Core::Instance ().GetStorage ()->GetPackage (packageId);
+		}
+		catch (const std::exception& e)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unable to get package info for"
+					<< packageId
+					<< e.what ();
+			return;
+		}
+
+		const QString& archiver = info.VersionArchivers_
+				.value (info.Versions_.value (0), "gz");
+
 		QProcess *unarch = new QProcess (this);
 		connect (unarch,
 				SIGNAL (finished (int, QProcess::ExitStatus)),
@@ -342,7 +344,7 @@ namespace LackMan
 
 		QString dirname = Util::GetTemporaryName ("lackman_stagingarea");
 		QStringList args;
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN32
 		args << "x";
 
 		QString outDirArg("-o");
@@ -351,7 +353,9 @@ namespace LackMan
 
 		args << path;
 #else
-		args << "xzf";
+		if (archiver == "lzma")
+			args << "--lzma";
+		args << "-xf";
 		args << path;
 		args << "-C";
 		args << dirname;
@@ -379,7 +383,7 @@ namespace LackMan
 			return;
 		}
 
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN32
 		QString command = "7za";
 #else
 		QString command = "tar";
@@ -389,7 +393,7 @@ namespace LackMan
 
 	QUrl PackageProcessor::GetURLFor (int packageId) const
 	{
-		QList<QUrl> urls = Core::Instance ().GetPackageURLs (packageId);
+		const auto& urls = Core::Instance ().GetPackageURLs (packageId);
 		if (!urls.size ())
 			throw std::runtime_error (tr ("No URLs for package %1.")
 					.arg (packageId).toUtf8 ().constData ());

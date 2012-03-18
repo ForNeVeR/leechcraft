@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ namespace WYFV
 			else if (parts.at (0) == "video_id")
 				video_id = parts.at (1);
 		}
-		QList<QPair<QByteArray, QByteArray> > query;
+		QList<QPair<QByteArray, QByteArray>> query;
 		query << QPair<QByteArray, QByteArray> ("video_id", video_id.toUtf8 ());
 		query << QPair<QByteArray, QByteArray> ("t", t.toUtf8 ());
 

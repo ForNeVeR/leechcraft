@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QClipboard>
+#include <QFileDialog>
 #include <util/util.h>
 #include <util/defaulthookproxy.h>
 #include <interfaces/core/icoreproxy.h>
@@ -32,6 +33,9 @@
 #include "interfaces/imucentry.h"
 #include "interfaces/iauthable.h"
 #include "interfaces/iaccount.h"
+#include "interfaces/itransfermanager.h"
+#include "interfaces/iconfigurablemuc.h"
+#include "interfaces/ihavedirectedstatus.h"
 
 #ifdef ENABLE_CRYPT
 #include "interfaces/isupportpgp.h"
@@ -47,6 +51,10 @@
 #include "shareriexdialog.h"
 #include "mucinvitedialog.h"
 #include "addcontactdialog.h"
+#include "transferjobmanager.h"
+#include "bookmarksmanagerdialog.h"
+#include "simpledialog.h"
+#include "setstatusdialog.h"
 
 namespace LeechCraft
 {
@@ -70,11 +78,13 @@ namespace Azoth
 		QList<QAction*> result;
 		result << id2action.value ("openchat");
 		result << id2action.value ("drawattention");
+		result << id2action.value ("sendfile");
 		result << id2action.value ("sep_afterinitiate");
 		result << id2action.value ("rename");
 		result << id2action.value ("changegroups");
 		result << id2action.value ("remove");
 		result << id2action.value ("sep_afterrostermodify");
+		result << id2action.value ("directedpresence");
 		result << id2action.value ("authorization");
 		IMUCPerms *perms = qobject_cast<IMUCPerms*> (entry->GetParentCLEntry ());
 		if (perms)
@@ -89,6 +99,8 @@ namespace Azoth
 		result << id2action.value ("vcard");
 		result << id2action.value ("invite");
 		result << id2action.value ("leave");
+		result << id2action.value ("addtobm");
+		result << id2action.value ("configuremuc");
 		result << id2action.value ("authorize");
 		result << id2action.value ("denyauth");
 		result << entry->GetActions ();
@@ -139,9 +151,15 @@ namespace Azoth
 
 	void ActionsManager::HandleEntryRemoved (ICLEntry *entry)
 	{
-		QHash<QByteArray, QAction*> actions = Entry2Actions_.take (entry);
+		auto actions = Entry2Actions_.take (entry);
 		Q_FOREACH (QAction *action, actions.values ())
+		{
 			Action2Areas_.remove (action);
+			delete action;
+		}
+
+		Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
+		emit hookEntryActionsRemoved (proxy, entry->GetObject ());
 	}
 
 	QString ActionsManager::GetReason (const QString&, const QString& text)
@@ -190,6 +208,9 @@ namespace Azoth
 		if (!entry)
 			return;
 
+		QObject *accObj = entry->GetParentAccount ();
+		IAccount *acc = qobject_cast<IAccount*> (accObj);
+
 		IAdvancedCLEntry *advEntry = qobject_cast<IAdvancedCLEntry*> (entry->GetObject ());
 
 		if (Entry2Actions_.contains (entry))
@@ -201,7 +222,7 @@ namespace Azoth
 			}
 
 		QAction *openChat = new QAction (tr ("Open chat"), entry->GetObject ());
-		openChat->setProperty ("ActionIcon", "azoth_openchat");
+		openChat->setProperty ("ActionIcon", "view-conversation-balloon");
 		connect (openChat,
 				SIGNAL (triggered ()),
 				this,
@@ -218,9 +239,23 @@ namespace Azoth
 					SIGNAL (triggered ()),
 					this,
 					SLOT (handleActionDrawAttention ()));
-			drawAtt->setProperty ("ActionIcon", "draw_attention");
+			drawAtt->setProperty ("ActionIcon", "task-attention");
 			Entry2Actions_ [entry] ["drawattention"] = drawAtt;
-			Action2Areas_ [drawAtt] << CLEAAContactListCtxtMenu;
+			Action2Areas_ [drawAtt] << CLEAAContactListCtxtMenu
+					<< CLEAAToolbar;
+		}
+
+		if (qobject_cast<ITransferManager*> (acc->GetTransferManager ()))
+		{
+			QAction *sendFile = new QAction (tr ("Send file..."), entry->GetObject ());
+			connect (sendFile,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (handleActionSendFile ()));
+			sendFile->setProperty ("ActionIcon", "mail-attachment");
+			Entry2Actions_ [entry] ["sendfile"] = sendFile;
+			Action2Areas_ [sendFile] << CLEAAContactListCtxtMenu
+					<< CLEAAToolbar;
 		}
 
 		QAction *rename = new QAction (tr ("Rename"), entry->GetObject ());
@@ -228,7 +263,7 @@ namespace Azoth
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleActionRenameTriggered ()));
-		rename->setProperty ("ActionIcon", "azoth_rename");
+		rename->setProperty ("ActionIcon", "edit-rename");
 		Entry2Actions_ [entry] ["rename"] = rename;
 		Action2Areas_ [rename] << CLEAAContactListCtxtMenu;
 
@@ -239,56 +274,59 @@ namespace Azoth
 					SIGNAL (triggered ()),
 					this,
 					SLOT (handleActionChangeGroupsTriggered ()));
-			changeGroups->setProperty ("ActionIcon", "azoth_changegroups");
+			changeGroups->setProperty ("ActionIcon", "user-group-properties");
 			Entry2Actions_ [entry] ["changegroups"] = changeGroups;
 			Action2Areas_ [changeGroups] << CLEAAContactListCtxtMenu;
+		}
+
+		if (qobject_cast<IHaveDirectedStatus*> (entry->GetObject ()))
+		{
+			QAction *sendDirected = new QAction (tr ("Send directed status..."), entry->GetObject ());
+			connect (sendDirected,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (handleActionSendDirectedStatusTriggered ()));
+			sendDirected->setProperty ("ActionIcon", "im-status-message-edit");
+			Entry2Actions_ [entry] ["directedpresence"] = sendDirected;
+			Action2Areas_ [sendDirected] << CLEAAContactListCtxtMenu;
 		}
 
 		if (entry->GetEntryFeatures () & ICLEntry::FSupportsAuth)
 		{
 			QMenu *authMenu = new QMenu (tr ("Authorization"));
-			authMenu->menuAction ()->setProperty ("ActionIcon", "azoth_menu_authorization");
 			Entry2Actions_ [entry] ["authorization"] = authMenu->menuAction ();
 			Action2Areas_ [authMenu->menuAction ()] << CLEAAContactListCtxtMenu;
 
 			QAction *grantAuth = authMenu->addAction (tr ("Grant"),
 					this, SLOT (handleActionGrantAuthTriggered ()));
-			grantAuth->setProperty ("ActionIcon", "azoth_auth_grant");
 			grantAuth->setProperty ("Azoth/WithReason", false);
 
 			QAction *grantAuthReason = authMenu->addAction (tr ("Grant with reason..."),
 					this, SLOT (handleActionGrantAuthTriggered ()));
-			grantAuthReason->setProperty ("ActionIcon", "azoth_auth_grant");
 			grantAuthReason->setProperty ("Azoth/WithReason", true);
 
 			QAction *revokeAuth = authMenu->addAction (tr ("Revoke"),
 					this, SLOT (handleActionRevokeAuthTriggered ()));
-			revokeAuth->setProperty ("ActionIcon", "azoth_auth_revoke");
 			revokeAuth->setProperty ("Azoth/WithReason", false);
 
 			QAction *revokeAuthReason = authMenu->addAction (tr ("Revoke with reason..."),
 					this, SLOT (handleActionRevokeAuthTriggered ()));
-			revokeAuthReason->setProperty ("ActionIcon", "azoth_auth_revoke_reason");
 			revokeAuthReason->setProperty ("Azoth/WithReason", true);
 
 			QAction *unsubscribe = authMenu->addAction (tr ("Unsubscribe"),
 					this, SLOT (handleActionUnsubscribeTriggered ()));
-			unsubscribe->setProperty ("ActionIcon", "azoth_auth_unsubscribe");
 			unsubscribe->setProperty ("Azoth/WithReason", false);
 
 			QAction *unsubscribeReason = authMenu->addAction (tr ("Unsubscribe with reason..."),
 					this, SLOT (handleActionUnsubscribeTriggered ()));
-			unsubscribeReason->setProperty ("ActionIcon", "azoth_auth_unsubscribe");
 			unsubscribeReason->setProperty ("Azoth/WithReason", true);
 
 			QAction *rerequest = authMenu->addAction (tr ("Rerequest authentication"),
 					this, SLOT (handleActionRerequestTriggered ()));
-			rerequest->setProperty ("ActionIcon", "azoth_auth_rerequest");
 			rerequest->setProperty ("Azoth/WithReason", false);
 
 			QAction *rerequestReason = authMenu->addAction (tr ("Rerequest authentication with reason..."),
 					this, SLOT (handleActionRerequestTriggered ()));
-			rerequestReason->setProperty ("ActionIcon", "azoth_auth_rerequest");
 			rerequestReason->setProperty ("Azoth/WithReason", true);
 		}
 
@@ -300,7 +338,7 @@ namespace Azoth
 					SIGNAL (triggered ()),
 					this,
 					SLOT (handleActionManagePGPTriggered ()));
-			manageGPG->setProperty ("ActionIcon", "encryption");
+			manageGPG->setProperty ("ActionIcon", "document-encrypt");
 			Entry2Actions_ [entry] ["managepgp"] = manageGPG;
 			Action2Areas_ [manageGPG] << CLEAAContactListCtxtMenu;
 		}
@@ -324,7 +362,7 @@ namespace Azoth
 					SIGNAL (triggered ()),
 					this,
 					SLOT (handleActionVCardTriggered ()));
-			vcard->setProperty ("ActionIcon", "personalinfo");
+			vcard->setProperty ("ActionIcon", "text-x-vcard");
 			Entry2Actions_ [entry] ["vcard"] = vcard;
 			Action2Areas_ [vcard] << CLEAAContactListCtxtMenu
 					<< CLEAATabCtxtMenu
@@ -337,7 +375,7 @@ namespace Azoth
 		{
 			if (perms)
 			{
-				const QMap<QByteArray, QList<QByteArray> >& possible = perms->GetPossiblePerms ();
+				const QMap<QByteArray, QList<QByteArray>>& possible = perms->GetPossiblePerms ();
 				Q_FOREACH (const QByteArray& permClass, possible.keys ())
 				{
 					QMenu *changeClass = new QMenu (perms->GetUserString (permClass));
@@ -363,7 +401,7 @@ namespace Azoth
 			}
 
 			QAction *addContact = new QAction (tr ("Add to contact list..."), entry->GetObject ());
-			addContact->setProperty ("ActionIcon", "add");
+			addContact->setProperty ("ActionIcon", "list-add");
 			connect (addContact,
 					SIGNAL (triggered ()),
 					this,
@@ -374,7 +412,7 @@ namespace Azoth
 					<< CLEAAChatCtxtMenu;
 
 			QAction *copyId = new QAction (tr ("Copy ID"), entry->GetObject ());
-			copyId->setProperty ("ActionIcon", "copy");
+			copyId->setProperty ("ActionIcon", "edit-copy");
 			connect (copyId,
 					SIGNAL (triggered ()),
 					this,
@@ -400,7 +438,7 @@ namespace Azoth
 					<< CLEAATabCtxtMenu;
 
 			QAction *leave = new QAction (tr ("Leave"), entry->GetObject ());
-			leave->setProperty ("ActionIcon", "azoth_leave");
+			leave->setProperty ("ActionIcon", "irc-close-channel");
 			connect (leave,
 					SIGNAL (triggered ()),
 					this,
@@ -408,11 +446,33 @@ namespace Azoth
 			Entry2Actions_ [entry] ["leave"] = leave;
 			Action2Areas_ [leave] << CLEAAContactListCtxtMenu
 					<< CLEAATabCtxtMenu;
+
+			QAction *bookmarks = new QAction (tr ("Add to bookmarks"), entry->GetObject ());
+			bookmarks->setProperty ("ActionIcon", "bookmark-new");
+			connect (bookmarks,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (handleActionAddToBookmarks ()));
+			Entry2Actions_ [entry] ["addtobm"] = bookmarks;
+			Action2Areas_ [bookmarks] << CLEAAContactListCtxtMenu
+					<< CLEAAToolbar;
+
+			if (qobject_cast<IConfigurableMUC*> (entry->GetObject ()))
+			{
+				QAction *configureMUC = new QAction (tr ("Configure MUC..."), this);
+				configureMUC->setProperty ("ActionIcon", "configure");
+				connect (configureMUC,
+						SIGNAL (triggered ()),
+						this,
+						SLOT (handleActionConfigureMUC ()));
+				Entry2Actions_ [entry] ["configuremuc"] = configureMUC;
+				Action2Areas_ [configureMUC] << CLEAAContactListCtxtMenu
+						<< CLEAAToolbar;
+			}
 		}
 		else if (entry->GetEntryType () == ICLEntry::ETUnauthEntry)
 		{
 			QAction *authorize = new QAction (tr ("Authorize"), entry->GetObject ());
-			authorize->setProperty ("ActionIcon", "azoth_authorize");
 			connect (authorize,
 					SIGNAL (triggered ()),
 					this,
@@ -421,7 +481,6 @@ namespace Azoth
 			Action2Areas_ [authorize] << CLEAAContactListCtxtMenu;
 
 			QAction *denyAuth = new QAction (tr ("Deny authorization"), entry->GetObject ());
-			denyAuth->setProperty ("ActionIcon", "azoth_denyauth");
 			connect (denyAuth,
 						SIGNAL (triggered ()),
 						this,
@@ -432,7 +491,7 @@ namespace Azoth
 		else if (entry->GetEntryType () == ICLEntry::ETChat)
 		{
 			QAction *remove = new QAction (tr ("Remove"), entry->GetObject ());
-			remove->setProperty ("ActionIcon", "remove");
+			remove->setProperty ("ActionIcon", "list-remove");
 			connect (remove,
 					SIGNAL (triggered ()),
 					this,
@@ -524,7 +583,7 @@ namespace Azoth
 		{
 			if (mucPerms)
 			{
-				const QMap<QByteArray, QList<QByteArray> > possible = mucPerms->GetPossiblePerms ();
+				const QMap<QByteArray, QList<QByteArray>> possible = mucPerms->GetPossiblePerms ();
 				QObject *entryObj = entry->GetObject ();
 				Q_FOREACH (const QByteArray& permClass, possible.keys ())
 					Q_FOREACH (QAction *action,
@@ -603,6 +662,39 @@ namespace Azoth
 			advEntry->DrawAttention (text, var);
 	}
 
+	void ActionsManager::handleActionSendFile ()
+	{
+		ICLEntry *entry = sender ()->
+				property ("Azoth/Entry").value<ICLEntry*> ();
+		auto acc = qobject_cast<IAccount*> (entry->GetParentAccount ());
+		auto xferMgr = qobject_cast<ITransferManager*> (acc->GetTransferManager ());
+		if (!xferMgr)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "null Xfer manager for"
+					<< entry->GetObject ();
+			return;
+		}
+
+		const QString& filename = QFileDialog::getOpenFileName (0,
+				tr ("Select file to send"));
+		if (filename.isEmpty ())
+			return;
+
+		QObject *job = xferMgr->SendFile (entry->GetEntryID (),
+				Core::Instance ().GetChatTabsManager ()->GetActiveVariant (entry),
+				filename);
+		if (!job)
+		{
+			Core::Instance ().SendEntity (Util::MakeNotification ("Azoth",
+						tr ("Unable to send file to %1.")
+							.arg (entry->GetEntryName ()),
+						PCritical_));
+			return;
+		}
+		Core::Instance ().GetTransferJobManager ()->HandleJob (job);
+	}
+
 	void ActionsManager::handleActionRenameTriggered ()
 	{
 		QAction *action = qobject_cast<QAction*> (sender ());
@@ -649,11 +741,43 @@ namespace Azoth
 		const QStringList& groups = entry->Groups ();
 		const QStringList& allGroups = Core::Instance ().GetChatGroups ();
 
-		GroupEditorDialog *dia = new GroupEditorDialog (groups, allGroups);
-		if (dia->exec () != QDialog::Accepted)
+		GroupEditorDialog dia (groups, allGroups);
+		if (dia.exec () != QDialog::Accepted)
 			return;
 
-		entry->SetGroups (dia->GetGroups ());
+		entry->SetGroups (dia.GetGroups ());
+	}
+
+	void ActionsManager::handleActionSendDirectedStatusTriggered ()
+	{
+		ICLEntry *entry = sender ()->
+				property ("Azoth/Entry").value<ICLEntry*> ();
+		auto ihds = qobject_cast<IHaveDirectedStatus*> (entry->GetObject ());
+
+		QStringList variants (tr ("All variants"));
+		Q_FOREACH (const QString& var, entry->Variants ())
+			if (!var.isEmpty () &&
+					ihds->CanSendDirectedStatusNow (var))
+				variants << var;
+
+		QString variant = QInputDialog::getItem (0,
+				tr ("Select variant"),
+				tr ("Select variant to send directed status to:"),
+				variants,
+				0,
+				false);
+		if (variant.isEmpty ())
+			return;
+
+		if (variant == variants.front ())
+			variant.clear ();
+
+		SetStatusDialog dia ((QString ()));
+		if (dia.exec () != QDialog::Accepted)
+			return;
+
+		const EntryStatus st (dia.GetState (), dia.GetStatusText ());
+		ihds->SendDirectedStatus (st, variant);
 	}
 
 	void ActionsManager::handleActionRemoveTriggered ()
@@ -883,6 +1007,44 @@ namespace Azoth
 		}
 
 		mucEntry->Leave ();
+	}
+
+	void ActionsManager::handleActionAddToBookmarks ()
+	{
+		ICLEntry *entry = sender ()->property ("Azoth/Entry").value<ICLEntry*> ();
+
+		BookmarksManagerDialog *dia = new BookmarksManagerDialog ();
+		dia->SuggestSaving (entry->GetObject ());
+		dia->setAttribute (Qt::WA_DeleteOnClose, true);
+		dia->show ();
+	}
+
+	void ActionsManager::handleActionConfigureMUC ()
+	{
+		ICLEntry *entry = sender ()->property ("Azoth/Entry").value<ICLEntry*> ();
+		QObject *entryObj = entry->GetObject ();
+		IConfigurableMUC *confMUC = qobject_cast<IConfigurableMUC*> (entryObj);
+		if (!confMUC)
+			return;
+
+		QWidget *w = confMUC->GetConfigurationWidget ();
+		if (!w)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "empty conf widget"
+					<< entryObj;
+			return;
+		}
+
+		SimpleDialog *dia = new SimpleDialog ();
+		dia->setWindowTitle (tr ("Room configuration"));
+		dia->SetWidget (w);
+		connect (dia,
+				SIGNAL (accepted ()),
+				dia,
+				SLOT (deleteLater ()),
+				Qt::QueuedConnection);
+		dia->show ();
 	}
 
 	void ActionsManager::handleActionAuthorizeTriggered ()

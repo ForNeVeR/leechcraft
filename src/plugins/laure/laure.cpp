@@ -1,7 +1,7 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2011-2012  Minh Ngo
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
 #include <util/util.h>
 #include "laurewidget.h"
 #include "xmlsettingsmanager.h"
-#ifdef HAVE_LASTFM
-#include "lastfmsubmitter.h"
-#endif
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -34,25 +32,15 @@ namespace Laure
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		qRegisterMetaType<MediaMeta> ("MediaMeta");
 		Util::InstallTranslator ("laure");
 
 		XmlSettingsDialog_.reset (new Util::XmlSettingsDialog ());
 		XmlSettingsDialog_->RegisterObject (&XmlSettingsManager::Instance (),
 				"lauresettings.xml");
 
-		Proxy_ = proxy;
-#ifdef HAVE_LASTFM
-		LFSubmitter_ = new LastFMSubmitter (this);
+		Core::Instance ().SetProxy (proxy);
 
-		handleSubmitterInit ();
-
-		QList<QByteArray> propNames;
-		propNames << "lastfm.login";
-		propNames << "lastfm.password";
-
-		XmlSettingsManager::Instance ().RegisterObject (propNames,
-				this, "handleSubmitterInit");
-#endif
 		LaureWidget::SetParentMultiTabs (this);
 
 		TabClassInfo tabClass =
@@ -60,24 +48,12 @@ namespace Laure
 			"Laure",
 			"Laure",
 			GetInfo (),
-			GetIcon (),
+			QIcon (":/plugins/laure/resources/img/laure.svg"),
 			50,
-			TabFeatures (TFOpenableByRequest | TFByDefault)
+			TabFeatures (TFOpenableByRequest)
 		};
 		TabClasses_ << tabClass;
 	}
-
-#ifdef HAVE_LASTFM
-	void Plugin::handleSubmitterInit ()
-	{
-		LFSubmitter_->SetUsername (XmlSettingsManager::Instance ()
-				.property ("lastfm.login").toString ());
-		LFSubmitter_->SetPassword (XmlSettingsManager::Instance ()
-				.property ("lastfm.password").toString ());
-
-		LFSubmitter_->Init (Proxy_->GetNetworkAccessManager ());
-	}
-#endif
 
 	void Plugin::SecondInit ()
 	{
@@ -104,7 +80,7 @@ namespace Laure
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon ();
+		return QIcon (":/plugins/laure/resources/img/laure.svg");
 	}
 
 	TabClasses_t Plugin::GetTabClasses () const
@@ -147,16 +123,6 @@ namespace Laure
 				SIGNAL (needToClose ()),
 				this,
 				SLOT (handleNeedToClose ()));
-#ifdef HAVE_LASTFM
-		connect (w,
-				SIGNAL (currentTrackMeta (MediaMeta)),
-				LFSubmitter_,
-				SLOT (sendTrack (MediaMeta)));
-		connect (w,
-				SIGNAL (trackFinished ()),
-				LFSubmitter_,
-				SLOT (submit ()));
-#endif
 		connect (w,
 				SIGNAL (gotEntity (Entity)),
 				this,
@@ -168,7 +134,7 @@ namespace Laure
 
 		Others_ << w;
 		emit addNewTab (tr ("Laure"), w);
-		emit changeTabIcon (w, QIcon ());
+		emit changeTabIcon (w, QIcon (":/plugins/laure/resources/img/laure.svg"));
 		emit raiseTab (w);
 		return w;
 	}
@@ -201,4 +167,4 @@ namespace Laure
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_laure, LeechCraft::Laure::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_laure, LeechCraft::Laure::Plugin);

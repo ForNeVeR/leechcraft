@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,8 +68,8 @@ namespace KnowHow
 				.Property ("StdTipIndex", -1).toInt () + 1;
 
 		Ui_.setupUi (this);
-		Ui_.Forward_->setIcon (Proxy_->GetIcon ("forward"));
-		Ui_.Backward_->setIcon (Proxy_->GetIcon ("back"));
+		Ui_.Forward_->setIcon (Proxy_->GetIcon ("go-next"));
+		Ui_.Backward_->setIcon (Proxy_->GetIcon ("go-previous"));
 
 		ShowForIdx (idx);
 

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,6 +51,8 @@ namespace Xoox
 		QString Subject_;
 		// contains new nicks
 		QSet<QString> PendingNickChanges_;
+
+		QXmppDiscoveryIq ServerDisco_;
 	public:
 		RoomHandler (const QString& roomJID, const QString& ourNick, GlooxAccount*);
 
@@ -67,7 +69,7 @@ namespace Xoox
 		void SetSubject (const QString&);
 		void Join ();
 		void Leave (const QString& msg, bool remove = true);
-		RoomParticipantEntry* GetSelf () const;
+		RoomParticipantEntry* GetSelf ();
 		QString GetOurNick () const;
 		void SetOurNick (const QString&);
 
@@ -100,6 +102,7 @@ namespace Xoox
 
 		void handleMessagesAreRead ();
 	private:
+		bool IsGateway () const;
 		/** Creates a new entry for the given nick.
 		 */
 		RoomParticipantEntry_ptr CreateParticipantEntry (const QString& nick, bool announce);

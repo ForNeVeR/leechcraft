@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -105,7 +105,9 @@ namespace Azoth
 		case Core::CLETAccount:
 			size.setHeight (size.height () * 1.5);
 			break;
-		default:
+		case Core::CLETCategory:
+			const int textHeight = option.fontMetrics.height ();
+			size.setHeight (qMax (textHeight + CPadding * 2, size.height ()));
 			break;
 		}
 
@@ -143,10 +145,14 @@ namespace Azoth
 		const int sHeight = r.height ();
 		const int iconSize = sHeight;
 
-		const QImage& avatarImg = Core::Instance ().GetAvatar (extAcc ?
-					qobject_cast<ICLEntry*> (extAcc->GetSelfContact ()) :
-					0,
-				iconSize);
+		QImage avatarImg;
+		if (extAcc)
+			avatarImg = extAcc->GetSelfAvatar ();
+		if (avatarImg.isNull ())
+			avatarImg = Core::Instance ().GetDefaultAvatar (iconSize);
+		else
+			avatarImg = avatarImg.scaled (iconSize, iconSize,
+					Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
 		QPoint pxDraw = o.rect.topRight () - QPoint (CPadding, 0);
 

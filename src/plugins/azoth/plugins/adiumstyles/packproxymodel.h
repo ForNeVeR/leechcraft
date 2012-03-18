@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_ADIUMSTYLES_PACKPROXYMODEL_H
-#define PLUGINS_AZOTH_PLUGINS_ADIUMSTYLES_PACKPROXYMODEL_H
-#include <boost/shared_ptr.hpp>
+#pragma once
+
+#include <memory>
 #include <QStandardItemModel>
 #include <QHash>
 
@@ -37,7 +37,7 @@ namespace AdiumStyles
 	{
 		Q_OBJECT
 
-		boost::shared_ptr<Util::ResourceLoader> Loader_;
+		std::shared_ptr<Util::ResourceLoader> Loader_;
 
 		struct OrigData
 		{
@@ -47,7 +47,7 @@ namespace AdiumStyles
 
 		QHash<QString, OrigData> OrigDatas_;
 	public:
-		PackProxyModel (boost::shared_ptr<Util::ResourceLoader>, QObject* = 0);
+		PackProxyModel (std::shared_ptr<Util::ResourceLoader>, QObject* = 0);
 
 		QString GetOrigName (const QString&) const;
 		QString GetVariant (const QString&) const;
@@ -59,5 +59,3 @@ namespace AdiumStyles
 }
 }
 }
-
-#endif

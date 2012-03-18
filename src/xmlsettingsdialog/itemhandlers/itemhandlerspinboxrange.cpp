@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ namespace LeechCraft
 	{
 		if (!value.isValid () ||
 				value.isNull () ||
-				!value.canConvert<QList<QVariant> > ())
+				!value.canConvert<QList<QVariant>> ())
 		{
 			const QStringList& parts = item.attribute ("default").split (":");
 			QList<QVariant> result;

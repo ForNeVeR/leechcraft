@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,7 +123,7 @@ namespace LeechCraft
 		authors << ContributorInfo ("Georg Rudoy", "0xd34df00d",
 				"d34df00d@jabber.ru", "0xd34df00d@gmail.com",
 				QStringList (tr ("Lead developer and original author.")),
-				QList<int> () << 2006 << 2007 << 2008 << 2009 << 2010 << 2011);
+				QList<int> () << 2006 << 2007 << 2008 << 2009 << 2010 << 2011 << 2012);
 		authors << ContributorInfo ("Oleg Linkin", "magog",
 				"magog@gentoo.ru", "MaledictusDeMagog@gmail.com",
 				QStringList (tr ("Firefox importer in New Life."))
@@ -131,7 +131,7 @@ namespace LeechCraft
 					<< tr ("Azoth Acetamide: IRC support for Azoth.")
 					<< tr ("Chrome-style tabs.")
 					<< tr ("Various patches."),
-				QList<int> () << 2010 << 2011);
+				QList<int> () << 2010 << 2011 << 2012);
 
 		QList<ContributorInfo> contribs;
 		contribs << ContributorInfo (QString (), "Akon32",
@@ -150,17 +150,27 @@ namespace LeechCraft
 		contribs << ContributorInfo ("Alia Eolova", "alieola",
 				"alieola@jabber.ru", "aeors-team@yandex.ru",
 				QStringList (tr ("Spanish translations.")),
-				QList<int> () << 2011);
+				QList<int> () << 2011 << 2012);
 		contribs << ContributorInfo ("Azer Abdullaev", "Like-all",
 				QString (), "lik3a11@gmail.com",
-				QStringList (tr ("Artwork designer.")),
-				QList<int> () << 2011);
+				QStringList (tr ("Artwork.")),
+				QList<int> () << 2011 << 2012);
+		contribs << ContributorInfo ("Boris Pek", "Tehnick",
+				QString (), "tehnick-8@mail.ru",
+				QStringList (tr ("Debian/Ubuntu maintainership."))
+					<< tr ("Small fixes."),
+				QList<int> () << 2011 << 2012);
 		contribs << ContributorInfo ("Elena Belova", "Zereal",
 				"elena.zereal@neko.im", "zereal25@gmail.com",
 				QStringList (tr ("French translations."))
 					<< tr ("Italian translations.")
 					<< tr ("Public relations."),
 				QList<int> () << 2011);
+		contribs << ContributorInfo ("Eugene Mamin", "DZhon",
+				"dzhon_over@jabber.ru", "TheDZhon@gmail.com",
+				QStringList (tr ("Microsoft Windows backend for Liznoo plugin."))
+					<< tr ("Microsoft Windows builds."),
+				QList<int> () << 2011 << 2012);
 		contribs << ContributorInfo (QString (), "ForNeVeR",
 				"revenrof@jabber.ru", QString (),
 				QStringList ("Maintainer for the Microsoft Windows."),
@@ -168,9 +178,11 @@ namespace LeechCraft
 		contribs << ContributorInfo (QString (), "Ignotus",
 				"nlminhtl@gmail.com", QString (),
 				QStringList ("Improvements in Psto.net plugin for Azoth.")
+					<< tr ("Laure plugin.")
+					<< tr ("Last.FM Scrobbler plugin.")
 					<< tr ("openSUSE package maintainer")
 					<< tr ("Fedora package maintainer"),
-				QList<int> () << 2011);
+				QList<int> () << 2011 << 2012);
 		contribs << ContributorInfo (QString (), "lk4d4",
 				QString (), "lk4d4@yander.ru",
 				QStringList ("Initial ebuilds for Gentoo Linux."),

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "ui_mainwidget.h"
 
 class QToolButton;
+class QToolBar;
 class QMenu;
 
 namespace LeechCraft
@@ -31,6 +32,8 @@ namespace Azoth
 {
 	class SortFilterProxyModel;
 	class ConsoleWidget;
+	class ServiceDiscoveryWidget;
+	class AccountActionsManager;
 
 	class MainWidget : public QWidget
 	{
@@ -42,22 +45,18 @@ namespace Azoth
 		QToolButton *MenuButton_;
 		SortFilterProxyModel *ProxyModel_;
 
-		QHash<IAccount*, ConsoleWidget*> Account2CW_;
+		QToolButton *FastStatusButton_;
+		QAction *ActionCLMode_;
+		QAction *ActionShowOffline_;
+		QToolBar *BottomBar_;
 
 		QMenu *MenuChangeStatus_;
 		QMenu *TrayChangeStatus_;
 
-		QAction *AccountJoinConference_;
-		QAction *AccountManageBookmarks_;
-		QAction *AccountAddContact_;
-		QAction *AccountSetActivity_;
-		QAction *AccountSetMood_;
-		QAction *AccountSetLocation_;
-		QAction *AccountConsole_;
-		QAction *AccountModify_;
+		AccountActionsManager *AccountActsMgr_;
 
 		QMap<QString, bool> FstLevelExpands_;
-		QMap<QString, QMap<QString, bool> > SndLevelExpands_;
+		QMap<QString, QMap<QString, bool>> SndLevelExpands_;
 	public:
 		MainWidget (QWidget* = 0);
 
@@ -66,26 +65,17 @@ namespace Azoth
 	private:
 		void CreateMenu ();
 		QMenu* CreateStatusChangeMenu (const char*, bool withCustom = false);
-		IAccount* GetAccountFromSender (const char*);
 	private slots:
 		void updateFastStatusButton (LeechCraft::Azoth::State);
-		void on_CLTree__activated (const QModelIndex&);
+		void treeActivated (const QModelIndex&);
 		void on_CLTree__customContextMenuRequested (const QPoint&);
 		void handleChangeStatusRequested ();
 		void fastStateChangeRequested ();
 		void applyFastStatus ();
 
+		void handleEntryActivationType ();
 		void handleCatRenameTriggered ();
 		void handleSendGroupMsgTriggered ();
-		void joinAccountConference ();
-		void joinAccountConfFromBM ();
-		void manageAccountBookmarks ();
-		void addAccountContact ();
-		void handleAccountSetActivity ();
-		void handleAccountSetMood ();
-		void handleAccountSetLocation ();
-		void handleAccountConsole ();
-		void handleAccountModify ();
 
 		void handleManageBookmarks ();
 		void handleAddAccountRequested ();
@@ -95,18 +85,19 @@ namespace Azoth
 		void clearFilter ();
 
 		void handleEntryMadeCurrent (QObject*);
-		void on_RosterMode__currentIndexChanged (int);
+		void resetToWholeMode ();
+		void handleCLMode (bool);
 		void menuBarVisibilityToggled ();
+		void handleStatusIconsChanged ();
 
 		void handleRowsInserted (const QModelIndex&, int, int);
 		void rebuildTreeExpansions ();
 		void expandIndex (const QPersistentModelIndex&);
 		void on_CLTree__expanded (const QModelIndex&);
 		void on_CLTree__collapsed (const QModelIndex&);
-
-		void consoleRemoved (QWidget*);
 	signals:
 		void gotConsoleWidget (ConsoleWidget*);
+		void gotSDWidget (ServiceDiscoveryWidget*);
 	};
 }
 }

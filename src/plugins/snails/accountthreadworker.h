@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_ACCOUNTTHREADWORKER_H
-#define PLUGINS_SNAILS_ACCOUNTTHREADWORKER_H
+#pragma once
+
 #include <QObject>
 #include <vmime/net/session.hpp>
 #include <vmime/net/message.hpp>
@@ -41,12 +41,18 @@ namespace Snails
 		Account *A_;
 		vmime::ref<vmime::net::session> Session_;
 		vmime::ref<vmime::net::store> CachedStore_;
+		QHash<QStringList, vmime::ref<vmime::net::folder>> CachedFolders_;
 		QTimer *DisconnectTimer_;
+
+		QHash<QStringList, QHash<QByteArray, int>> SeqCache_;
 	public:
 		AccountThreadWorker (Account*);
 	private:
 		vmime::ref<vmime::net::store> MakeStore ();
 		vmime::ref<vmime::net::transport> MakeTransport ();
+
+		vmime::ref<vmime::net::folder> GetFolder (const QStringList& folder, int mode);
+
 		Message_ptr FromHeaders (const vmime::ref<vmime::net::message>&) const;
 		void FetchMessagesPOP3 (Account::FetchFlags);
 		void FetchMessagesIMAP (Account::FetchFlags, const QList<QStringList>&, vmime::ref<vmime::net::store>);
@@ -67,9 +73,8 @@ namespace Snails
 		void gotMsgHeaders (QList<Message_ptr>);
 		void messageBodyFetched (Message_ptr);
 		void gotUpdatedMessages (QList<Message_ptr>);
+		void gotOtherMessages (QList<QByteArray>, QStringList);
 		void gotFolders (QList<QStringList>);
 	};
 }
 }
-
-#endif

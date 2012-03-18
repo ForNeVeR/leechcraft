@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  * Copyright (C) 2011 ForNeVeR
  *
  * This program is free software: you can redistribute it and/or modify
@@ -119,11 +119,11 @@ namespace Choroid
 		DeclView_->rootContext ()->setContextProperty ("filesListModel", QMLFilesModel_);
 
 		QStringList candidates;
-#ifdef Q_WS_X11
+#ifdef Q_OS_WIN32
+		candidates << QApplication::applicationDirPath () + "/share/qml/choroid/";
+#else
 		candidates << "/usr/local/share/leechcraft/qml/choroid/"
 				<< "/usr/share/leechcraft/qml/choroid/";
-#elif defined (Q_WS_WIN32)
-		candidates << QApplication::applicationDirPath () + "/share/qml/choroid/";
 #endif
 
 		QString fileLocation;

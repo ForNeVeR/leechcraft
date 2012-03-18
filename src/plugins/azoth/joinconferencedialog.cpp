@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ namespace Azoth
 	: QDialog (parent)
 	{
 		Ui_.setupUi (this);
+		setAttribute (Qt::WA_DeleteOnClose, true);
 
 		Q_FOREACH (IAccount *acc, accounts)
 		{
@@ -123,48 +124,56 @@ namespace Azoth
 		QObject *accObj = Ui_.AccountBox_->
 				itemData (Ui_.AccountBox_->currentIndex ()).value<QObject*> ();
 
-		if (Ui_.JoinWidgetFrameLayout_->count ())
+		if (!Ui_.JoinWidgetFrameLayout_->count ())
+			return;
+
+		QWidget *widget = Ui_.JoinWidgetFrameLayout_->
+				itemAt (0)->widget ();
+		IMUCJoinWidget *imjw =
+				qobject_cast<IMUCJoinWidget*> (widget);
+
+		if (!imjw)
 		{
-			QWidget *widget = Ui_.JoinWidgetFrameLayout_->
-					itemAt (0)->widget ();
-			IMUCJoinWidget *imjw =
-					qobject_cast<IMUCJoinWidget*> (widget);
-
-			if (!imjw)
-			{
-				qWarning () << Q_FUNC_INFO
-						<< "unable to cast"
-						<< widget
-						<< "to IMUCJoinWidget";
-				return;
-			}
-
-			const QVariantMap& data = imjw->GetIdentifyingData ();
-			IAccount *acc = qobject_cast<IAccount*> (accObj);
-			if (acc)
-			{
-				const QString& key = "JoinHistory/" + acc->GetAccountID ();
-				QVariantList list = XmlSettingsManager::Instance ()
-						.GetRawValue (key).toList ();
-
-				Q_FOREACH (const QVariant& var, list)
-					if (var.toMap () ["HumanReadableName"] == data ["HumanReadableName"])
-					{
-						list.removeAll (var);
-						break;
-					}
-
-				list.prepend (QVariant (data));
-				XmlSettingsManager::Instance ().SetRawValue (key, list);
-			}
-			else
-				qWarning () << Q_FUNC_INFO
-						<< "could not cast"
-						<< accObj
-						<< "to IAccount";
-
-			imjw->Join (accObj);
+			qWarning () << Q_FUNC_INFO
+					<< "unable to cast"
+					<< widget
+					<< "to IMUCJoinWidget";
+			return;
 		}
+
+		const QVariantMap& data = imjw->GetIdentifyingData ();
+		IAccount *acc = qobject_cast<IAccount*> (accObj);
+		if (acc)
+		{
+			const QString& key = "JoinHistory/" + acc->GetAccountID ();
+			QVariantList list = XmlSettingsManager::Instance ()
+					.GetRawValue (key).toList ();
+
+			Q_FOREACH (const QVariant& var, list)
+				if (var.toMap () ["HumanReadableName"] == data ["HumanReadableName"])
+				{
+					list.removeAll (var);
+					break;
+				}
+
+			list.prepend (QVariant (data));
+			XmlSettingsManager::Instance ().SetRawValue (key, list);
+		}
+		else
+			qWarning () << Q_FUNC_INFO
+					<< "could not cast"
+					<< accObj
+					<< "to IAccount";
+
+		imjw->Join (accObj);
+
+		auto isb = qobject_cast<ISupportBookmarks*> (accObj);
+		if (Ui_.AddToBookmarks_->checkState () != Qt::Checked || !isb)
+			return;
+
+		auto list = isb->GetBookmarkedMUCs ();
+		list << data;
+		isb->SetBookmarkedMUCs (list);
 	}
 
 	void JoinConferenceDialog::reject ()

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "core.h"
 #include "storage.h"
 #include "mailtreedelegate.h"
+#include "mailmodelmanager.h"
 
 namespace LeechCraft
 {
@@ -38,7 +39,6 @@ namespace Snails
 	, MsgToolbar_ (new QToolBar (tr ("Message actions")))
 	, TabClass_ (tc)
 	, PMT_ (pmt)
-	, MailModel_ (new QStandardItemModel (this))
 	, MailSortFilterModel_ (new QSortFilterProxyModel (this))
 	{
 		Ui_.setupUi (this);
@@ -48,8 +48,7 @@ namespace Snails
 		Ui_.AccountsTree_->setModel (Core::Instance ().GetAccountsModel ());
 
 		MailSortFilterModel_->setDynamicSortFilter (true);
-		MailSortFilterModel_->setSortRole (Roles::Sort);
-		MailSortFilterModel_->setSourceModel (MailModel_);
+		MailSortFilterModel_->setSortRole (MailModelManager::MailRole::Sort);
 		MailSortFilterModel_->sort (2, Qt::DescendingOrder);
 		Ui_.MailTree_->setItemDelegate (new MailTreeDelegate (this));
 		Ui_.MailTree_->setModel (MailSortFilterModel_);
@@ -64,7 +63,7 @@ namespace Snails
 				SLOT (handleMailSelected (QModelIndex)));
 
 		QAction *fetch = new QAction (tr ("Fetch new mail"), this);
-		fetch->setProperty ("ActionIcon", "fetchall");
+		fetch->setProperty ("ActionIcon", "mail-receive");
 		TabToolbar_->addAction (fetch);
 		connect (fetch,
 				SIGNAL (triggered ()),
@@ -96,12 +95,14 @@ namespace Snails
 	void MailTab::FillMsgToolbar ()
 	{
 		MsgReply_ = new QAction (tr ("Reply..."), this);
+		MsgReply_->setProperty ("ActionIcon", "mail-reply-sender");
 		connect (MsgReply_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleReply ()));
 
 		MsgAttachments_ = new QMenu (tr ("Attachments"));
+		MsgAttachments_->setIcon (Core::Instance ().GetProxy ()->GetIcon ("mail-attachment"));
 
 		MsgToolbar_->addAction (MsgReply_);
 		MsgToolbar_->addAction (MsgAttachments_->menuAction ());
@@ -109,8 +110,6 @@ namespace Snails
 
 	void MailTab::handleCurrentAccountChanged (const QModelIndex& idx)
 	{
-		MailModel_->clear ();
-		MailID2Item_.clear ();
 		if (CurrAcc_)
 			disconnect (CurrAcc_.get (),
 					0,
@@ -122,35 +121,25 @@ namespace Snails
 			return;
 
 		connect (CurrAcc_.get (),
-				SIGNAL (gotNewMessages (QList<Message_ptr>)),
-				this,
-				SLOT (handleGotNewMessages (QList<Message_ptr>)));
-		connect (CurrAcc_.get (),
 				SIGNAL (messageBodyFetched (Message_ptr)),
 				this,
 				SLOT (handleMessageBodyFetched (Message_ptr)));
 
-		QStringList headers;
-		headers << tr ("From")
-				<< tr ("Subject")
-				<< tr ("Date")
-				<< tr ("Size");
-		MailModel_->setHorizontalHeaderLabels (headers);
+		MailSortFilterModel_->setSourceModel (CurrAcc_->GetMailModel ());
+		MailSortFilterModel_->setDynamicSortFilter (true);
 
-		handleGotNewMessages (Core::Instance ().GetStorage ()->
-					LoadMessages (CurrAcc_.get ()));
+		if (Ui_.TagsTree_->selectionModel ())
+			Ui_.TagsTree_->selectionModel ()->deleteLater ();
+		Ui_.TagsTree_->setModel (CurrAcc_->GetFoldersModel ());
+
+		connect (Ui_.TagsTree_->selectionModel (),
+				SIGNAL (currentRowChanged (QModelIndex, QModelIndex)),
+				this,
+				SLOT (handleCurrentTagChanged (QModelIndex)));
 	}
 
 	namespace
 	{
-		QString GetFrom (Message_ptr message)
-		{
-			const QString& fromName = message->GetFrom ();
-			return fromName.isEmpty () ?
-					message->GetFromEmail () :
-					fromName + " <" + message->GetFromEmail () + ">";
-		}
-
 		QString HTMLize (const QList<QPair<QString, QString>>& adds)
 		{
 			QStringList result;
@@ -177,6 +166,11 @@ namespace Snails
 		}
 	}
 
+	void MailTab::handleCurrentTagChanged (const QModelIndex& sidx)
+	{
+		CurrAcc_->ShowFolder (sidx);
+	}
+
 	void MailTab::handleMailSelected (const QModelIndex& sidx)
 	{
 		if (!CurrAcc_)
@@ -185,9 +179,11 @@ namespace Snails
 			return;
 		}
 
+		CurrMsg_.reset ();
+
 		const QModelIndex& idx = MailSortFilterModel_->mapToSource (sidx);
 		const QByteArray& id = idx.sibling (idx.row (), 0)
-				.data (Roles::ID).toByteArray ();
+				.data (MailModelManager::MailRole::ID).toByteArray ();
 
 		Message_ptr msg;
 		try
@@ -217,9 +213,10 @@ namespace Snails
 
 		QString html = Core::Instance ().GetMsgViewTemplate ();
 		html.replace ("{subject}", msg->GetSubject ());
-		html.replace ("{from}", msg->GetFrom ());
-		html.replace ("{fromEmail}", msg->GetFromEmail ());
-		html.replace ("{to}", HTMLize (msg->GetTo ()));
+		const auto& from = msg->GetAddress (Message::Address::From);
+		html.replace ("{from}", from.first);
+		html.replace ("{fromEmail}", from.second);
+		html.replace ("{to}", HTMLize (msg->GetAddresses (Message::Address::To)));
 		html.replace ("{date}", msg->GetDate ().toString ());
 
 		const QString& htmlBody = msg->IsFullyFetched () ?
@@ -244,10 +241,16 @@ namespace Snails
 			act->setProperty ("Snails/MsgId", id);
 			act->setProperty ("Snails/AttName", att.GetName ());
 		}
+
+		CurrMsg_ = msg;
 	}
 
 	void MailTab::handleReply ()
 	{
+		if (!CurrAcc_)
+			return;
+
+		Core::Instance ().PrepareReplyTab (CurrMsg_, CurrAcc_);
 	}
 
 	void MailTab::handleAttachment ()
@@ -281,56 +284,15 @@ namespace Snails
 	void MailTab::handleMessageBodyFetched (Message_ptr msg)
 	{
 		const QModelIndex& cur = Ui_.MailTree_->currentIndex ();
-		if (cur.data (Roles::ID).toByteArray () != msg->GetID ())
+		if (cur.data (MailModelManager::MailRole::ID).toByteArray () != msg->GetID ())
 			return;
 
 		handleMailSelected (cur);
 	}
 
-	void MailTab::handleGotNewMessages (QList<Message_ptr> messages)
-	{
-		Q_FOREACH (Message_ptr message, messages)
-		{
-			if (MailID2Item_.contains (message->GetID ()))
-				MailModel_->removeRow (MailID2Item_ [message->GetID ()]->row ());
-
-			QList<QStandardItem*> row;
-			row << new QStandardItem (GetFrom (message));
-			row << new QStandardItem (message->GetSubject ());
-			row << new QStandardItem (message->GetDate ().toString ());
-			row << new QStandardItem (Util::MakePrettySize (message->GetSize ()));
-			MailModel_->appendRow (row);
-
-			row [Columns::From]->setData (row [Columns::From]->text (), Roles::Sort);
-			row [Columns::Subj]->setData (row [Columns::Subj]->text (), Roles::Sort);
-			row [Columns::Date]->setData (message->GetDate (), Roles::Sort);
-			row [Columns::Size]->setData (message->GetSize (), Roles::Sort);
-
-			Q_FOREACH (auto item, row)
-				item->setData (message->GetID (), Roles::ID);
-			MailID2Item_ [message->GetID ()] = row.first ();
-
-			updateReadStatus (message->GetID (), message->IsRead ());
-		}
-	}
-
 	void MailTab::updateReadStatus (const QByteArray& id, bool isRead)
 	{
-		if (!MailID2Item_.contains (id))
-			return;
-
-		QStandardItem *item = MailID2Item_ [id];
-		const QModelIndex& sIdx = item->index ();
-		for (int i = 0; i < Columns::Max; ++i)
-		{
-			QStandardItem *other = MailModel_->
-					itemFromIndex (sIdx.sibling (sIdx.row (), i));
-			other->setData (isRead, Roles::ReadStatus);
-		}
-		QMetaObject::invokeMethod (MailModel_,
-				"dataChanged",
-				Q_ARG (QModelIndex, sIdx.sibling (sIdx.row (), 0)),
-				Q_ARG (QModelIndex, sIdx.sibling (sIdx.row (), Columns::Max - 1)));
+		CurrAcc_->UpdateReadStatus (id, isRead);
 	}
 }
 }

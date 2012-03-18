@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #ifndef PLUGINS_AZOTH_PLUGINS_OTROID_OTROID_H
 #define PLUGINS_AZOTH_PLUGINS_OTROID_OTROID_H
-#include <boost/shared_ptr.hpp>
 #include <QObject>
 #include <QDir>
 
@@ -47,8 +46,6 @@ namespace OTRoid
 	{
 		Q_OBJECT
 		Q_INTERFACES (IInfo IPlugin2)
-
-		boost::shared_ptr<QTranslator> Translator_;
 
 		IProxyObject *AzothProxy_;
 
@@ -87,6 +84,8 @@ namespace OTRoid
 		void hookEntryActionAreasRequested (LeechCraft::IHookProxy_ptr proxy,
 				QObject *action,
 				QObject *entry);
+		void hookEntryActionsRemoved (LeechCraft::IHookProxy_ptr proxy,
+				QObject *entry);
 		void hookEntryActionsRequested (LeechCraft::IHookProxy_ptr proxy,
 				QObject *entry);
 		void hookGotMessage (LeechCraft::IHookProxy_ptr proxy,
@@ -94,8 +93,6 @@ namespace OTRoid
 		void hookMessageCreated (LeechCraft::IHookProxy_ptr proxy,
 				QObject *chatTab,
 				QObject *message);
-	private slots:
-		void handleEntryDestroyed ();
 	signals:
 		void gotEntity (const LeechCraft::Entity&);
 	};

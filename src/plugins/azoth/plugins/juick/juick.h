@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,7 +62,6 @@ namespace Juick
 		bool IsBehind (const QString& text, int index, const QString& pattern) const;
 	public slots:
 		void hookFormatBodyEnd (LeechCraft::IHookProxy_ptr proxy,
-				QObject *chatTab,
 				QObject *message);
 		void hookMessageWillCreated (LeechCraft::IHookProxy_ptr proxy,
 				QObject *chatTab,

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,15 +53,6 @@ TabManager::TabManager (SeparateTabWidget *tabWidget,
 			this,
 			SLOT (handleMoveHappened (int, int)));
 
-	connect (TabWidget_,
-			SIGNAL (pinTabRequested ()),
-			this,
-			SLOT (handlePinTab ()));
-	connect (TabWidget_,
-			SIGNAL (unpinTabRequested ()),
-			this,
-			SLOT (handleUnpinTab ()));
-
 	XmlSettingsManager::Instance ()->RegisterObject ("UseTabScrollButtons",
 			this, "handleScrollButtons");
 
@@ -73,7 +64,7 @@ TabManager::TabManager (SeparateTabWidget *tabWidget,
 			SIGNAL (triggered ()),
 			this,
 			SLOT (handleCloseAllButCurrent ()));
-	closeAllButCurrent->setProperty ("ActionIcon", "closeallbutcurrent");
+	closeAllButCurrent->setProperty ("ActionIcon", "tab-close-other");
 	TabWidget_->AddAction2TabBar (closeAllButCurrent);
 }
 
@@ -136,40 +127,6 @@ void TabManager::navigateToTabNumber ()
 	if (n >= TabWidget_->WidgetCount ())
 		return;
 	TabWidget_->setCurrentIndex (n);
-}
-
-void TabManager::handlePinTab ()
-{
-	SeparateTabBar *bar = TabWidget_->TabBar ();
-	const int last = TabWidget_->GetLastContextMenuTab ();
-
-	QStringList names = OriginalTabNames_;
-	names.insert (bar->PinTabsCount (), names.takeAt (last));
-
-	bar->moveTab (last, bar->PinTabsCount ());
-	bar->SetTabData (bar->PinTabsCount ());
-	bar->setPinTab (bar->PinTabsCount ());
-
-	TabWidget_->setCurrentIndex (bar->PinTabsCount () - 1);
-
-	OriginalTabNames_ = names;
-}
-
-void TabManager::handleUnpinTab ()
-{
-	SeparateTabBar *bar = TabWidget_->TabBar ();
-	const int last = TabWidget_->GetLastContextMenuTab ();
-
-	QStringList names = OriginalTabNames_;
-	names.insert (bar->PinTabsCount (), names.at (last));
-	names.removeAt (last);
-
-	bar->moveTab (last, bar->PinTabsCount () - 1);
-	bar->setUnPinTab (bar->PinTabsCount () - 1);
-
-	TabWidget_->setCurrentIndex (bar->PinTabsCount ());
-
-	OriginalTabNames_ = names;
 }
 
 void TabManager::ForwardKeyboard (QKeyEvent *key)
@@ -347,7 +304,7 @@ void TabManager::handleCurrentChanged (int index)
 		return;
 	}
 
-	QMap<QString, QList<QAction*> > menus = imtw->GetWindowMenus ();
+	QMap<QString, QList<QAction*>> menus = imtw->GetWindowMenus ();
 	Core::Instance ().GetReallyMainWindow ()->AddMenus (menus);
 	Menus_ = menus;
 

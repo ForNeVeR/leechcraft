@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -347,5 +347,18 @@ public:
 };
 
 Q_DECLARE_INTERFACE (IInfo, "org.Deviant.LeechCraft.IInfo/1.0");
+
+#define CURRENT_API_LEVEL 4
+
+#define LC_EXPORT_PLUGIN(name,file) Q_EXPORT_PLUGIN2(name, file) \
+	extern "C"\
+	{\
+		Q_DECL_EXPORT QMap<QByteArray, quint64> GetAPILevels ()\
+		{\
+			QMap<QByteArray, quint64> result;\
+			result ["Core"] = CURRENT_API_LEVEL;\
+			return result;\
+		}\
+	}
 
 #endif

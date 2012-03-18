@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -130,7 +130,20 @@ namespace LackMan
 
 		while (QueryGetInstalledPackages_.next ())
 		{
-			PackageShortInfo psi = GetPackage (QueryGetInstalledPackages_.value (0).toInt ());
+			PackageShortInfo psi;
+			try
+			{
+				psi = GetPackage (QueryGetInstalledPackages_.value (0).toInt ());
+			}
+			catch (const std::exception& e)
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "unable to get installed package info"
+						<< QueryGetInstalledPackages_.value (0).toInt ()
+						<< e.what ();
+				continue;
+			}
+
 			Dependency dep =
 			{
 				Dependency::TProvides,
@@ -466,12 +479,23 @@ namespace LackMan
 			throw std::runtime_error (qPrintable (str));
 		}
 
+		const auto& version = QueryGetPackage_.value (1).toString ();
 		PackageShortInfo info =
 		{
 			QueryGetPackage_.value (0).toString (),
-			QStringList (QueryGetPackage_.value (1).toString ())
+			QStringList (version),
 		};
 		QueryGetPackage_.finish ();
+
+		QueryGetPackageArchiver_.bindValue (":package_id", packageId);
+		if (!QueryGetPackageArchiver_.exec ())
+		{
+			Util::DBLock::DumpError (QueryGetPackageArchiver_);
+			throw std::runtime_error ("archiver query execution failed");
+		}
+		info.VersionArchivers_ [version] = QueryGetPackageArchiver_.next () ?
+				QueryGetPackageArchiver_.value (0).toString () :
+				"gz";
 
 		return info;
 	}
@@ -553,6 +577,13 @@ namespace LackMan
 			throw std::runtime_error ("Query execution failed");
 		}
 
+		QueryRemovePackageArchiver_.bindValue (":package_id", packageId);
+		if (!QueryRemovePackageArchiver_.exec ())
+		{
+			Util::DBLock::DumpError (QueryRemovePackageArchiver_);
+			throw std::runtime_error ("Query execution failed");
+		}
+
 		lock.Good ();
 	}
 
@@ -594,9 +625,19 @@ namespace LackMan
 				Util::DBLock::DumpError (QueryAddPackageSize_);
 				throw std::runtime_error ("Query execution failed");
 			}
+
+			QueryAddPackageArchiver_.bindValue (":package_id", packageId);
+			QueryAddPackageArchiver_.bindValue (":archiver",
+					pInfo.VersionArchivers_.value (version, "gz"));
+			if (!QueryAddPackageArchiver_.exec ())
+			{
+				Util::DBLock::DumpError (QueryAddPackageArchiver_);
+				throw std::runtime_error ("Query execution failed");
+			}
 		}
 		QueryAddPackage_.finish ();
 		QueryAddPackageSize_.finish ();
+		QueryAddPackageArchiver_.finish ();
 
 		QueryClearPackageInfos_.bindValue (":name", pInfo.Name_);
 		if (!QueryClearPackageInfos_.exec ())
@@ -719,7 +760,7 @@ namespace LackMan
 		lock.Good ();
 	}
 
-	QMap<int, QList<QString> > Storage::GetPackageLocations (int packageId)
+	QMap<int, QList<QString>> Storage::GetPackageLocations (int packageId)
 	{
 		QueryGetPackageLocations_.bindValue (":package_id", packageId);
 		if (!QueryGetPackageLocations_.exec ())
@@ -728,7 +769,7 @@ namespace LackMan
 			throw std::runtime_error ("Query execution failed");
 		}
 
-		QMap<int, QList<QString> > result;
+		QMap<int, QList<QString>> result;
 		while (QueryGetPackageLocations_.next ())
 		{
 			int repoId = QueryGetPackageLocations_.value (0).toInt ();
@@ -759,7 +800,7 @@ namespace LackMan
 		return result;
 	}
 
-	QMap<QString, QList<ListPackageInfo> > Storage::GetListPackageInfos ()
+	QMap<QString, QList<ListPackageInfo>> Storage::GetListPackageInfos ()
 	{
 		if (!QueryGetListPackageInfos_.exec ())
 		{
@@ -767,7 +808,7 @@ namespace LackMan
 			throw std::runtime_error ("Query execution failed");
 		}
 
-		QMap<QString, QList<ListPackageInfo> > result;
+		QMap<QString, QList<ListPackageInfo>> result;
 		while (QueryGetListPackageInfos_.next ())
 		{
 			int packageId = QueryGetListPackageInfos_.value (0).toInt ();
@@ -828,7 +869,7 @@ namespace LackMan
 			throw std::runtime_error ("Query execution failed");
 		}
 
-		QMap<QString, QList<ListPackageInfo> > result;
+		QMap<QString, QList<ListPackageInfo>> result;
 		if (!QueryGetSingleListPackageInfo_.next ())
 		{
 			qWarning () << Q_FUNC_INFO
@@ -1050,6 +1091,7 @@ namespace LackMan
 		QStringList names;
 		names << "packages"
 				<< "packagesizes"
+				<< "packagearchivers"
 				<< "deps"
 				<< "infos"
 				<< "locations"
@@ -1127,6 +1169,16 @@ namespace LackMan
 
 		QueryRemovePackageSize_ = QSqlQuery (DB_);
 		QueryRemovePackageSize_.prepare ("DELETE from packagesizes WHERE package_id = :package_id;");
+
+		QueryAddPackageArchiver_ = QSqlQuery (DB_);
+		QueryAddPackageArchiver_.prepare ("INSERT INTO packagearchivers (package_id, archiver) "
+				"VALUES (:package_id, :size);");
+
+		QueryGetPackageArchiver_ = QSqlQuery (DB_);
+		QueryGetPackageArchiver_.prepare ("SELECT archiver FROM packagearchivers WHERE package_id = :package_id;");
+
+		QueryRemovePackageArchiver_ = QSqlQuery (DB_);
+		QueryRemovePackageArchiver_.prepare ("DELETE FROM packagearchivers WHERE package_id = :package_id;");
 
 		QueryHasLocation_ = QSqlQuery (DB_);
 		QueryHasLocation_.prepare ("SELECT COUNT (package_id) "

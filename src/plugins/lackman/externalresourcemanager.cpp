@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,16 +31,11 @@ namespace LackMan
 		{
 			return QString (url.toEncoded ().toBase64 ().replace ('/', '_'));
 		}
-
-		QDir GetDir ()
-		{
-			return Util::CreateIfNotExists ("lackman/resources/");
-		}
 	}
 
 	ExternalResourceManager::ExternalResourceManager (QObject *parent)
 	: QObject (parent)
-	, ResourcesDir_ (GetDir ())
+	, ResourcesDir_ (Util::CreateIfNotExists ("lackman/resources/"))
 	{
 	}
 

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,10 @@
 #include <QAbstractItemView>
 #include <QToolBar>
 #include <QToolButton>
+#include <QMenu>
+#include <QApplication>
+#include <QClipboard>
+#include <QAction>
 #include <QtDebug>
 #include <interfaces/core/icoreproxy.h>
 #include "urlcompletionmodel.h"
@@ -42,7 +46,7 @@ namespace Poshuku
 		setCompleter (completer);
 
 		ClearButton_ = new QToolButton (this);
-		ClearButton_->setIcon (Core::Instance ().GetProxy ()->GetIcon ("clearall"));
+		ClearButton_->setIcon (Core::Instance ().GetProxy ()->GetIcon ("edit-clear-locationbar-ltr"));
 		ClearButton_->setCursor (Qt::PointingHandCursor);
 		ClearButton_->setStyleSheet ("QToolButton { border: none; padding: 0px; }");
 		ClearButton_->hide ();
@@ -70,10 +74,6 @@ namespace Poshuku
 				SIGNAL (textChanged (const QString&)),
 				this,
 				SLOT (textChanged (const QString&)));
-	}
-
-	ProgressLineEdit::~ProgressLineEdit ()
-	{
 	}
 
 	bool ProgressLineEdit::IsCompleting () const
@@ -184,6 +184,46 @@ namespace Poshuku
 		RepaintButtons ();
 	}
 
+	void ProgressLineEdit::contextMenuEvent (QContextMenuEvent *e)
+	{
+		QString cbText = qApp->clipboard ()->text (QClipboard::Clipboard);
+		if (cbText.isEmpty ())
+			cbText = qApp->clipboard ()->text (QClipboard::Selection);
+		if (cbText.isEmpty ())
+		{
+			QLineEdit::contextMenuEvent (e);
+			return;
+		}
+
+		QMenu *menu = createStandardContextMenu ();
+		const auto& acts = menu->actions ();
+		QAction *before = 0;
+		for (int i = 0; i < acts.size (); ++i)
+			if (acts.at (i)->shortcut () == QKeySequence (QKeySequence::Paste))
+			{
+				before = acts.value (i + 1);
+				break;
+			}
+
+		QAction *pasteGo = new QAction (tr ("Paste and go"), menu);
+		pasteGo->setData (cbText);
+		connect (pasteGo,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (pasteGo ()));
+		if (before)
+			menu->insertAction (before, pasteGo);
+		else
+		{
+			menu->addSeparator ();
+			menu->addAction (pasteGo);
+		}
+
+		menu->exec (e->globalPos ());
+
+		menu->deleteLater ();
+	}
+
 	void ProgressLineEdit::textChanged (const QString& text)
 	{
 		if (text.isEmpty ())
@@ -211,19 +251,37 @@ namespace Poshuku
 	{
 		const int frameWidth = style ()->pixelMetric (QStyle::PM_DefaultFrameWidth);
 		int rightBorder = 0;
+		int realBorder = 0;
 		for (int i = VisibleButtons_.count () - 1; i >= 0; --i)
 		{
 			QToolButton *btn = VisibleButtons_ [i];
 			const QSize& bmSz = btn->sizeHint ();
 			rightBorder += bmSz.width ();
+			if (i > 0)
+				realBorder += bmSz.width ();
+
 			btn->move (rect ().right () - frameWidth - rightBorder,
-					   (rect ().bottom () + 1 - bmSz.height ()) / 2);
+					(rect ().bottom () + 1 - bmSz.height ()) / 2);
 		}
+
+		const QMargins& margins = textMargins ();
+		setTextMargins (margins.left (),
+				margins.top (),
+				realBorder + frameWidth,
+				margins.bottom ());
 	}
 
 	void ProgressLineEdit::handleTriggeredButton (QAction *action)
 	{
 		emit actionTriggered (action, text ());
+	}
+
+	void ProgressLineEdit::pasteGo ()
+	{
+		QAction *act = qobject_cast<QAction*> (sender ());
+		const QString& text = act->data ().toString ();
+		setText (text);
+		emit returnPressed ();
 	}
 }
 }

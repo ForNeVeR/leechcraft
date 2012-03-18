@@ -19,7 +19,7 @@
 #ifndef PLUGINS_AZOTH_PLUGINS_ACETAMIDE_IRCACCOUNT_H
 #define PLUGINS_AZOTH_PLUGINS_ACETAMIDE_IRCACCOUNT_H
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QObject>
 #include <interfaces/iaccount.h>
 #include <interfaces/imessage.h>
@@ -65,7 +65,7 @@ namespace Acetamide
 		QString DefaultChannel_;
 		State IrcAccountState_;
 
-		boost::shared_ptr<ClientConnection> ClientConnection_;
+		std::shared_ptr<ClientConnection> ClientConnection_;
 		bool IsFirstStart_;
 		QList<IrcBookmark> ActiveChannels_;
 	public:
@@ -84,7 +84,7 @@ namespace Acetamide
 		QString GetRealName () const;
 		QStringList GetNickNames () const;
 
-		boost::shared_ptr<ClientConnection> GetClientConnection () const;
+		std::shared_ptr<ClientConnection> GetClientConnection () const;
 
 		void RenameAccount (const QString&);
 
@@ -107,7 +107,7 @@ namespace Acetamide
 
 		EntryStatus GetState () const;
 		void ChangeState (const EntryStatus&);
-		void Synchronize ();
+		void SetState (const EntryStatus& status);
 		void Authorize (QObject*);
 		void DenyAuth (QObject*);
 		void RequestAuth (const QString&, const QString&,
@@ -130,6 +130,7 @@ namespace Acetamide
 	signals:
 		void gotCLItems (const QList<QObject*>&);
 		void removedCLItems (const QList<QObject*>&);
+		void accountRenamed (const QString&);
 		void authorizationRequested (QObject*, const QString&);
 		void itemSubscribed (QObject*, const QString&);
 		void itemUnsubscribed (QObject*, const QString&);
@@ -149,7 +150,7 @@ namespace Acetamide
 		void bookmarksChanged ();
 	};
 
-	typedef boost::shared_ptr<IrcAccount> IrcAccount_ptr;
+	typedef std::shared_ptr<IrcAccount> IrcAccount_ptr;
 };
 };
 };

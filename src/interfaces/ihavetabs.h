@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -211,9 +211,9 @@ public:
 	 * @return The map with keys identifying menus and values containing
 	 * lists of actions to be inserted into corresponding menus.
 	 */
-	virtual QMap<QString, QList<QAction*> > GetWindowMenus () const
+	virtual QMap<QString, QList<QAction*>> GetWindowMenus () const
 	{
-		return QMap<QString, QList<QAction*> > ();
+		return QMap<QString, QList<QAction*>> ();
 	}
 	
 	/** @brief This method is called when this tab becomes active.

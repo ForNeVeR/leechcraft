@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,6 +54,9 @@ namespace LackMan
 		QSqlQuery QueryAddPackageSize_;
 		QSqlQuery QueryGetPackageSize_;
 		QSqlQuery QueryRemovePackageSize_;
+		QSqlQuery QueryAddPackageArchiver_;
+		QSqlQuery QueryGetPackageArchiver_;
+		QSqlQuery QueryRemovePackageArchiver_;
 		QSqlQuery QueryHasLocation_;
 		QSqlQuery QueryAddLocation_;
 		QSqlQuery QueryRemovePackageFromLocations_;
@@ -100,9 +103,9 @@ namespace LackMan
 		void RemovePackage (int packageId);
 		void AddPackages (const PackageInfo&);
 
-		QMap<int, QList<QString> > GetPackageLocations (int);
+		QMap<int, QList<QString>> GetPackageLocations (int);
 		QList<int> GetPackagesInComponent (int);
-		QMap<QString, QList<ListPackageInfo> > GetListPackageInfos ();
+		QMap<QString, QList<ListPackageInfo>> GetListPackageInfos ();
 		QList<Image> GetImages (const QString&);
 		ListPackageInfo GetSingleListPackageInfo (int);
 		DependencyList GetDependencies (int);

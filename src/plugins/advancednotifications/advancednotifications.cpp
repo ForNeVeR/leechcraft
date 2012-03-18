@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,6 +53,10 @@ namespace AdvancedNotifications
 				Core::Instance ().GetAudioThemeLoader ()->GetSubElemModel ());
 
 		GeneralHandler_.reset (new GeneralHandler (proxy));
+		connect (GeneralHandler_.get (),
+				SIGNAL (gotActions (QList<QAction*>, LeechCraft::ActionsEmbedPlace)),
+				this,
+				SIGNAL (gotActions (QList<QAction*>, LeechCraft::ActionsEmbedPlace)));
 
 		EnableSoundMgr_ = new EnableSoundActionManager (this);
 	}
@@ -120,4 +124,4 @@ namespace AdvancedNotifications
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_advancednotifications, LeechCraft::AdvancedNotifications::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_advancednotifications, LeechCraft::AdvancedNotifications::Plugin);

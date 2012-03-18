@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ namespace OTRoid
 
 	void Plugin::Init (ICoreProxy_ptr)
 	{
-		Translator_.reset (Util::InstallTranslator ("azoth_otroid"));
+		Util::InstallTranslator ("azoth_otroid");
 
 		OTRL_INIT;
 
@@ -230,6 +230,12 @@ namespace OTRoid
 		proxy->SetReturnValue (proxy->GetReturnValue ().toStringList () + ours);
 	}
 
+	void Plugin::hookEntryActionsRemoved (IHookProxy_ptr,
+			QObject *entry)
+	{
+		delete Entry2Action_.take (entry);
+	}
+
 	void Plugin::hookEntryActionsRequested (IHookProxy_ptr proxy, QObject *entry)
 	{
 		if (qobject_cast<ICLEntry*> (entry)->GetEntryType () == ICLEntry::ETMUC)
@@ -336,11 +342,6 @@ namespace OTRoid
 		otrl_message_free (newMsg);
 	}
 
-	void Plugin::handleEntryDestroyed ()
-	{
-		delete Entry2Action_ [sender ()];
-	}
-
 	const char* Plugin::GetOTRFilename (const QString& fname) const
 	{
 		return OtrDir_.absoluteFilePath (fname).toUtf8 ().constData ();
@@ -348,11 +349,6 @@ namespace OTRoid
 
 	void Plugin::CreateActions (QObject *entry)
 	{
-		connect (entry,
-				SIGNAL (destroyed (QObject*)),
-				this,
-				SLOT (handleEntryDestroyed ()));
-
 		QAction *otr = new QAction (tr ("Enable OTR"), this);
 		otr->setCheckable (true);
 		otr->setIcon (GetIcon ());
@@ -364,4 +360,4 @@ namespace OTRoid
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_azoth_otroid, LeechCraft::Azoth::OTRoid::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_azoth_otroid, LeechCraft::Azoth::OTRoid::Plugin);

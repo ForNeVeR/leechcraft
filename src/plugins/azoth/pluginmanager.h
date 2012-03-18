@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -92,6 +92,9 @@ namespace Azoth
 				QObject *action,
 				QObject *entry);
 
+		void hookEntryActionsRemoved (LeechCraft::IHookProxy_ptr proxy,
+				QObject *entry);
+
 		/** @brief Hook for adding actions for contact list entries.
 		 *
 		 * This hook is called for adding new CL entry-related actions
@@ -168,10 +171,8 @@ namespace Azoth
 				QString nick,
 				QObject *message);
 		void hookFormatBodyBegin (LeechCraft::IHookProxy_ptr proxy,
-				QObject *chatTab,
 				QObject *message);
 		void hookFormatBodyEnd (LeechCraft::IHookProxy_ptr proxy,
-				QObject *chatTab,
 				QObject *message);
 		void hookIsHighlightMessage (LeechCraft::IHookProxy_ptr proxy,
 				QObject *message);

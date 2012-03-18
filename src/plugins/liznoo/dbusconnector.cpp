@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QtDebug>
+#include <util/util.h>
 #include "batteryinfo.h"
 
 namespace LeechCraft
@@ -34,21 +35,73 @@ namespace Liznoo
 		SB_.connect ("org.freedesktop.UPower",
 				"/org/freedesktop/UPower",
 				"org.freedesktop.UPower",
-			   "DeviceAdded",
-			   this,
-			   SLOT (requeryDevice (const QString&)));
+				"DeviceAdded",
+				this,
+				SLOT (requeryDevice (const QString&)));
 		SB_.connect ("org.freedesktop.UPower",
 				"/org/freedesktop/UPower",
 				"org.freedesktop.UPower",
-			   "DeviceChanged",
-			   this,
-			   SLOT (requeryDevice (const QString&)));
-		
+				"DeviceChanged",
+				this,
+				SLOT (requeryDevice (const QString&)));
+		SB_.connect ("org.freedesktop.UPower",
+				"/org/freedesktop/UPower",
+				"org.freedesktop.UPower",
+				"Sleeping",
+				this,
+				SLOT (handleGonnaSleep ()));
+		SB_.connect ("org.freedesktop.UPower",
+				"/org/freedesktop/UPower",
+				"org.freedesktop.UPower",
+				"Resuming",
+				this,
+				SLOT (handleWokeUp ()));
+
 		QTimer::singleShot (1000,
 				this,
 				SLOT (enumerateDevices ()));
 	}
-	
+
+	void DBusConnector::changeState (PlatformLayer::PowerState state)
+	{
+		QDBusInterface face ("org.freedesktop.UPower",
+				"/org/freedesktop/UPower",
+				"org.freedesktop.UPower",
+				SB_);
+
+		auto st2meth = [] (PlatformLayer::PowerState state)
+		{
+			switch (state)
+			{
+			case PlatformLayer::PowerState::Suspend:
+				return "Suspend";
+			case PlatformLayer::PowerState::Hibernate:
+				return "Hibernate";
+			}
+		};
+
+		face.call (QDBus::NoBlock, st2meth (state));
+	}
+
+	void DBusConnector::handleGonnaSleep ()
+	{
+		Entity e = Util::MakeEntity ("Sleeping",
+				QString (),
+				TaskParameter::Internal,
+				"x-leechcraft/power-state-changed");
+		e.Additional_ ["TimeLeft"] = 1000;
+		emit gotEntity (e);
+	}
+
+	void DBusConnector::handleWokeUp ()
+	{
+		Entity e = Util::MakeEntity ("WokeUp",
+				QString (),
+				TaskParameter::Internal,
+				"x-leechcraft/power-state-changed");
+		emit gotEntity (e);
+	}
+
 	void DBusConnector::enumerateDevices()
 	{
 		QDBusInterface face ("org.freedesktop.UPower",
@@ -66,7 +119,7 @@ namespace Liznoo
 				requeryDevice (path);
 		}
 	}
-	
+
 	namespace
 	{
 		QString TechIdToString (int id)
@@ -78,11 +131,11 @@ namespace Liznoo
 			id2str [4] = "Lead acid";
 			id2str [5] = "NiCd";
 			id2str [6] = "NiMh";
-			
+
 			return id2str.value (id, "<unknown>");
 		}
 	}
-	
+
 	void DBusConnector::requeryDevice (const QString& id)
 	{
 		QDBusInterface face ("org.freedesktop.UPower",
@@ -91,7 +144,7 @@ namespace Liznoo
 				SB_);
 		if (face.property ("Type").toInt () != 2)
 			return;
-		
+
 		BatteryInfo info;
 		info.ID_ = id;
 		info.Percentage_ = face.property ("Percentage").toInt ();
@@ -102,7 +155,7 @@ namespace Liznoo
 		info.EnergyFull_ = face.property ("EnergyFull").toDouble ();
 		info.EnergyRate_ = face.property ("EnergyRate").toDouble ();
 		info.Technology_ = TechIdToString (face.property ("Technology").toInt ());
-		
+
 		emit batteryInfoUpdated (info);
 	}
 }

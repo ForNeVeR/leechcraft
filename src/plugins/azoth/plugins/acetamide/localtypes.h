@@ -21,6 +21,7 @@
 
 #include <QStringList>
 #include <QPair>
+#include <QDateTime>
 
 namespace LeechCraft
 {
@@ -55,8 +56,6 @@ namespace Acetamide
 
 	enum ChannelRole
 	{
-		Outcast,
-		NoRole,
 		Participant,
 		Voiced,
 		HalfOperator,
@@ -65,9 +64,20 @@ namespace Acetamide
 		Owner
 	};
 
+	enum ChannelManagment
+	{
+		Kick,
+		BanByName,
+		BanByDomain,
+		BanByUserAndDomain,
+		KickAndBan
+	};
+
 	struct IrcMessageOptions
 	{
 		QString Nick_;
+		QString UserName_;
+		QString Host_;
 		QString Command_;
 		QString Message_;
 		QList<std::string> Parameters_;
@@ -109,7 +119,38 @@ namespace Acetamide
 		QString AuthString_;
 		QString AuthMessage_;
 	};
-	
+
+	struct MainEntryInfo
+	{
+		QString Nick_;
+		QString UserName_;
+		QString Host_;
+		QString RealName_;
+		QString ServerName_;
+	};
+
+	struct WhoMessage : MainEntryInfo
+	{
+		QString Flags_;
+		QString Channel_;
+		bool IsAway_;
+		int Jumps_;
+		QString EndString_;
+	};
+
+	struct WhoIsMessage : MainEntryInfo
+	{
+		QStringList Channels_;
+		QString IdentifyAs_;
+		QString IdleTime_;
+		QString AuthTime_;
+		QString IrcOperator_;
+		QString ServerCountry_;
+		QString LoggedName_;
+		QString Secure_;
+		QString EndString_;
+	};
+
 	bool operator== (const ChannelOptions&, const ChannelOptions&);
 
 	bool operator== (const NickServIdentify&, const NickServIdentify&);

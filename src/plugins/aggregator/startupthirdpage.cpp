@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -132,7 +132,8 @@ namespace Aggregator
 		connect (wizard (),
 				SIGNAL (accepted ()),
 				this,
-				SLOT (handleAccepted ()));
+				SLOT (handleAccepted ()),
+				Qt::UniqueConnection);
 		wizard ()->setMinimumWidth (std::max (wizard ()->minimumWidth (), 800));
 		wizard ()->setMinimumHeight (std::max (wizard ()->minimumHeight (), 500));
 
@@ -162,6 +163,9 @@ namespace Aggregator
 
 	void StartupThirdPage::handleAccepted ()
 	{
+		if (wizard ()->field ("Aggregator/StorageDirty").toBool ())
+			Core::Instance ().ReinitStorage ();
+
 		for (int i = 0; i < Ui_.Tree_->topLevelItemCount (); ++i)
 		{
 			QTreeWidgetItem *item = Ui_.Tree_->topLevelItem (i);

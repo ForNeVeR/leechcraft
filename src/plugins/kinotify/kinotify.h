@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ namespace LeechCraft
 				ICoreProxy_ptr Proxy_;
 				QList<KinotifyWidget*> ActiveNotifications_;
 				Util::XmlSettingsDialog_ptr SettingsDialog_;
-				boost::shared_ptr<Util::ResourceLoader> ThemeLoader_;
+				std::shared_ptr<Util::ResourceLoader> ThemeLoader_;
 			public:
 				void Init (ICoreProxy_ptr);
 				void SecondInit ();

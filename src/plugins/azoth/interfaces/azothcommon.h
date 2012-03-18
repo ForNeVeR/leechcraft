@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ namespace Azoth
 		/** User and contact are subscribed to each other (two-way).
 		 */
 		ASBoth = 0x03,
-		
+
 		/** Contact has requested our subscription.
 		 */
 		ASContactRequested = 0x08
@@ -111,9 +111,9 @@ namespace Azoth
 		 */
 		CPSPaused
 	};
-	
+
 	/** Represents Azoth-specific action embed places.
-	 * 
+	 *
 	 * To be used with IActionsExporter.
 	 */
 	enum AzothActionsEmbedPlace

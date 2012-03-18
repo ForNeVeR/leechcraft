@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #ifndef PLUGINS_ADVANCEDNOTIFICATIONS_ADVANCEDNOTIFICATIONS_H
 #define PLUGINS_ADVANCEDNOTIFICATIONS_ADVANCEDNOTIFICATIONS_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QObject>
 #include <interfaces/iinfo.h>
 #include <interfaces/ientityhandler.h>
@@ -43,7 +43,7 @@ namespace AdvancedNotifications
 
 		ICoreProxy_ptr Proxy_;
 		Util::XmlSettingsDialog_ptr SettingsDialog_;
-		boost::shared_ptr<GeneralHandler> GeneralHandler_;
+		std::shared_ptr<GeneralHandler> GeneralHandler_;
 		EnableSoundActionManager *EnableSoundMgr_;
 	public:
 		void Init (ICoreProxy_ptr);

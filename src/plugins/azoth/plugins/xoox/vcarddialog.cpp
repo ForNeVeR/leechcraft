@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,9 +35,9 @@ namespace Azoth
 {
 namespace Xoox
 {
-	VCardDialog::VCardDialog (QWidget *parent)
+	VCardDialog::VCardDialog (GlooxAccount *acc, QWidget *parent)
 	: QDialog (parent)
-	, Account_ (0)
+	, Account_ (acc)
 	{
 		Ui_.setupUi (this);
 		connect (this,
@@ -70,8 +70,6 @@ namespace Xoox
 
 		Ui_.EditBirthday_->setVisible (false);
 
-		GlooxAccount *acc = qobject_cast<GlooxAccount*> (entry->GetParentAccount ());
-
 		InitConnections (entry);
 		rebuildClientInfo ();
 	}
@@ -80,8 +78,10 @@ namespace Xoox
 	{
 		VCard_ = vcard;
 
-		setWindowTitle (tr ("VCard for %1")
-					.arg (vcard.nickName ()));
+		const QString& forString = vcard.nickName ().isEmpty () ?
+				vcard.from () :
+				vcard.nickName ();
+		setWindowTitle (tr ("VCard for %1").arg (forString));
 
 		Ui_.EditJID_->setText (vcard.from ());
 		Ui_.EditRealName_->setText (vcard.fullName ());
@@ -91,7 +91,50 @@ namespace Xoox
 			Ui_.EditBirthday_->setDate (date);
 		Ui_.EditBirthday_->setVisible (date.isValid ());
 
-		Ui_.EditPhone_->setText ("<phones not supported yet>");
+		QStringList phones;
+		Q_FOREACH (const QXmppVCardPhone& phone, vcard.phones ())
+		{
+			if (phone.number.isEmpty ())
+				continue;
+
+			QStringList attrs;
+			if (phone.isPref)
+				attrs << tr ("preferred");
+			if (phone.isHome)
+				attrs << tr ("home");
+			if (phone.isWork)
+				attrs << tr ("work");
+			if (phone.isCell)
+				attrs << tr ("cell");
+
+			phones << (attrs.isEmpty () ?
+						phone.number :
+						(phone.number + " (" + attrs.join (", ") + ")"));
+		}
+		Ui_.EditPhone_->setText (phones.join ("; "));
+
+		QStringList emails;
+		Q_FOREACH (const QXmppVCardEmail& email, vcard.emails ())
+		{
+			if (email.address.isEmpty ())
+				continue;
+
+			QStringList attrs;
+			if (email.isPref)
+				attrs << tr ("preferred");
+			if (email.isHome)
+				attrs << tr ("home");
+			if (email.isWork)
+				attrs << tr ("work");
+			if (email.isX400)
+				attrs << "X400";
+
+			emails << (attrs.isEmpty () ?
+						email.address :
+						(email.address + " (" + attrs.join (", ") + ")"));
+		}
+		Ui_.EditEmail_->setText (emails.join ("; "));
+
 		Ui_.EditURL_->setText (vcard.url ());
 
 		QPixmap px = QPixmap::fromImage (QImage::fromData (vcard.photo ()));
@@ -110,6 +153,7 @@ namespace Xoox
 		Ui_.OrgUnit_->setText (vcard.orgUnit ());
 		Ui_.Title_->setText (vcard.title ());
 		Ui_.Role_->setText (vcard.role ());
+		Ui_.About_->setPlainText (vcard.desc ());
 	}
 
 	void VCardDialog::InitConnections (EntryBase *entry)
@@ -151,8 +195,8 @@ namespace Xoox
 			gapp (tr ("Version"), version.version ());
 			gapp (tr ("OS"), version.os ());
 
-			const QStringList& caps =
-					mgr->GetCaps (entry->GetVariantVerString (variant));
+			QStringList caps = mgr->GetCaps (entry->GetVariantVerString (variant));
+			caps.sort ();
 			if (caps.size ())
 				html += "<strong>" + tr ("Capabilities") +
 						"</strong>:<ul><li>" + caps.join ("</li><li>") + "</li></ul>";
@@ -183,6 +227,7 @@ namespace Xoox
 		VCard_.setOrgUnit (Ui_.OrgUnit_->text ());
 		VCard_.setTitle (Ui_.Title_->text ());
 		VCard_.setRole (Ui_.Role_->text ());
+		VCard_.setDesc (Ui_.About_->toPlainText ());
 
 		const QPixmap *px = Ui_.LabelPhoto_->pixmap ();
 		if (px)
@@ -241,6 +286,8 @@ namespace Xoox
 
 		Q_FOREACH (QLineEdit *edit, findChildren<QLineEdit*> ())
 			edit->setReadOnly (false);
+
+		Ui_.About_->setReadOnly (false);
 	}
 
 	void VCardDialog::UpdateNote (GlooxAccount *acc, const QString& jid)

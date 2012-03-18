@@ -1,21 +1,9 @@
-IF (NOT QT_USE_FILE)
-	CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
-	IF (COMMAND cmake_policy)
-		cmake_policy (SET CMP0003 NEW)
-	ENDIF (COMMAND cmake_policy)
-
-	PROJECT (leechcraft_aggregator)
-
-	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
-	ENDIF (NOT CMAKE_MODULE_PATH)
-
-	FIND_PACKAGE (Boost REQUIRED COMPONENTS date_time filesystem system thread signals)
-	FIND_PACKAGE (Qt4 REQUIRED)
-	FIND_PACKAGE (LeechCraft REQUIRED)
-ENDIF (NOT QT_USE_FILE)
+CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
+PROJECT (leechcraft_aggregator)
+INCLUDE (InitLCPlugin OPTIONAL)
 
 OPTION (ENABLE_AGGREGATOR_BODYFETCH "Enable BodyFetch for fetching full bodies of news items" ON)
+OPTION (ENABLE_AGGREGATOR_WEBACCESS "Enable WebAccess for providing HTTP access to Aggregator" OFF)
 
 SET (QT_USE_QTSQL TRUE)
 SET (QT_USE_QTXML TRUE)
@@ -77,6 +65,9 @@ SET (SRCS
 	pluginmanager.cpp
 	proxyobject.cpp
 	syncdeltagenerator.cpp
+	dbupdatethread.cpp
+	dbupdatethreadworker.cpp
+	tovarmaps.cpp
 	)
 SET (HEADERS
     aggregator.h
@@ -124,6 +115,9 @@ SET (HEADERS
 	pluginmanager.h
 	proxyobject.h
 	syncdeltagenerator.h
+	dbupdatethread.h
+	dbupdatethreadworker.h
+	tovarmaps.h
 	)
 SET (FORMS
     mainwidget.ui
@@ -178,3 +172,7 @@ SET (AGGREGATOR_INCLUDE_DIR ${CURRENT_SOURCE_DIR})
 IF (ENABLE_AGGREGATOR_BODYFETCH)
 	ADD_SUBDIRECTORY (plugins/bodyfetch)
 ENDIF (ENABLE_AGGREGATOR_BODYFETCH)
+
+IF (ENABLE_AGGREGATOR_WEBACCESS)
+	ADD_SUBDIRECTORY (plugins/webaccess)
+ENDIF (ENABLE_AGGREGATOR_WEBACCESS)

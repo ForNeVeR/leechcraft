@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #ifndef PLUGINS_ADVANCEDNOTIFICATIONS_FIELDMATCH_H
 #define PLUGINS_ADVANCEDNOTIFICATIONS_FIELDMATCH_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QString>
 #include <QVariant>
 
@@ -28,7 +28,7 @@ namespace AdvancedNotifications
 {
 	class TypedMatcherBase;
 
-	typedef boost::shared_ptr<TypedMatcherBase> TypedMatcherBase_ptr;
+	typedef std::shared_ptr<TypedMatcherBase> TypedMatcherBase_ptr;
 
 	class FieldMatch
 	{

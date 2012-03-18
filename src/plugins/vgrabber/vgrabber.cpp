@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -147,7 +147,7 @@ namespace LeechCraft
 				return Proxy_;
 			}
 
-			boost::shared_ptr<Util::XmlSettingsDialog> vGrabber::GetSettingsDialog () const
+			std::shared_ptr<Util::XmlSettingsDialog> vGrabber::GetSettingsDialog () const
 			{
 				return SettingsDialog_;
 			}
@@ -173,5 +173,5 @@ namespace LeechCraft
 	};
 };
 
-Q_EXPORT_PLUGIN2 (leechcraft_vgrabber, LeechCraft::Plugins::vGrabber::vGrabber);
+LC_EXPORT_PLUGIN (leechcraft_vgrabber, LeechCraft::Plugins::vGrabber::vGrabber);
 

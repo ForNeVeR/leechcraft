@@ -1,7 +1,7 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2011-2012  Minh Ngo
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_LAURE_LAUREWIDGET_H
-#define PLUGINS_LAURE_LAUREWIDGET_H
-#include <boost/shared_ptr.hpp>
+#pragma once
+#include <memory>
 #include <QWidget>
 #include <interfaces/ihavetabs.h>
 #include <interfaces/iinfo.h>
@@ -27,6 +26,7 @@
 
 class QToolBar;
 class QUrl;
+class QMenu;
 
 namespace LeechCraft
 {
@@ -36,11 +36,11 @@ namespace Laure
 	class PlayListWidget;
 	class PlayPauseAction;
 	class SeparatePlayer;
-	
+
 	/** @brief Represents a tab in LeechCraft tabs system.
-	 * 
+	 *
 	 * @author Minh Ngo <nlminhtl@gmail.com>
-	 * 
+	 *
 	 * @sa ITabWidget
 	 */
 	class LaureWidget : public QWidget
@@ -48,26 +48,30 @@ namespace Laure
 	{
 		Q_OBJECT
 		Q_INTERFACES (ITabWidget)
-		
+
 		static QObject *S_ParentMultiTabs_;
-		
+
 		QToolBar *ToolBar_;
 		Ui::LaureWidget Ui_;
-		VLCWrapper *VLCWrapper_;
-		boost::shared_ptr<SeparatePlayer> SeparatePlayer_;
+		std::shared_ptr<VLCWrapper> VLCWrapper_;
+		std::shared_ptr<SeparatePlayer> SeparatePlayer_;
 		QAction *DetachedVideo_;
+		QAction *PlayListAction_;
+		QAction *SubtitleAction_;
+		QMenu *SubtitleMenu_;
 	public:
 		/** @brief Constructs a new LaureWidget tab
 		 * with the given parent and flags.
 		 */
 		LaureWidget (QWidget *parent = 0, Qt::WindowFlags f = 0);
-		
+		~LaureWidget ();
+
 		static void SetParentMultiTabs (QObject*);
 		TabClassInfo GetTabClassInfo () const;
 		QObject* ParentMultiTabs ();
 		void Remove ();
 		QToolBar* GetToolBar () const;
-	
+
 	protected:
 		void keyPressEvent (QKeyEvent*);
 	private:
@@ -78,37 +82,28 @@ namespace Laure
 		 * be closed.
 		 */
 		void needToClose ();
-		
+
 		/** @brief Is emitted when the PlayPauseAction is clicked.
 		 */
 		void playPause ();
-		
-		/** @brief Is emitted for sending media meta info to the desired
-		 * destination.
-		 * 
-		 * @param[out] mediameta Media meta info.
-		 */
-		void currentTrackMeta (const MediaMeta& mediameta);
-		
-		/** @brief Is emitted when the current track is finished.
-		 */
-		void trackFinished ();
-		
+
 		/** @brief Is emitted when the media item needs to be added to
 		 * the playlist.
 		 *
 		 * @param[out] location Media file location.
 		 */
 		void addItem (const QString& location);
-		
+
 		void gotEntity (const Entity&);
 		void delegateEntity (const Entity&, int*, QObject**);
 	public slots:
 		/** @brief Is called for adding media files to the playlist.
-		 * 
+		 *
 		 * @param[in] location Media file location.
 		 */
 		void handleOpenMediaContent (const QString& location);
+		
+		void updateSubtitleMenu (const MediaMeta& meta);
 	private slots:
 		void handleOpenFile ();
 		void handleOpenURL ();
@@ -116,8 +111,8 @@ namespace Laure
 		void handleVideoMode (bool);
 		void handleDetachPlayer (bool);
 		void handleSeparatePlayerClosed ();
+		void subtitleDialog ();
+		void showSubtitleMenu ();
 	};
 }
 }
-
-#endif // PLUGINS_LAURE_LAUREWIDGET_H

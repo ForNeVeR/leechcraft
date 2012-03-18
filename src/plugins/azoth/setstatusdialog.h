@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,11 +31,15 @@ namespace Azoth
 		Q_OBJECT
 
 		Ui::SetStatusDialog Ui_;
+		QString Context_;
 	public:
-		SetStatusDialog (QWidget* = 0);
+		SetStatusDialog (const QString& context, QWidget* = 0);
 
 		State GetState () const;
 		QString GetStatusText () const;
+	private slots:
+		void save ();
+		void on_StatusBox__currentIndexChanged ();
 	};
 }
 }

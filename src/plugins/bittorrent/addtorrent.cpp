@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -272,7 +272,7 @@ namespace LeechCraft
 			{
 				try
 				{
-#ifdef Q_WS_WIN32
+#ifdef Q_OS_WIN32
 					boost::filesystem::space_info space =
 							boost::filesystem::space (std::string (GetSavePath ().toUtf8 ().constData ()));
 #else

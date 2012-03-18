@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_ACCOUNTCONFIGDIALOG_H
-#define PLUGINS_SNAILS_ACCOUNTCONFIGDIALOG_H
+#pragma once
+
 #include <QDialog>
 #include "ui_accountconfigdialog.h"
 #include "account.h"
@@ -73,11 +73,17 @@ namespace Snails
 		bool GetSASLRequired () const;
 		void SetSASLRequired (bool);
 
-		bool GetUseTLS () const;
-		void SetUseTLS (bool);
+		Account::SecurityType GetInSecurity () const;
+		void SetInSecurity (Account::SecurityType);
 
-		bool GetTLSRequired () const;
-		void SetTLSRequired (bool);
+		bool GetInSecurityRequired () const;
+		void SetInSecurityRequired (bool);
+
+		Account::SecurityType GetOutSecurity () const;
+		void SetOutSecurity (Account::SecurityType);
+
+		bool GetOutSecurityRequired () const;
+		void SetOutSecurityRequired (bool);
 
 		bool GetSMTPAuth () const;
 		void SetSMTPAuth (bool);
@@ -101,5 +107,3 @@ namespace Snails
 	};
 }
 }
-
-#endif

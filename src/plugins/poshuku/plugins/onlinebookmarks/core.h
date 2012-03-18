@@ -46,7 +46,7 @@ namespace OnlineBookmarks
 
 		ICoreProxy_ptr CoreProxy_;
 		QObject *PluginProxy_;
-		boost::shared_ptr<PluginManager> PluginManager_;
+		std::shared_ptr<PluginManager> PluginManager_;
 		AccountsSettings *AccountsSettings_;
 
 		QObjectList ServicesPlugins_;
@@ -83,11 +83,11 @@ namespace OnlineBookmarks
 		void SavePassword (QObject*);
 
 		QModelIndex GetServiceIndex (QObject*) const;
+		QVariantList GetAllBookmarks () const;
 	private:
 		QObject* GetBookmarksModel () const;
 		QVariantList GetUniqueBookmarks (IAccount*,
 				const QVariantList&, bool byService = false);
-		QVariantList GetAllBookmarks () const;
 	private slots:
 		void handleGotBookmarks (QObject*, const QVariantList&);
 		void handleBookmarksUploaded ();

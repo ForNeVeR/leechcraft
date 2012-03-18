@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_PROGRESSLISTENER_H
-#define PLUGINS_SNAILS_PROGRESSLISTENER_H
+#pragma once
+
 #include <QMetaType>
 #include <QPointer>
 #include <QObject>
@@ -50,5 +50,3 @@ namespace Snails
 }
 
 Q_DECLARE_METATYPE (LeechCraft::Snails::ProgressListener_g_ptr);
-
-#endif

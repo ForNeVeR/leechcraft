@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ namespace Azoth
 
 	void ChatTabWebView::HandleNick (QMenu *menu, const QUrl& nickUrl)
 	{
-		const QString& entryId = nickUrl.queryItemValue ("entryId").toUtf8 ();
+		const QString& entryId = QUrl::fromPercentEncoding (nickUrl.queryItemValue ("entryId").toUtf8 ());
 		if (entryId.isEmpty ())
 			return;
 

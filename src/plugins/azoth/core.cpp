@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 #include <util/defaulthookproxy.h>
 #include <util/categoryselector.h>
 #include <util/notificationactionhandler.h>
+#include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/iplugin2.h>
 #include <interfaces/core/icoreproxy.h>
 #include "interfaces/iprotocolplugin.h"
@@ -48,6 +49,7 @@
 #include "interfaces/iresourceplugin.h"
 #include "interfaces/iurihandler.h"
 #include "interfaces/irichtextmessage.h"
+#include "interfaces/ihaveservicediscovery.h"
 #include "interfaces/iextselfinfoaccount.h"
 #ifdef ENABLE_CRYPT
 #include "interfaces/isupportpgp.h"
@@ -68,6 +70,9 @@
 #include "acceptriexdialog.h"
 #include "clmodel.h"
 #include "actionsmanager.h"
+#include "servicediscoverywidget.h"
+#include "importmanager.h"
+#include "unreadqueuemanager.h"
 
 namespace LeechCraft
 {
@@ -113,6 +118,28 @@ namespace Azoth
 		}
 	}
 
+	QList<IAccount*> GetAccountsPred (const QObjectList& protocols,
+			std::function<bool (IProtocol*)> protoPred = [] (IProtocol*) { return true; })
+	{
+		QList<IAccount*> accounts;
+		Q_FOREACH (QObject *protoPlugin, protocols)
+		{
+			QObjectList protocols =
+					qobject_cast<IProtocolPlugin*> (protoPlugin)->GetProtocols ();
+			Q_FOREACH (QObject *protoObj, protocols)
+			{
+				IProtocol *proto = qobject_cast<IProtocol*> (protoObj);
+				if (!protoPred (proto))
+					continue;
+
+				QObjectList accountObjs = proto->GetRegisteredAccounts ();
+				Q_FOREACH (QObject *accountObj, accountObjs)
+					accounts << qobject_cast<IAccount*> (accountObj);
+			}
+		}
+		return accounts;
+	}
+
 	Core::Core ()
 	: LinkRegexp_ ("((?:(?:\\w+://)|(?:xmpp:|mailto:|www\\.|magnet:|irc:))\\S+)",
 			Qt::CaseInsensitive, QRegExp::RegExp2)
@@ -135,6 +162,8 @@ namespace Azoth
 	, XferJobManager_ (new TransferJobManager)
 	, CallManager_ (new CallManager)
 	, EventsNotifier_ (new EventsNotifier)
+	, ImportManager_ (new ImportManager)
+	, UnreadQueueManager_ (new UnreadQueueManager)
 	{
 		FillANFields ();
 
@@ -166,7 +195,7 @@ namespace Azoth
 		ResourceLoaders_ [RLTActivityIconLoader].reset (new Util::ResourceLoader ("azoth/iconsets/activities/", this));
 		ResourceLoaders_ [RLTMoodIconLoader].reset (new Util::ResourceLoader ("azoth/iconsets/moods/", this));
 
-		Q_FOREACH (boost::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
+		Q_FOREACH (std::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
 		{
 			rl->AddLocalPrefix ();
 			rl->AddGlobalPrefix ();
@@ -178,6 +207,10 @@ namespace Azoth
 				SIGNAL (clearUnreadMsgCount (QObject*)),
 				this,
 				SLOT (handleClearUnreadMsgCount (QObject*)));
+		connect (this,
+				SIGNAL (hookAddingCLEntryEnd (LeechCraft::IHookProxy_ptr, QObject*)),
+				ChatTabsManager_,
+				SLOT (handleAddingCLEntryEnd (LeechCraft::IHookProxy_ptr, QObject*)));
 		connect (XferJobManager_.get (),
 				SIGNAL (jobNoLongerOffered (QObject*)),
 				this,
@@ -190,6 +223,10 @@ namespace Azoth
 				SIGNAL (entryMadeCurrent (QObject*)),
 				EventsNotifier_.get (),
 				SLOT (handleEntryMadeCurrent (QObject*)));
+		connect (ChatTabsManager_,
+				SIGNAL (entryMadeCurrent (QObject*)),
+				UnreadQueueManager_.get (),
+				SLOT (clearMessagesForEntry (QObject*)));
 
 		PluginManager_->RegisterHookable (this);
 		PluginManager_->RegisterHookable (CLModel_);
@@ -216,6 +253,8 @@ namespace Azoth
 	{
 		ResourceLoaders_.clear ();
 
+		ShortcutManager_.reset ();
+
 #ifdef ENABLE_CRYPT
 		QCAEventHandler_.reset ();
 		KeyStoreMgr_.reset ();
@@ -226,6 +265,7 @@ namespace Azoth
 	void Core::SetProxy (ICoreProxy_ptr proxy)
 	{
 		Proxy_ = proxy;
+		ShortcutManager_.reset (new Util::ShortcutManager (proxy));
 	}
 
 	ICoreProxy_ptr Core::GetProxy () const
@@ -255,9 +295,14 @@ namespace Azoth
 		return SmilesOptionsModel_->GetSourceForOption (pack);
 	}
 
-	QAbstractItemModel* Core::GetChatStylesOptionsModel()
+	QAbstractItemModel* Core::GetChatStylesOptionsModel () const
 	{
 		return ChatStylesOptionsModel_.get ();
+	}
+
+	Util::ShortcutManager* Core::GetShortcutManager () const
+	{
+		return ShortcutManager_.get ();
 	}
 
 	QSet<QByteArray> Core::GetExpectedPluginClasses () const
@@ -303,6 +348,11 @@ namespace Azoth
 
 	bool Core::CouldHandle (const Entity& e) const
 	{
+		if (e.Mime_ == "x-leechcraft/power-state-changed" ||
+				e.Mime_ == "x-leechcraft/im-account-import" ||
+				e.Mime_ == "x-leechcraft/im-history-import")
+			return true;
+
 		if (!e.Entity_.canConvert<QUrl> ())
 			return false;
 
@@ -337,6 +387,22 @@ namespace Azoth
 
 	void Core::Handle (Entity e)
 	{
+		if (e.Mime_ == "x-leechcraft/power-state-changed")
+		{
+			HandlePowerNotification (e);
+			return;
+		}
+		else if (e.Mime_ == "x-leechcraft/im-account-import")
+		{
+			ImportManager_->HandleAccountImport (e);
+			return;
+		}
+		else if (e.Mime_ == "x-leechcraft/im-history-import")
+		{
+			ImportManager_->HandleHistoryImport (e);
+			return;
+		}
+
 		const QUrl& url = e.Entity_.toUrl ();
 		if (!url.isValid ())
 			return;
@@ -414,33 +480,9 @@ namespace Azoth
 		return ChatTabsManager_;
 	}
 
-	QList<IAccount*> Core::GetAccounts () const
+	QList<IAccount*> Core::GetAccounts (std::function<bool (IProtocol*)> protoPred) const
 	{
-		QList<IAccount*> result;
-		Q_FOREACH (QObject *protoObj, ProtocolPlugins_)
-		{
-			IProtocolPlugin *protoPlug =
-					qobject_cast<IProtocolPlugin*> (protoObj);
-			Q_FOREACH (QObject *protoObj, protoPlug->GetProtocols ())
-			{
-				IProtocol *proto = qobject_cast<IProtocol*> (protoObj);
-				Q_FOREACH (QObject *accObj, proto->GetRegisteredAccounts ())
-				{
-					IAccount *acc = qobject_cast<IAccount*> (accObj);
-					if (!acc)
-					{
-						qWarning () << Q_FUNC_INFO
-								<< "account object from protocol"
-								<< proto->GetProtocolID ()
-								<< "doesn't implement IAccount"
-								<< accObj;
-						continue;
-					}
-					result << acc;
-				}
-			}
-		}
-		return result;
+		return GetAccountsPred (ProtocolPlugins_, protoPred);
 	}
 
 	QList<IProtocol*> Core::GetProtocols () const
@@ -676,20 +718,17 @@ namespace Azoth
 		src->FrameFocused (frame);
 	}
 
-	namespace
+	QList<QColor> Core::GenerateColors (const QString& coloring) const
 	{
-		qreal Fix (qreal h)
+		auto fix = [] (qreal h)
 		{
 			while (h < 0)
 				h += 1;
 			while (h >= 1)
 				h -= 1;
 			return h;
-		}
-	}
+		};
 
-	QList<QColor> Core::GenerateColors (const QString& coloring) const
-	{
 		QList<QColor> result;
 		if (coloring == "hash" ||
 				coloring.isEmpty ())
@@ -707,13 +746,13 @@ namespace Azoth
 			QColor color;
 			for (qreal d = lower; d <= higher; d += delta)
 			{
-				color.setHsvF (Fix (h + d), 1, 0.6, alpha);
+				color.setHsvF (fix (h + d), 1, 0.6, alpha);
 				result << color;
-				color.setHsvF (Fix (h - d), 1, 0.6, alpha);
+				color.setHsvF (fix (h - d), 1, 0.6, alpha);
 				result << color;
-				color.setHsvF (Fix (h + d), 1, 0.9, alpha);
+				color.setHsvF (fix (h + d), 1, 0.9, alpha);
 				result << color;
-				color.setHsvF (Fix (h - d), 1, 0.9, alpha);
+				color.setHsvF (fix (h - d), 1, 0.9, alpha);
 				result << color;
 			}
 		}
@@ -800,7 +839,7 @@ namespace Azoth
 
 		Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
 		proxy->SetValue ("body", body);
-		emit hookFormatBodyBegin (proxy, this, msgObj);
+		emit hookFormatBodyBegin (proxy, msgObj);
 		if (!proxy->IsCancelled ())
 		{
 			proxy->FillValue ("body", body);
@@ -833,7 +872,7 @@ namespace Azoth
 
 			proxy.reset (new Util::DefaultHookProxy);
 			proxy->SetValue ("body", body);
-			emit hookFormatBodyEnd (proxy, this, msgObj);
+			emit hookFormatBodyEnd (proxy, msgObj);
 			proxy->FillValue ("body", body);
 		}
 
@@ -906,7 +945,7 @@ namespace Azoth
 				groups << Core::tr ("Contacts");
 			return groups;
 		}
-	};
+	}
 
 	void Core::AddCLEntry (ICLEntry *clEntry,
 			QStandardItem *accItem)
@@ -1071,7 +1110,7 @@ namespace Azoth
 
 	namespace
 	{
-		QString Status2Str (const EntryStatus& status, boost::shared_ptr<IProxyObject> obj)
+		QString Status2Str (const EntryStatus& status, std::shared_ptr<IProxyObject> obj)
 		{
 			QString result = obj->StateToString (status.State_);
 			const QString& statusString = Qt::escape (status.StatusString_);
@@ -1079,10 +1118,7 @@ namespace Azoth
 				result += " (" + statusString + ")";
 			return result;
 		}
-	}
 
-	namespace
-	{
 		void FormatMood (QString& tip, const QMap<QString, QVariant>& moodInfo)
 		{
 			tip += "<br />" + Core::tr ("Mood:") + ' ';
@@ -1154,7 +1190,7 @@ namespace Azoth
 		if (mucPerms)
 		{
 			tip += "<hr />";
-			const QMap<QByteArray, QList<QByteArray> >& perms =
+			const QMap<QByteArray, QList<QByteArray>>& perms =
 					mucPerms->GetPerms (entry->GetObject ());
 			Q_FOREACH (const QByteArray& permClass, perms.keys ())
 			{
@@ -1277,6 +1313,8 @@ namespace Azoth
 		{
 			item->setToolTip (tip);
 			ItemIconManager_->SetIcon (item, icon.get ());
+
+			RecalculateOnlineForCat (item->parent ());
 		}
 
 		const QString& id = entry->GetEntryID ();
@@ -1423,16 +1461,26 @@ namespace Azoth
 
 		QImage avatar = entry ? entry->GetAvatar () : QImage ();
 		if (avatar.isNull () || !avatar.width ())
-		{
-			const QString& name = XmlSettingsManager::Instance ()
-					.property ("SystemIcons").toString () + "/default_avatar";
-			avatar = ResourceLoaders_ [RLTSystemIconLoader]->LoadPixmap (name).toImage ();
-		}
+			avatar = GetDefaultAvatar (size);
 
-		const QImage& scaled = avatar.scaled (size, size,
-				Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		const QImage& scaled = avatar.isNull () ?
+				QImage () :
+				avatar.scaled (size, size,
+						Qt::KeepAspectRatio, Qt::SmoothTransformation);
 		Entry2SmoothAvatarCache_ [entry] = scaled;
 		return scaled;
+	}
+
+	QImage Core::GetDefaultAvatar (int size)
+	{
+		const QString& name = XmlSettingsManager::Instance ()
+				.property ("SystemIcons").toString () + "/default_avatar";
+		const QImage& image = ResourceLoaders_ [RLTSystemIconLoader]->
+				LoadPixmap (name).toImage ();
+		return image.isNull () ?
+				QImage () :
+				image.scaled (size, size,
+						Qt::KeepAspectRatio, Qt::SmoothTransformation);
 	}
 
 	ActionsManager* Core::GetActionsManager () const
@@ -1448,6 +1496,43 @@ namespace Azoth
 				i < rc; ++i)
 			sum += category->child (i)->data (CLRUnreadMsgCount).toInt ();
 		category->setData (sum, CLRUnreadMsgCount);
+	}
+
+	void Core::RecalculateOnlineForCat (QStandardItem *catItem)
+	{
+		int result = 0;
+		for (int i = 0; i < catItem->rowCount (); ++i)
+		{
+			auto entryObj = catItem->child (i)->
+					data (CLREntryObject).value<QObject*> ();
+			result += qobject_cast<ICLEntry*> (entryObj)->GetStatus ().State_ != SOffline;
+		}
+
+		catItem->setData (result, CLRNumOnline);
+	}
+
+	void Core::HandlePowerNotification (Entity e)
+	{
+		auto accs = GetAccountsPred (ProtocolPlugins_);
+
+		qDebug () << Q_FUNC_INFO << e.Entity_;
+
+		if (e.Entity_ == "Sleeping")
+			Q_FOREACH (IAccount *acc, accs)
+			{
+				const auto& state = acc->GetState ();
+				if (state.State_ == SOffline)
+					continue;
+
+				SavedStatus_ [acc] = state;
+				acc->ChangeState ({SOffline, tr ("Client went to sleep")});
+			}
+		else if (e.Entity_ == "WokeUp")
+		{
+			Q_FOREACH (IAccount *acc, SavedStatus_.keys ())
+				acc->ChangeState (SavedStatus_ [acc]);
+			SavedStatus_.clear ();
+		}
 	}
 
 	void Core::RemoveCLItem (QStandardItem *item)
@@ -1588,8 +1673,17 @@ namespace Azoth
 
 	void Core::UpdateInitState (State state)
 	{
+		if (state == SConnecting)
+			return;
+
 		const State prevTop = FindTop (StateCounter_);
-		++StateCounter_ [state];
+
+		StateCounter_.clear ();
+		Q_FOREACH (IAccount *acc, GetAccounts ())
+			++StateCounter_ [acc->GetState ().State_];
+
+		StateCounter_.remove (SOffline);
+
 		const State newTop = FindTop (StateCounter_);
 
 		if (newTop != prevTop)
@@ -1648,25 +1742,16 @@ namespace Azoth
 
 	void Core::handleMucJoinRequested ()
 	{
-		QList<IAccount*> accounts;
-		Q_FOREACH (QObject *protoPlugin, ProtocolPlugins_)
-		{
-			QObjectList protocols =
-					qobject_cast<IProtocolPlugin*> (protoPlugin)->GetProtocols ();
-			Q_FOREACH (QObject *protoObj, protocols)
-			{
-				IProtocol *proto = qobject_cast<IProtocol*> (protoObj);
-				if (!(proto->GetFeatures () & IProtocol::PFMUCsJoinable))
-					continue;
-
-				QObjectList accountObjs = proto->GetRegisteredAccounts ();
-				Q_FOREACH (QObject *accountObj, accountObjs)
-					accounts << qobject_cast<IAccount*> (accountObj);
-			}
-		}
+		auto accounts = GetAccountsPred (ProtocolPlugins_,
+				[] (IProtocol *proto) { return proto->GetFeatures () & IProtocol::PFMUCsJoinable; });
 
 		JoinConferenceDialog *dia = new JoinConferenceDialog (accounts, Proxy_->GetMainWindow ());
 		dia->show ();
+	}
+
+	void Core::handleShowNextUnread ()
+	{
+		UnreadQueueManager_->ShowNext ();
 	}
 
 	void Core::handleNewProtocols (const QList<QObject*>& protocols)
@@ -1780,6 +1865,17 @@ namespace Azoth
 				this,
 				SLOT (handleAccountStatusChanged (const EntryStatus&)));
 
+		connect (accObject,
+				SIGNAL (accountRenamed (const QString&)),
+				this,
+				SLOT (handleAccountRenamed (const QString&)));
+
+		if (qobject_cast<IHaveServiceDiscovery*> (accObject))
+			connect (accObject,
+					SIGNAL (gotSDSession (QObject*)),
+					this,
+					SLOT (handleGotSDSession (QObject*)));
+
 		IProtocol *proto = qobject_cast<IProtocol*> (account->GetParentProtocol ());
 		if (proto)
 		{
@@ -1791,9 +1887,9 @@ namespace Azoth
 				QDataStream stream (var.toByteArray ());
 				stream >> s;
 				account->ChangeState (s);
-
-				UpdateInitState (s.State_);
 			}
+			else
+				UpdateInitState (account->GetState ().State_);
 		}
 		else
 			qWarning () << Q_FUNC_INFO
@@ -1931,6 +2027,7 @@ namespace Azoth
 
 			ID2Entry_.remove (entry->GetEntryID ());
 
+			EntryClientIconCache_.remove (entry);
 			Entry2SmoothAvatarCache_.remove (entry);
 			invalidateClientsIconCache (clitem);
 		}
@@ -1955,6 +2052,8 @@ namespace Azoth
 					<< acc->GetParentProtocol ();
 			return;
 		}
+
+		UpdateInitState (status.State_);
 
 		if (status.State_ == SOffline)
 			LastAccountStatusChange_.remove (acc);
@@ -1985,6 +2084,19 @@ namespace Azoth
 				<< "item for account"
 				<< sender ()
 				<< "not found";
+	}
+
+	void Core::handleAccountRenamed (const QString& name)
+	{
+		for (int i = 0, size = CLModel_->rowCount (); i < size; ++i)
+		{
+			QStandardItem *item = CLModel_->item (i);
+			if (item->data (CLRAccountObject).value<QObject*> () != sender ())
+				continue;
+
+			item->setText (name);
+			return;
+		}
 	}
 
 	void Core::handleStatusChanged (const EntryStatus& status, const QString& variant)
@@ -2152,11 +2264,16 @@ namespace Azoth
 		ICLEntry *parentCL = qobject_cast<ICLEntry*> (msg->ParentCLEntry ());
 
 		if (ShouldCountUnread (parentCL, msg))
+		{
 			IncreaseUnreadCount (parentCL);
+			UnreadQueueManager_->AddMessage (msgObj);
+		}
 
 		if (msg->GetDirection () != IMessage::DIn ||
 				ChatTabsManager_->IsActiveChat (parentCL))
 			return;
+
+		ChatTabsManager_->HandleInMessage (msg);
 
 		bool showMsg = XmlSettingsManager::Instance ()
 				.property ("ShowMsgInNotifications").toBool ();
@@ -2219,14 +2336,16 @@ namespace Azoth
 		if (msgString.isEmpty ())
 			e.Mime_ += "+advanced";
 
-		QStandardItem *someItem = Entry2Items_ [msg->GetMessageType () == IMessage::MTMUCMessage ?
-						parentCL : other].value (0);
+		ICLEntry *entry = msg->GetMessageType () == IMessage::MTMUCMessage ?
+				parentCL :
+				other;
+		BuildNotification (e, entry);
+		QStandardItem *someItem = Entry2Items_ [entry].value (0);
 		const int count = someItem ?
 				someItem->data (CLRUnreadMsgCount).toInt () :
 				0;
 		if (msg->GetMessageType () == IMessage::MTMUCMessage)
 		{
-			BuildNotification (e, parentCL);
 			e.Additional_ ["org.LC.AdvNotifications.EventType"] = isHighlightMsg ?
 					"org.LC.AdvNotifications.IM.MUCHighlightMessage" :
 					"org.LC.AdvNotifications.IM.MUCMessage";
@@ -2243,7 +2362,6 @@ namespace Azoth
 		}
 		else
 		{
-			BuildNotification (e, other);
 			e.Additional_ ["org.LC.AdvNotifications.EventType"] =
 					"org.LC.AdvNotifications.IM.IncomingMessage";
 			e.Additional_ ["org.LC.AdvNotifications.FullText"] =
@@ -2259,7 +2377,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[parentCL, ChatTabsManager_] () { ChatTabsManager_->OpenChat (parentCL); });
+				[parentCL, this] () { ChatTabsManager_->OpenChat (parentCL); });
 		nh->AddDependentObject (parentCL->GetObject ());
 
 		emit gotEntity (e);
@@ -2339,7 +2457,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[entry, ChatTabsManager_] () { ChatTabsManager_->OpenChat (entry); });
+				[entry, this] () { ChatTabsManager_->OpenChat (entry); });
 		nh->AddDependentObject (entry->GetObject ());
 
 		emit gotEntity (e);
@@ -2580,8 +2698,14 @@ namespace Azoth
 		e.Additional_ ["org.LC.AdvNotifications.Count"] = 1;
 		e.Additional_ ["org.LC.Plugins.Azoth.Msg"] = reason;
 
+		const auto cancel = Util::MakeANCancel (e);
+
 		Util::NotificationActionHandler *nh = new Util::NotificationActionHandler (e);
-		nh->AddFunction (tr ("Join"), [this, acc, ident] () { SuggestJoiningMUC (acc, ident); });
+		nh->AddFunction (tr ("Join"), [this, acc, ident, cancel] ()
+				{
+					SuggestJoiningMUC (acc, ident);
+					emit gotEntity (cancel);
+				});
 		nh->AddDependentObject (acc->GetObject ());
 
 		emit gotEntity (e);
@@ -2670,6 +2794,23 @@ namespace Azoth
 				"org.LC.Plugins.Azoth.AttentionDrawnBy/" + entry->GetEntryID ();
 
 		emit gotEntity (e);
+	}
+
+	void Core::handleGotSDSession (QObject *sdObj)
+	{
+		ISDSession *sess = qobject_cast<ISDSession*> (sdObj);
+		if (!sess)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< sdObj
+					<< "is not a ISDSession";
+			return;
+		}
+
+		ServiceDiscoveryWidget *w = new ServiceDiscoveryWidget;
+		w->SetAccount (sender ());
+		w->SetSDSession (sess);
+		emit gotSDWidget (w);
 	}
 
 	void Core::handleFileOffered (QObject *jobObj)
@@ -2914,7 +3055,7 @@ namespace Azoth
 
 	void Core::flushIconCaches ()
 	{
-		Q_FOREACH (boost::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
+		Q_FOREACH (std::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
 			rl->FlushCache ();
 	}
 

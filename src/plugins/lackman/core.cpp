@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -268,19 +268,19 @@ namespace LackMan
 		switch (packageInfo.Type_)
 		{
 		case PackageInfo::TPlugin:
-			result = Proxy_->GetIcon ("lackman_plugin");
+			result = Proxy_->GetIcon ("preferences-plugin");
 			break;
 		case PackageInfo::TIconset:
-			result = Proxy_->GetIcon ("lackman_iconset");
+			result = Proxy_->GetIcon ("preferences-desktop-icons");
 			break;
 		case PackageInfo::TTranslation:
-			result = Proxy_->GetIcon ("lackman_translation");
+			result = Proxy_->GetIcon ("preferences-desktop-locale");
 			break;
 		case PackageInfo::TData:
-			result = Proxy_->GetIcon ("lackman_data");
+			result = Proxy_->GetIcon ("package-x-generic");
 			break;
 		case PackageInfo::TTheme:
-			result = Proxy_->GetIcon ("lackman_theme");
+			result = Proxy_->GetIcon ("preferences-desktop-theme");
 			break;
 		}
 		return result;
@@ -295,14 +295,28 @@ namespace LackMan
 	{
 		QList<QUrl> result;
 
-		QMap<int, QList<QString> > repo2cmpt = Storage_->GetPackageLocations (packageId);
+		const auto& repo2cmpt = Storage_->GetPackageLocations (packageId);
 
-		PackageShortInfo info = Storage_->GetPackage (packageId);
-		QString pathAddition = QString ("dists/%1/all/");
-		QString normalized = NormalizePackageName (info.Name_);
-		pathAddition += QString ("%1/%1-%2.tar.gz")
+		PackageShortInfo info;
+		try
+		{
+			info = Storage_->GetPackage (packageId);
+		}
+		catch (const std::exception& e)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "error getting package"
+					<< packageId;
+			return result;
+		}
+
+		auto pathAddition = QString ("dists/%1/all/");
+		const auto& normalized = NormalizePackageName (info.Name_);
+		const auto& version = info.Versions_.at (0);
+		pathAddition += QString ("%1/%1-%2.tar.%3")
 				.arg (normalized)
-				.arg (info.Versions_.at (0));
+				.arg (version)
+				.arg (info.VersionArchivers_.value (version, "gz"));
 
 		Q_FOREACH (int repoId, repo2cmpt.keys ())
 		{
@@ -323,40 +337,36 @@ namespace LackMan
 		return result;
 	}
 
-	namespace
-	{
-		void SafeCD (QDir& dir, const QString& subdir)
-		{
-			if (!dir.exists (subdir))
-				dir.mkdir (subdir);
-			if (!dir.cd (subdir))
-				throw std::runtime_error (QObject::tr ("Unable to cd into %1.")
-						.arg (subdir)
-						.toUtf8 ().constData ());
-		}
-	}
-
 	QDir Core::GetPackageDir (int packageId) const
 	{
 		ListPackageInfo info = Storage_->GetSingleListPackageInfo (packageId);
 		QDir dir = QDir::home ();
 		dir.cd (".leechcraft");
+
+		auto SafeCD = [&dir] (const QString& subdir)
+		{
+			if (!dir.exists (subdir))
+				dir.mkdir (subdir);
+			if (!dir.cd (subdir))
+				throw std::runtime_error (std::string ("Unable to cd into ") + subdir.toUtf8 ().constData ());
+		};
+
 		switch (info.Type_)
 		{
 		case PackageInfo::TPlugin:
-			SafeCD (dir, "plugins");
-			SafeCD (dir, "scriptable");
-			SafeCD (dir, info.Language_);
+			SafeCD ("plugins");
+			SafeCD ("scriptable");
+			SafeCD (info.Language_);
 			break;
 		case PackageInfo::TIconset:
-			SafeCD (dir, "icons");
+			SafeCD ("icons");
 			break;
 		case PackageInfo::TTranslation:
-			SafeCD (dir, "translations");
+			SafeCD ("translations");
 			break;
 		case PackageInfo::TData:
 		case PackageInfo::TTheme:
-			SafeCD (dir, "data");
+			SafeCD ("data");
 			break;
 		}
 		return dir;
@@ -507,7 +517,7 @@ namespace LackMan
 
 	QString Core::NormalizePackageName (const QString& packageName) const
 	{
-		QString normalized = packageName.toLower ().simplified ();
+		QString normalized = packageName.simplified ();
 		normalized.remove (' ');
 		normalized.remove ('\t');
 		return normalized;
@@ -523,18 +533,17 @@ namespace LackMan
 		InstalledDependencyInfoList result;
 
 		QFileInfoList infoEntries;
-#if defined(Q_WS_X11)
+#if defined(Q_OS_WIN32)
+		infoEntries += QDir (QApplication::applicationDirPath () + "/share/installed")
+				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
+#elif defined(Q_OS_MAC)
+		infoEntries += QDir (QCoreApplication::applicationDirPath () + "/../installed")
+				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
+#else
 		infoEntries += QDir ("/usr/share/leechcraft/installed")
 				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
 		infoEntries += QDir ("/usr/local/share/leechcraft/installed")
 				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
-#elif defined(Q_WS_WIN)
-		infoEntries += QDir (QApplication::applicationDirPath () + "/share/installed")
-				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
-#elif defined(Q_WS_MAC)
-		infoEntries += QDir (QCoreApplication::applicationDirPath () + "/../installed")
-				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
-
 #endif
 
 		QStringList entries;
@@ -606,7 +615,7 @@ namespace LackMan
 
 	void Core::PopulatePluginsModel ()
 	{
-		QMap<QString, QList<ListPackageInfo> > infos;
+		QMap<QString, QList<ListPackageInfo>> infos;
 		try
 		{
 			infos = Storage_->GetListPackageInfos ();
@@ -649,7 +658,7 @@ namespace LackMan
 	void Core::HandleNewPackages (const PackageShortInfoList& shortInfos,
 			int componentId, const QString& component, const QUrl& repoUrl)
 	{
-		QMap<QString, QList<QString> > PackageName2NewVersions_;
+		QMap<QString, QList<QString>> PackageName2NewVersions_;
 
 		Q_FOREACH (const PackageShortInfo& info, shortInfos)
 			Q_FOREACH (const QString& version, info.Versions_)
@@ -717,7 +726,6 @@ namespace LackMan
 					return;
 				}
 			}
-
 
 		Q_FOREACH (QString packageName, PackageName2NewVersions_.keys ())
 		{

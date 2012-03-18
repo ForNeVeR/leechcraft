@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,15 +38,15 @@ namespace LackMan
 
 		enum Action
 		{
-			AInstall,
-			ARemove,
-			AUpdate,
-			AMAX
+			Install,
+			Remove,
+			Update,
+			MAX
 		};
-		QMap<Action, QSet<int> > ScheduledForAction_;
+		QMap<Action, QSet<int>> ScheduledForAction_;
 		QMap<Action, QStandardItem*> RootItemForAction_;
 
-		QMap<int, QList<int> > Deps_;
+		QMap<int, QList<int>> Deps_;
 		QMap<int, QStandardItem*> ID2ModelRow_;
 	public:
 		PendingManager (QObject* = 0);

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,6 +91,31 @@ namespace Aggregator
 		FixItemID (item);
 
 		Core::Instance ().GetStorageBackend ()->AddItem (item);
+	}
+
+	QList<Channel_ptr> ProxyObject::GetAllChannels () const
+	{
+		QList<Channel_ptr> result;
+
+		channels_shorts_t channels;
+		Core::Instance ().GetChannels (channels);
+		Q_FOREACH (ChannelShort cs, channels)
+			result << Core::Instance ().GetStorageBackend ()->GetChannel (cs.ChannelID_, cs.FeedID_);
+
+		return result;
+	}
+
+	int ProxyObject::CountUnreadItems (IDType_t channel) const
+	{
+		return Core::Instance ().GetStorageBackend ()->GetUnreadItems (channel);
+	}
+
+	QList<Item_ptr> ProxyObject::GetChannelItems (IDType_t channelId) const
+	{
+		// TODO rework when we change items_container_t
+		items_container_t items;
+		Core::Instance ().GetStorageBackend ()->GetItems (items, channelId);
+		return QList<Item_ptr>::fromVector (QVector<Item_ptr>::fromStdVector (items));
 	}
 }
 }

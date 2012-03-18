@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,10 +34,10 @@ namespace LeechCraft
 {
 namespace Aggregator
 {
-	SQLStorageBackendMysql::SQLStorageBackendMysql (StorageBackend::Type t)
+	SQLStorageBackendMysql::SQLStorageBackendMysql (StorageBackend::Type t, const QString& id)
 	: Type_ (t)
 	{
-		DB_ = QSqlDatabase::addDatabase ("QMYSQL", "AggregatorConnection");
+		DB_ = QSqlDatabase::addDatabase ("QMYSQL", "AggregatorConnection" + id);
 		DB_.setDatabaseName (XmlSettingsManager::Instance ()->
 				property ("MysqlDBName").toString ());
 		DB_.setHostName (XmlSettingsManager::Instance ()->
@@ -1219,7 +1219,7 @@ namespace Aggregator
 		return true;
 	}
 
-	QByteArray SQLStorageBackendMysql::SerializePixmap (const QPixmap& pixmap) const
+	QByteArray SQLStorageBackendMysql::SerializePixmap (const QImage& pixmap) const
 	{
 		QByteArray bytes;
 		if (!pixmap.isNull ())
@@ -1231,9 +1231,9 @@ namespace Aggregator
 		return bytes;
 	}
 
-	QPixmap SQLStorageBackendMysql::UnserializePixmap (const QByteArray& bytes) const
+	QImage SQLStorageBackendMysql::UnserializePixmap (const QByteArray& bytes) const
 	{
-		QPixmap result;
+		QImage result;
 		if (bytes.size ())
 			result.loadFromData (bytes, "PNG");
 		return result;

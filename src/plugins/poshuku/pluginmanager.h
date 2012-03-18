@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #ifndef PLUGINS_POSHUKU_PLUGINMANAGER_H
 #define PLUGINS_POSHUKU_PLUGINMANAGER_H
 #include <vector>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QWebPage>
 #include <QDateTime>
 #include <QNetworkRequest>
@@ -43,7 +43,7 @@ namespace Poshuku
 	{
 		Q_OBJECT
 
-		boost::shared_ptr<ProxyObject> ProxyObject_;
+		std::shared_ptr<ProxyObject> ProxyObject_;
 	public:
 		PluginManager (QObject* = 0);
 

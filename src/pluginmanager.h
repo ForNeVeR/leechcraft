@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #ifndef PLUGINMANAGER_H
 #define PLUGINMANAGER_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QAbstractItemModel>
 #include <QMap>
 #include <QMultiMap>
@@ -33,13 +33,14 @@ namespace LeechCraft
 	class MainWindow;
 	class PluginTreeBuilder;
 
+	typedef std::shared_ptr<QPluginLoader> QPluginLoader_ptr;
+
 	class PluginManager : public QAbstractItemModel
 						, public IPluginsManager
 	{
 		Q_OBJECT
 		Q_INTERFACES (IPluginsManager);
 
-		typedef boost::shared_ptr<QPluginLoader> QPluginLoader_ptr;
 		typedef QList<QPluginLoader_ptr> PluginsContainer_t;
 
 		// Only currently loaded plugins
@@ -58,20 +59,24 @@ namespace LeechCraft
 		QStringList PluginLoadErrors_;
 		mutable QMap<QByteArray, QObject*> PluginID2PluginCache_;
 
-		boost::shared_ptr<PluginTreeBuilder> PluginTreeBuilder_;
+		std::shared_ptr<PluginTreeBuilder> PluginTreeBuilder_;
 	public:
+		enum Roles
+		{
+			PluginObject = Qt::UserRole + 100
+		};
+
 		typedef PluginsContainer_t::size_type Size_t;
 		PluginManager (const QStringList& pluginPaths, QObject *parent = 0);
-		virtual ~PluginManager ();
 
-		virtual int columnCount (const QModelIndex& = QModelIndex ()) const;
-		virtual QVariant data (const QModelIndex&, int = Qt::DisplayRole) const;
-		virtual Qt::ItemFlags flags (const QModelIndex&) const;
-		virtual QVariant headerData (int, Qt::Orientation, int = Qt::DisplayRole) const;
-		virtual QModelIndex index (int, int, const QModelIndex& = QModelIndex()) const;
-		virtual QModelIndex parent (const QModelIndex&) const;
-		virtual int rowCount (const QModelIndex& = QModelIndex ()) const;
-		virtual bool setData (const QModelIndex&, const QVariant&, int);
+		int columnCount (const QModelIndex& = QModelIndex ()) const;
+		QVariant data (const QModelIndex&, int = Qt::DisplayRole) const;
+		Qt::ItemFlags flags (const QModelIndex&) const;
+		QVariant headerData (int, Qt::Orientation, int = Qt::DisplayRole) const;
+		QModelIndex index (int, int, const QModelIndex& = QModelIndex()) const;
+		QModelIndex parent (const QModelIndex&) const;
+		int rowCount (const QModelIndex& = QModelIndex ()) const;
+		bool setData (const QModelIndex&, const QVariant&, int);
 
 		Size_t GetSize () const;
 		void Init ();

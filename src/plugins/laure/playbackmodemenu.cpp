@@ -1,7 +1,7 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011  Minh Ngo
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2011-2012  Minh Ngo
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,9 +32,9 @@ namespace Laure
 		QAction *actionLoop = new QAction (tr ("Loop"), this);
 		QAction *actionRepeat = new QAction (tr ("Repeat"), this);
 		
-		actionDefault->setProperty ("ActionIcon", "default");
-		actionLoop->setProperty ("ActionIcon", "loop");
-		actionRepeat->setProperty ("ActionIcon", "repeat");
+		actionDefault->setProperty ("ActionIcon", "view-list-details");
+		actionLoop->setProperty ("ActionIcon", "media-playlist-shuffle");
+		actionRepeat->setProperty ("ActionIcon", "media-playlist-repeat");
 
 		addAction (actionDefault);
 		addAction (actionLoop);
@@ -63,19 +63,19 @@ namespace Laure
 	
 	void PlaybackModeMenu::handleMenuDefault ()
 	{
-		setProperty ("ActionIcon", "default");
+		setProperty ("ActionIcon", "services");
 		emit playbackModeChanged (PlaybackModeDefault);
 	}
 	
 	void PlaybackModeMenu::handleMenuLoop ()
 	{
-		setProperty ("ActionIcon", "loop");
+		setProperty ("ActionIcon", "media-playlist-shuffle");
 		emit playbackModeChanged (PlaybackModeLoop);
 	}
 	
 	void PlaybackModeMenu::handleMenuRepeat ()
 	{
-		setProperty ("ActionIcon", "repeat");
+		setProperty ("ActionIcon", "media-playlist-repeat");
 		emit playbackModeChanged (PlaybackModeRepeat);
 	}
 }

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -85,7 +85,7 @@ namespace Azoth
 			"Search",
 			tr ("Search"),
 			tr ("A search tab allows one to search within IM services"),
-			QIcon (),
+			QIcon (":/plugins/azoth/resources/images/searchtab.svg"),
 			55,
 			TFOpenableByRequest
 		};
@@ -133,6 +133,8 @@ namespace Azoth
 
 		sess->RestartSearch (Ui_.Server_->text ());
 
+		if (Ui_.ResultsTree_->selectionModel ())
+			Ui_.ResultsTree_->selectionModel ()->deleteLater ();
 		Ui_.ResultsTree_->setModel (sess->GetRepresentationModel ());
 	}
 

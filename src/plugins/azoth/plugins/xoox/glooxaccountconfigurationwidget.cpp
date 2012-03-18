@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,6 +95,26 @@ namespace Xoox
 	{
 		Ui_.CustomAddress_->setChecked (port > 0);
 		Ui_.ConnectionPort_->setValue (port);
+	}
+
+	int GlooxAccountConfigurationWidget::GetKAInterval () const
+	{
+		return Ui_.KeepAliveInterval_->value ();
+	}
+
+	void GlooxAccountConfigurationWidget::SetKAInterval (int val)
+	{
+		Ui_.KeepAliveInterval_->setValue (val);
+	}
+
+	int GlooxAccountConfigurationWidget::GetKATimeout () const
+	{
+		return Ui_.KeepAliveTimeout_->value ();
+	}
+
+	void GlooxAccountConfigurationWidget::SetKATimeout (int val)
+	{
+		Ui_.KeepAliveTimeout_->setValue (val);
 	}
 
 	QString GlooxAccountConfigurationWidget::GetPassword () const

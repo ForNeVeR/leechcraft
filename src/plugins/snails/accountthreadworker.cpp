@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include <vmime/messageBuilder.hpp>
 #include <vmime/htmlTextPart.hpp>
 #include <vmime/stringContentHandler.hpp>
+#include <vmime/fileAttachment.hpp>
 #include <util/util.h>
 #include "message.h"
 #include "account.h"
@@ -42,6 +43,7 @@
 #include "storage.h"
 #include "vmimeconversions.h"
 #include "outputiodevadapter.h"
+#include "common.h"
 
 namespace LeechCraft
 {
@@ -167,10 +169,14 @@ namespace Snails
 		auto st = Session_->getStore (vmime::utility::url (url.toUtf8 ().constData ()));
 		st->setCertificateVerifier (vmime::create<CertVerifier> ());
 
-		st->setProperty ("connection.tls", A_->UseTLS_);
-		st->setProperty ("connection.tls.required", A_->TLSRequired_);
+		if (A_->UseTLS_)
+		{
+			st->setProperty ("connection.tls", A_->UseTLS_);
+			st->setProperty ("connection.tls.required", A_->InSecurityRequired_);
+		}
 		st->setProperty ("options.sasl", A_->UseSASL_);
 		st->setProperty ("options.sasl.fallback", A_->SASLRequired_);
+		st->setProperty ("server.port", A_->InPort_);
 
 		CachedStore_ = st;
 
@@ -203,6 +209,7 @@ namespace Snails
 			parsed.setUserName (QString ());
 			parsed.setPassword (QString ());
 			url = QString::fromUtf8 (parsed.toEncoded ());
+			qDebug () << Q_FUNC_INFO << url << username << password;
 		}
 
 		auto trp = Session_->getTransport (vmime::utility::url (url.toUtf8 ().constData ()));
@@ -213,13 +220,48 @@ namespace Snails
 			trp->setProperty ("auth.username", username.toUtf8 ().constData ());
 			trp->setProperty ("auth.password", password.toUtf8 ().constData ());
 		}
+		trp->setProperty ("server.port", A_->OutPort_);
 		trp->setCertificateVerifier (vmime::create<CertVerifier> ());
-		trp->setProperty ("connection.tls", A_->UseTLS_);
-		trp->setProperty ("connection.tls.required", A_->TLSRequired_);
+
+		if (A_->OutSecurity_ == Account::SecurityType::TLS)
+		{
+			trp->setProperty ("connection.tls", A_->UseTLS_);
+			trp->setProperty ("connection.tls.required", A_->OutSecurityRequired_);
+		}
 		trp->setProperty ("options.sasl", true);
 		trp->setProperty ("options.sasl.fallback", A_->SASLRequired_);
 
 		return trp;
+	}
+
+	namespace
+	{
+		vmime::net::folder::path Folder2Path (const QStringList& folder)
+		{
+			if (folder.isEmpty ())
+				return vmime::net::folder::path ("INBOX");
+
+			vmime::net::folder::path path;
+			Q_FOREACH (const auto& comp, folder)
+				path.appendComponent (vmime::word (comp.toUtf8 ().constData (), vmime::charsets::UTF_8));
+			return path;
+		}
+	}
+
+	vmime::ref<vmime::net::folder> AccountThreadWorker::GetFolder (const QStringList& path, int mode)
+	{
+		if (!CachedFolders_.contains (path))
+		{
+			auto store = MakeStore ();
+			CachedFolders_ [path] = store->getFolder (Folder2Path (path));
+		}
+
+		auto folder = CachedFolders_ [path];
+		if (folder->isOpen () && folder->getMode () != mode)
+			folder->close (false);
+		if (!folder->isOpen ())
+			folder->open (mode);
+		return folder;
 	}
 
 	Message_ptr AccountThreadWorker::FromHeaders (const vmime::ref<vmime::net::message>& message) const
@@ -238,9 +280,7 @@ namespace Snails
 		try
 		{
 			auto mbox = header->From ()->getValue ().dynamicCast<const vmime::mailbox> ();
-			auto pair = Mailbox2Strings (mbox);
-			msg->SetFromEmail (pair.second);
-			msg->SetFrom (pair.first);
+			msg->AddAddress (Message::Address::From, Mailbox2Strings (mbox));
 		}
 		catch (const vmime::exceptions::no_such_field& nsf)
 		{
@@ -255,10 +295,10 @@ namespace Snails
 			{
 				const auto& vec = alist->getMailboxList ();
 
-				QList<QPair<QString, QString>> to;
+				Message::Addresses_t to;
 				std::transform (vec.begin (), vec.end (), std::back_inserter (to),
 						[] (decltype (vec.front ()) add) { return Mailbox2Strings (add); });
-				msg->SetTo (to);
+				msg->SetAddresses (Message::Address::To, to);
 			}
 			else
 				qWarning () << "no 'to' data: cannot cast to mailbox list";
@@ -356,31 +396,12 @@ namespace Snails
 		emit gotMsgHeaders (newMessages);
 	}
 
-	namespace
-	{
-		vmime::net::folder::path Folder2Path (const QStringList& folder)
-		{
-			if (folder.isEmpty ())
-				return vmime::net::folder::path ("INBOX");
-
-			vmime::net::folder::path path;
-			Q_FOREACH (const auto& comp, folder)
-				path.appendComponent (vmime::word (comp.toUtf8 ().constData (), vmime::charsets::UTF_8));
-			return path;
-		}
-	}
-
 	void AccountThreadWorker::FetchMessagesIMAP (Account::FetchFlags fetchFlags,
 			const QList<QStringList>& origFolders, vmime::ref<vmime::net::store> store)
 	{
-		FetchMessagesInFolder (QStringList ("INBOX"), store->getDefaultFolder ());
-
 		Q_FOREACH (const auto& folder, origFolders)
 		{
-			if (folder == QStringList ("INBOX"))
-				continue;
-
-			auto netFolder = store->getFolder (Folder2Path (folder));
+			auto netFolder = GetFolder (folder, vmime::net::folder::MODE_READ_WRITE);
 			FetchMessagesInFolder (folder, netFolder);
 		}
 	}
@@ -388,7 +409,6 @@ namespace Snails
 	void AccountThreadWorker::FetchMessagesInFolder (const QStringList& folderName,
 			vmime::utility::ref<vmime::net::folder> folder)
 	{
-		folder->open (vmime::net::folder::MODE_READ_WRITE);
 		auto messages = folder->getMessages ();
 		if (!messages.size ())
 			return;
@@ -425,6 +445,8 @@ namespace Snails
 					return res;
 				});
 
+		QList<QByteArray> ids;
+
 		QList<Message_ptr> updatedMessages;
 		Q_FOREACH (Message_ptr msg, newMessages)
 		{
@@ -454,7 +476,12 @@ namespace Snails
 
 			if (isUpdated)
 				updatedMessages << updated;
+			else
+				ids << msg->GetID ();
 		}
+
+		if (ids.size ())
+			emit gotOtherMessages (ids, folderName);
 
 		emit gotMsgHeaders (newMessages);
 		emit gotUpdatedMessages (updatedMessages);
@@ -602,11 +629,7 @@ namespace Snails
 		const QByteArray& sid = origMsg->GetID ();
 		vmime::string id (sid.constData ());
 		qDebug () << Q_FUNC_INFO << sid.toHex ();
-
-		auto store = MakeStore ();
-
-		auto folder = store->getFolder (Folder2Path (origMsg->GetFolders ().value (0)));
-		folder->open (vmime::net::folder::MODE_READ_WRITE);
+		auto folder = GetFolder (origMsg->GetFolders ().value (0), vmime::net::folder::MODE_READ_WRITE);
 
 		auto messages = folder->getMessages ();
 		folder->fetchMessages (messages, vmime::net::folder::FETCH_UID);
@@ -729,16 +752,51 @@ namespace Snails
 
 		vmime::messageBuilder mb;
 		mb.setSubject (vmime::text (msg->GetSubject ().toUtf8 ().constData ()));
-		mb.setExpeditor (FromPair (msg->GetFrom (), msg->GetFromEmail ()));
+		mb.setExpeditor (FromPair (msg->GetAddress (Message::Address::From)));
 
 		vmime::addressList recips;
-		const auto& tos = msg->GetTo ();
+		const auto& tos = msg->GetAddresses (Message::Address::To);
 		std::for_each (tos.begin (), tos.end (),
 				[&recips] (decltype (tos.front ()) pair) { recips.appendAddress (vmime::create<vmime::mailbox> (FromPair (pair))); });
 		mb.setRecipients (recips);
 
-		mb.getTextPart ()->setCharset (vmime::charsets::UTF_8);
-		mb.getTextPart ()->setText (vmime::create<vmime::stringContentHandler> (msg->GetBody ().toUtf8 ().constData ()));
+		const QString& html = msg->GetHTMLBody ();
+
+		if (html.isEmpty ())
+		{
+			mb.getTextPart ()->setCharset (vmime::charsets::UTF_8);
+			mb.getTextPart ()->setText (vmime::create<vmime::stringContentHandler> (msg->GetBody ().toUtf8 ().constData ()));
+		}
+		else
+		{
+			mb.constructTextPart ({ vmime::mediaTypes::TEXT, vmime::mediaTypes::TEXT_HTML });
+			auto textPart = mb.getTextPart ().dynamicCast<vmime::htmlTextPart> ();
+			textPart->setCharset (vmime::charsets::UTF_8);
+			textPart->setText (vmime::create<vmime::stringContentHandler> (html.toUtf8 ().constData ()));
+			textPart->setPlainText (vmime::create<vmime::stringContentHandler> (msg->GetBody ().toUtf8 ().constData ()));
+		}
+
+		Q_FOREACH (const AttDescr& descr, msg->GetAttachments ())
+		{
+			try
+			{
+				const QFileInfo fi (descr.GetName ());
+				auto att = vmime::create<vmime::fileAttachment> (descr.GetName ().toUtf8 ().constData (),
+						vmime::mediaType (descr.GetType ().constData (), descr.GetSubType ().constData ()),
+						vmime::text (descr.GetDescr ().toUtf8 ().constData ()));
+				att->getFileInfo ().setFilename (fi.fileName ().toUtf8 ().constData ());
+				att->getFileInfo ().setSize (descr.GetSize ());
+
+				mb.appendAttachment (att);
+			}
+			catch (const std::exception& e)
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "failed to append"
+						<< descr.GetName ()
+						<< e.what ();
+			}
+		}
 
 		auto vMsg = mb.construct ();
 		const auto& userAgent = QString ("LeechCraft Snails %1")
@@ -765,6 +823,11 @@ namespace Snails
 
 	void AccountThreadWorker::timeoutDisconnect ()
 	{
+		if (!CachedStore_)
+			return;
+
+		CachedFolders_.clear ();
+
 		CachedStore_->disconnect ();
 		CachedStore_ = vmime::ref<vmime::net::store> ();
 	}

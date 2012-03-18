@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "kinotifywidget.h"
+#include <algorithm>
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QWebFrame>
@@ -121,7 +122,7 @@ namespace LeechCraft
 						SLOT (closeNotificationWidget ()));
 			}
 
-			void KinotifyWidget::SetThemeLoader (boost::shared_ptr<Util::ResourceLoader> loader)
+			void KinotifyWidget::SetThemeLoader (std::shared_ptr<Util::ResourceLoader> loader)
 			{
 				ThemeLoader_ = loader;
 			}
@@ -335,7 +336,7 @@ namespace LeechCraft
 			void KinotifyWidget::SetWidgetPlace ()
 			{
 				const QRect& geometry = QApplication::desktop ()->
-						availableGeometry (parentWidget ());
+						availableGeometry (QCursor::pos ());
 				const QSize& desktopSize = geometry.size ();
 
 				QPoint point (desktopSize.width () - DefaultSize_.width () - 5,

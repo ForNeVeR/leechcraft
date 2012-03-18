@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,16 @@
  **********************************************************************/
 
 #include "adhoccommandserver.h"
+#include <QDir>
+#include <QUrl>
 #include <QXmppDiscoveryManager.h>
+#include <util/util.h>
+#include <interfaces/iproxyobject.h>
 #include "clientconnection.h"
 #include "util.h"
 #include "roomclentry.h"
 #include "core.h"
-#include <interfaces/iproxyobject.h>
+#include "glooxmessage.h"
 
 namespace LeechCraft
 {
@@ -32,8 +36,11 @@ namespace Xoox
 {
 	const QString NsCommands = "http://jabber.org/protocol/commands";
 	const QString RcStr = "http://jabber.org/protocol/rc";
-	const QString NodeChangeStatus = "ttp://jabber.org/protocol/rc#set-status";
+	const QString NodeChangeStatus = "http://jabber.org/protocol/rc#set-status";
 	const QString NodeLeaveGroupchats = "http://jabber.org/protocol/rc#leave-groupchats";
+	const QString NodeForward = "http://jabber.org/protocol/rc#forward";
+
+	const QString NodeAddTask = "http://leechcraft.org/plugins-azoth-xoox#add-task";
 
 	AdHocCommandServer::AdHocCommandServer (ClientConnection *conn)
 	: Conn_ (conn)
@@ -69,6 +76,23 @@ namespace Xoox
 		NodeSubmitHandlers_ [leaveGroupchats.node ()] =
 				[this] (QDomElement e, QString s, QXmppDataForm f)
 					{ LeaveGroupchatsSubmitted (e, s, f); };
+
+		QXmppDiscoveryIq::Item forward;
+		forward.setNode (NodeForward);
+		forward.setJid (jid);
+		forward.setName (tr ("Forward unread messages"));
+		XEP0146Items_ [forward.node ()] = forward;
+		NodeInfos_ [forward.node ()] = [this] (QDomElement e) { Forward (e); };
+
+		QXmppDiscoveryIq::Item addTask;
+		addTask.setNode (NodeAddTask);
+		addTask.setJid (jid);
+		addTask.setName (tr ("Add download task"));
+		XEP0146Items_ [addTask.node ()] = addTask;
+		NodeInfos_ [addTask.node ()] = [this] (QDomElement e) { AddTaskInfo (e); };
+		NodeSubmitHandlers_ [addTask.node ()] =
+				[this] (QDomElement e, QString s, QXmppDataForm f)
+					{ AddTaskSubmitted (e, s, f); };
 	}
 
 	bool AdHocCommandServer::handleStanza (const QDomElement& elem)
@@ -82,7 +106,8 @@ namespace Xoox
 			return false;
 
 		if (!cmdElem.attribute ("action").isEmpty () &&
-				cmdElem.attribute ("action") != "execute")
+				cmdElem.attribute ("action") != "execute" &&
+				cmdElem.attribute ("action") != "complete")
 			return false;
 
 		QString from, resource;
@@ -103,6 +128,8 @@ namespace Xoox
 
 		if (!XEP0146Items_.contains (node))
 		{
+			qWarning () << Q_FUNC_INFO << "no node" << node;
+			qWarning () << XEP0146Items_.keys ();
 			QXmppIq iq;
 			iq.parse (elem);
 			iq.setTo (elem.attribute ("from"));
@@ -123,18 +150,15 @@ namespace Xoox
 		return true;
 	}
 
-	namespace
-	{
-		QString GenSessID (const QString& base)
-		{
-			return base + ":" + QDateTime::currentDateTime ().toString (Qt::ISODate);
-		}
-	}
-
 	void AdHocCommandServer::Send (const QXmppDataForm& form,
 			const QDomElement& sourceElem, const QString& node)
 	{
-		const QString& sessionId = GenSessID (sourceElem.attribute ("id"));
+		auto genSessID = [] (const QString& base)
+		{
+			return base + ":" + QDateTime::currentDateTime ().toString (Qt::ISODate);
+		};
+
+		const QString& sessionId = genSessID (sourceElem.attribute ("id"));
 		PendingSessions_ [node] << sessionId;
 
 		QXmppElement elem;
@@ -184,7 +208,7 @@ namespace Xoox
 
 		const GlooxAccountState& state = Conn_->GetLastState ();
 
-		QList<QPair<State, QString> > rawOpts;
+		QList<QPair<State, QString>> rawOpts;
 		rawOpts << qMakePair<State, QString> (SChat, "chat");
 		rawOpts << qMakePair<State, QString> (SOnline, "online");
 		rawOpts << qMakePair<State, QString> (SAway, "away");
@@ -194,7 +218,7 @@ namespace Xoox
 		rawOpts << qMakePair<State, QString> (SOffline, "offline");
 
 		QString option;
-		QList<QPair<QString, QString> > options;
+		QList<QPair<QString, QString>> options;
 		QPair<State, QString> pair;
 		IProxyObject *proxy = Core::Instance ().GetPluginProxy ();
 		Q_FOREACH (pair, rawOpts)
@@ -275,7 +299,7 @@ namespace Xoox
 		field.setKey ("FORM_TYPE");
 		fields.append (field);
 
-		QList<QPair<QString, QString> > options;
+		QList<QPair<QString, QString>> options;
 		Q_FOREACH (QObject *entryObj, Conn_->GetCLEntries ())
 		{
 			RoomCLEntry *entry = qobject_cast<RoomCLEntry*> (entryObj);
@@ -328,6 +352,91 @@ namespace Xoox
 		}
 
 		SendCompleted (sourceElem, NodeLeaveGroupchats, sessionId);
+	}
+
+	void AdHocCommandServer::Forward (const QDomElement& sourceElem)
+	{
+		const QString& to = sourceElem.attribute ("from");
+
+		QList<GlooxMessage*> msgs;
+		Q_FOREACH (QObject *obj, Conn_->GetCLEntries ())
+		{
+			EntryBase *base = qobject_cast<EntryBase*> (obj);
+			if (!base)
+				continue;
+
+			Q_FOREACH (GlooxMessage *msgObj, base->GetUnreadMessages ())
+			{
+				QXmppMessage msg (QString (), to, msgObj->GetBody ());
+				msg.setStamp (msgObj->GetDateTime ());
+
+				const QString& var = msgObj->GetOtherVariant ();
+				const QString& from = var.isEmpty () ?
+						base->GetHumanReadableID () :
+						base->GetHumanReadableID () + '/' + var;
+				QXmppExtendedAddress address ("ofrom", from);
+				msg.setExtendedAddresses (QXmppExtendedAddressList () << address);
+
+				Conn_->GetClient ()->sendPacket (msg);
+			}
+
+			base->MarkMsgsRead ();
+		}
+
+		const QString& sess = sourceElem.firstChildElement ("command").attribute ("session");
+		SendCompleted (sourceElem, NodeForward, sess);
+	}
+
+	void AdHocCommandServer::AddTaskInfo (const QDomElement& sourceElem)
+	{
+		QList<QXmppDataForm::Field> fields;
+
+		QXmppDataForm::Field field (QXmppDataForm::Field::HiddenField);
+		field.setValue (RcStr);
+		field.setKey ("FORM_TYPE");
+		fields.append (field);
+
+		QXmppDataForm::Field url (QXmppDataForm::Field::TextSingleField);
+		url.setLabel ("URL");
+		url.setKey ("url");
+		url.setRequired (true);
+		fields.append (url);
+
+		QXmppDataForm::Field dest (QXmppDataForm::Field::TextSingleField);
+		dest.setLabel (tr ("Destination"));
+		dest.setKey ("dest");
+		dest.setRequired (true);
+		dest.setValue (QDir::home ().filePath ("downloads"));
+		fields.append (dest);
+
+		QXmppDataForm form (QXmppDataForm::Form);
+		form.setTitle (tr ("Add task"));
+		form.setInstructions (tr ("Enter task parameters"));
+		form.setFields (fields);
+
+		Send (form, sourceElem, NodeAddTask);
+	}
+
+	void AdHocCommandServer::AddTaskSubmitted (const QDomElement& sourceElem,
+			const QString& sessionId, const QXmppDataForm& form)
+	{
+		QUrl url;
+		QString location;
+		Q_FOREACH (const QXmppDataForm::Field& field, form.fields ())
+		{
+			if (field.key () == "url")
+				url = QUrl::fromUserInput (field.value ().toString ());
+			else if (field.key () == "dest")
+				location = field.value ().toString ();
+		}
+
+		if (url.isValid () && !location.isEmpty ())
+		{
+			const auto& e = Util::MakeEntity (url, location, OnlyDownload);
+			Core::Instance ().SendEntity (e);
+		}
+
+		SendCompleted (sourceElem, NodeAddTask, sessionId);
 	}
 
 	void AdHocCommandServer::handleDiscoItems (const QXmppDiscoveryIq& iq)

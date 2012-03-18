@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,11 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_COMPOSEMESSAGETAB_H
-#define PLUGINS_SNAILS_COMPOSEMESSAGETAB_H
+#pragma once
+
 #include <QWidget>
 #include <interfaces/ihavetabs.h>
 #include "ui_composemessagetab.h"
+#include "account.h"
+
+class IEditorWidget;
 
 namespace LeechCraft
 {
@@ -39,6 +42,10 @@ namespace Snails
 
 		QToolBar *Toolbar_;
 		QMenu *AccountsMenu_;
+		QMenu *AttachmentsMenu_;
+
+		QWidget *MsgEditWidget_;
+		IEditorWidget *MsgEdit_;
 	public:
 		static void SetParentPlugin (QObject*);
 		static void SetTabClassInfo (const TabClassInfo&);
@@ -49,12 +56,15 @@ namespace Snails
 		QObject* ParentMultiTabs();
 		void Remove();
 		QToolBar* GetToolBar() const;
+
+		void SelectAccount (Account_ptr);
+		void PrepareReply (Message_ptr);
 	private slots:
 		void handleSend ();
+		void handleAddAttachment ();
+		void handleRemoveAttachment ();
 	signals:
 		void removeTab (QWidget*);
 	};
 }
 }
-
-#endif

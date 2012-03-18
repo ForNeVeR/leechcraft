@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
 #include <util/resourceloader.h>
 #include <util/util.h>
+#include <util/shortcuts/shortcutmanager.h>
 #include "core.h"
 #include "mainwidget.h"
 #include "chattabsmanager.h"
@@ -58,6 +59,7 @@ namespace Azoth
 		SearchWidget::SetParentMultiTabs (this);
 
 		Core::Instance ().SetProxy (proxy);
+		InitShortcuts ();
 
 		XmlSettingsDialog_.reset (new Util::XmlSettingsDialog ());
 		XmlSettingsDialog_->RegisterObject (&XmlSettingsManager::Instance (),
@@ -119,6 +121,7 @@ namespace Azoth
 		dw->setWidget (MW_);
 		dw->setWindowTitle ("Azoth");
 		proxy->GetMWProxy ()->AddDockWidget (Qt::RightDockWidgetArea, dw);
+		proxy->GetMWProxy ()->SetViewActionShortcut (dw, QString ("Ctrl+J,A"));
 
 		connect (&Core::Instance (),
 				SIGNAL (gotEntity (const LeechCraft::Entity&)),
@@ -128,6 +131,10 @@ namespace Azoth
 				SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)),
 				this,
 				SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)));
+		connect (&Core::Instance (),
+				SIGNAL (gotSDWidget (ServiceDiscoveryWidget*)),
+				this,
+				SLOT (handleSDWidget (ServiceDiscoveryWidget*)));
 
 		connect (Core::Instance ().GetChatTabsManager (),
 				SIGNAL (addNewTab (const QString&, QWidget*)),
@@ -153,6 +160,10 @@ namespace Azoth
 				SIGNAL (gotConsoleWidget (ConsoleWidget*)),
 				this,
 				SLOT (handleConsoleWidget (ConsoleWidget*)));
+		connect (MW_,
+				SIGNAL (gotSDWidget (ServiceDiscoveryWidget*)),
+				this,
+				SLOT (handleSDWidget (ServiceDiscoveryWidget*)));
 
 		TabClassInfo chatTab =
 		{
@@ -177,7 +188,7 @@ namespace Azoth
 			"Search",
 			tr ("Search"),
 			tr ("A search tab allows one to search within IM services"),
-			QIcon (),
+			QIcon (":/plugins/azoth/resources/images/searchtab.svg"),
 			55,
 			TFOpenableByRequest
 		};
@@ -187,7 +198,7 @@ namespace Azoth
 			tr ("Service discovery"),
 			tr ("A service discovery tab that allows one to discover "
 				"capabilities of remote entries"),
-			QIcon (),
+			QIcon (":/plugins/azoth/resources/images/sdtab.svg"),
 			55,
 			TFOpenableByRequest
 		};
@@ -217,6 +228,16 @@ namespace Azoth
 				Core::Instance ().GetChatStylesOptionsModel ());
 		XmlSettingsDialog_->SetDataSource ("MUCWindowStyle",
 				Core::Instance ().GetChatStylesOptionsModel ());
+
+		Entity e = Util::MakeEntity (QVariant (),
+				QString (),
+				OnlyHandle,
+				"x-leechcraft/global-action-register");
+		e.Additional_ ["ActionID"] = GetUniqueID () + "_ShowNextUnread";
+		e.Additional_ ["Receiver"] = QVariant::fromValue<QObject*> (&Core::Instance ());
+		e.Additional_ ["Method"] = SLOT (handleShowNextUnread ());
+		e.Additional_ ["Shortcut"] = QKeySequence (QString ("Ctrl+Alt+Shift+M"));
+		emit gotEntity (e);
 	}
 
 	void Plugin::Release ()
@@ -283,9 +304,9 @@ namespace Azoth
 		return result;
 	}
 
-	QMap<QString, QList<QAction*> > Plugin::GetMenuActions () const
+	QMap<QString, QList<QAction*>> Plugin::GetMenuActions () const
 	{
-		QMap<QString, QList<QAction*> > result;
+		QMap<QString, QList<QAction*>> result;
 		result ["Azoth"] << MW_->GetMenuActions ();
 		return result;
 	}
@@ -312,14 +333,7 @@ namespace Azoth
 		if (tabClass == "MUCTab")
 			Core::Instance ().handleMucJoinRequested ();
 		else if (tabClass == "SD")
-		{
-			ServiceDiscoveryWidget *sd = new ServiceDiscoveryWidget;
-			connect (sd,
-					SIGNAL (removeTab (QWidget*)),
-					this,
-					SIGNAL (removeTab (QWidget*)));
-			emit addNewTab (tr ("Service discovery"), sd);
-		}
+			handleSDWidget (new ServiceDiscoveryWidget);
 		else if (tabClass == "Search")
 		{
 			SearchWidget *search = new SearchWidget;
@@ -332,9 +346,74 @@ namespace Azoth
 		}
 	}
 
+	void Plugin::RecoverTabs (const QList<TabRecoverInfo>& infos)
+	{
+		Q_FOREACH (const TabRecoverInfo& recInfo, infos)
+		{
+			QDataStream str (recInfo.Data_);
+			QByteArray context;
+			str >> context;
+
+			qDebug () << Q_FUNC_INFO << context;
+
+			if (context == "chattab")
+			{
+				ChatTabsManager::RestoreChatInfo info;
+				info.Props_ = recInfo.DynProperties_;
+				str >> info.EntryID_
+					>> info.Variant_;
+
+				QList<ChatTabsManager::RestoreChatInfo> infos;
+				infos << info;
+				Core::Instance ().GetChatTabsManager ()->EnqueueRestoreInfos (infos);
+			}
+			else
+				qWarning () << Q_FUNC_INFO
+						<< "unknown context"
+						<< context;
+		}
+	}
+
+	void Plugin::SetShortcut (const QString& id, const QKeySequences_t& seqs)
+	{
+		Core::Instance ().GetShortcutManager ()->SetShortcut (id, seqs);
+	}
+
+	QMap<QString, ActionInfo> Plugin::GetActionInfo () const
+	{
+		return Core::Instance ().GetShortcutManager ()->GetActionInfo ();
+	}
+
 	QList<ANFieldData> Plugin::GetANFields () const
 	{
 		return Core::Instance ().GetANFields ();
+	}
+
+	void Plugin::InitShortcuts ()
+	{
+		auto proxy = Core::Instance ().GetProxy ();
+
+		auto sm = Core::Instance ().GetShortcutManager ();
+		sm->SetObject (this);
+
+		sm->RegisterActionInfo ("org.LeechCraft.Azoth.ClearChat",
+				ActionInfo (tr ("Clear chat window"),
+						QString ("Ctrl+L"),
+						proxy->GetIcon ("edit-clear-history")));
+		sm->RegisterActionInfo ("org.LeechCraft.Azoth.QuoteSelected",
+				ActionInfo (tr ("Quote selected in chat tab"),
+						QString ("Ctrl+Q"),
+						proxy->GetIcon ("mail-reply-sender")));
+	}
+
+	void Plugin::handleSDWidget (ServiceDiscoveryWidget *sd)
+	{
+		connect (sd,
+				SIGNAL (removeTab (QWidget*)),
+				this,
+				SIGNAL (removeTab (QWidget*)));
+		emit addNewTab (tr ("Service discovery"), sd);
+		emit raiseTab (sd);
 	}
 
 	void Plugin::handleTasksTreeSelectionCurrentRowChanged (const QModelIndex& index, const QModelIndex&)
@@ -383,4 +462,4 @@ namespace Azoth
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_azoth, LeechCraft::Azoth::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_azoth, LeechCraft::Azoth::Plugin);

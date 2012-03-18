@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "glooxclentry.h"
+#include <algorithm>
 #include <QStringList>
 #include <QAction>
 #include <QtDebug>
@@ -258,7 +259,7 @@ namespace Xoox
 				result << presences.begin ().key ();
 			else
 			{
-				QMap<int, QList<QString> > prio2res;
+				QMap<int, QList<QString>> prio2res;
 				for (QMap<QString, QXmppPresence>::const_iterator i = presences.begin ();
 						i != presences.end (); ++i)
 					prio2res [i->status ().priority ()] << i.key ();

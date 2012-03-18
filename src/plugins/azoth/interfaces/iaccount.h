@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,20 +33,20 @@ namespace Azoth
 	class ICLEntry;
 
 	/** @brief Interface representing a single account.
-	 * 
+	 *
 	 * This interface represents an account — an entity within IProtocol
 	 * owning some ICLEntry objects.
-	 * 
+	 *
 	 * The account may also implement IHaveServiceDiscovery if it
 	 * supports some XMPP's service discovery-like functionality. Look
 	 * at that documentation for more information.
-	 * 
+	 *
 	 * If the account supports something similar to XML console, it can
 	 * also implement the IHaveConsole interface.
-	 * 
+	 *
 	 * If the account supports publishing user tune, it may implement
 	 * ISupportTune.
-	 * 
+	 *
 	 * @sa IHaveServiceDiscovery, IHaveConsole
 	 * @sa ISupportTune, ISupportMood, ISupportActivity
 	 * @sa ISupportGeolocation
@@ -153,7 +153,7 @@ namespace Azoth
 		 * @return The unique and persistent account ID.
 		 */
 		virtual QByteArray GetAccountID () const = 0;
-		
+
 		/** @brief Returns the list of actions for the account item.
 		 *
 		 * The list is showed, for example, when user calls the context
@@ -190,11 +190,6 @@ namespace Azoth
 		 * @param[in] status The new status of this account.
 		 */
 		virtual void ChangeState (const EntryStatus& status) = 0;
-
-		/** @brief Synchronizes changes made to this account locally
-		 * with any remote, if applicable.
-		 */
-		virtual void Synchronize () = 0;
 
 		/** @brief Grants authorization to the given entry.
 		 *
@@ -264,6 +259,17 @@ namespace Azoth
 		 * @return The file transfer manager, or NULL if not supported.
 		 */
 		virtual QObject* GetTransferManager () const = 0;
+
+		/** @brief This signal should be emitted when account is renamed.
+		 *
+		 * This signal should be emitted even after an explicit call to
+		 * RenameAccount().
+		 *
+		 * @note This function is expected to be a signal.
+		 *
+		 * @param[out] newName The new name of this account.
+		 */
+		virtual void accountRenamed (const QString& newName) = 0;
 
 		/** @brief This signal should be emitted when new contact list
 		 * items appear in this account.
@@ -399,11 +405,11 @@ namespace Azoth
 
 		/** @brief This signal should be emitted whenever a MUC
 		 * invitation has been received.
-		 * 
+		 *
 		 * The ident parameter contains the map with the identifying
 		 * data suitable for the IMUCJoinWidget of this account. Refer
 		 * to IMUCJoinWidget documentation for more information.
-		 * 
+		 *
 		 * @param[out] ident MUC identifying data for IMUCJoinWidget.
 		 * @param[out] inviter The inviter's source ID or nickname.
 		 * @param[out] reason An optional reason string.

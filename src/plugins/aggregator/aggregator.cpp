@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 #include <util/tagscompleter.h>
 #include <util/backendselector.h>
 #include <util/flattofoldersproxymodel.h>
+#include <util/shortcuts/shortcutmanager.h>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
 #include "ui_mainwidget.h"
 #include "itemsfiltermodel.h"
@@ -75,12 +76,12 @@ namespace Aggregator
 		AppWideActions AppWideActions_;
 		ChannelActions ChannelActions_;
 
-		QMap<QString, QPair<QAction*, ActionInfo> > ID2ActionTuple_;
+		Util::ShortcutManager *ShortcutMgr_;
 
 		QMenu *ToolMenu_;
 
-		boost::shared_ptr<Util::FlatToFoldersProxyModel> FlatToFolders_;
-		boost::shared_ptr<Util::XmlSettingsDialog> XmlSettingsDialog_;
+		std::shared_ptr<Util::FlatToFoldersProxyModel> FlatToFolders_;
+		std::shared_ptr<Util::XmlSettingsDialog> XmlSettingsDialog_;
 		std::unique_ptr<Util::TagsCompleter> TagsLineCompleter_;
 		std::unique_ptr<QSystemTrayIcon> TrayIcon_;
 		std::unique_ptr<RegexpMatcherUi> RegexpMatcherUi_;
@@ -88,6 +89,8 @@ namespace Aggregator
 		QModelIndex SelectedRepr_;
 
 		TabClassInfo TabInfo_;
+
+		bool InitFailed_;
 	};
 
 	Aggregator::~Aggregator ()
@@ -99,6 +102,7 @@ namespace Aggregator
 		setProperty ("IsUnremoveable", true);
 
 		Impl_ = new Aggregator_Impl;
+		Impl_->InitFailed_ = false;
 		Util::InstallTranslator ("aggregator");
 
 		Impl_->TabInfo_.TabClass_ = "Aggregator";
@@ -107,6 +111,7 @@ namespace Aggregator
 		Impl_->TabInfo_.Icon_ = GetIcon ();
 		Impl_->TabInfo_.Priority_ = 0;
 		Impl_->TabInfo_.Features_ = TabFeatures (TFSingle | TFOpenableByRequest);
+		Impl_->ShortcutMgr_ = new Util::ShortcutManager (proxy, this);
 
 		Impl_->ChannelActions_.SetupActionsStruct (this);
 		Impl_->AppWideActions_.SetupActionsStruct (this);
@@ -146,7 +151,6 @@ namespace Aggregator
 		Impl_->XmlSettingsDialog_->SetCustomWidget ("BackendSelector",
 				new LeechCraft::Util::BackendSelector (XmlSettingsManager::Instance ()));
 
-		bool initFailed = false;
 		if (!Core::Instance ().DoDelayedInit ())
 		{
 			setEnabled (false);
@@ -158,7 +162,7 @@ namespace Aggregator
 			Impl_->AppWideActions_.ActionImportBinary_->setEnabled (false);
 			Impl_->AppWideActions_.ActionExportBinary_->setEnabled (false);
 			Impl_->AppWideActions_.ActionExportFB2_->setEnabled (false);
-			initFailed = true;
+			Impl_->InitFailed_ = true;
 			qWarning () << Q_FUNC_INFO
 				<< "core initialization failed";
 		}
@@ -167,7 +171,7 @@ namespace Aggregator
 		Impl_->Ui_.ItemsWidget_->SetAppWideActions (Impl_->AppWideActions_);
 		Impl_->Ui_.ItemsWidget_->SetChannelActions (Impl_->ChannelActions_);
 
-		if (initFailed)
+		if (Impl_->InitFailed_)
 		{
 			QMessageBox::critical (this,
 					"LeechCraft",
@@ -287,6 +291,9 @@ namespace Aggregator
 	{
 		LoadColumnWidth (Impl_->Ui_.Feeds_, "feeds");
 
+		if (Impl_->InitFailed_)
+			return;
+
 		Impl_->Ui_.ItemsWidget_->ConstructBrowser ();
 		Impl_->Ui_.ItemsWidget_->LoadUIState ();
 
@@ -383,7 +390,7 @@ namespace Aggregator
 		emit removeTab (this);
 	}
 
-	boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> Aggregator::GetSettingsDialog () const
+	std::shared_ptr<LeechCraft::Util::XmlSettingsDialog> Aggregator::GetSettingsDialog () const
 	{
 		return Impl_->XmlSettingsDialog_;
 	}
@@ -419,21 +426,12 @@ namespace Aggregator
 	void Aggregator::SetShortcut (const QString& name,
 			const QKeySequences_t& shortcuts)
 	{
-		if (!Impl_->ID2ActionTuple_.contains (name))
-			return;
-
-		Impl_->ID2ActionTuple_ [name].first->
-				setShortcuts (shortcuts);
+		Impl_->ShortcutMgr_->SetShortcut (name, shortcuts);
 	}
 
 	QMap<QString, ActionInfo> Aggregator::GetActionInfo () const
 	{
-		QMap<QString, ActionInfo> result;
-
-		Q_FOREACH (const QString& key, Impl_->ID2ActionTuple_.keys ())
-			result [key] = Impl_->ID2ActionTuple_ [key].second;
-
-		return result;
+		return Impl_->ShortcutMgr_->GetActionInfo ();
 	}
 
 	QList<QWizardPage*> Aggregator::GetWizardPages () const
@@ -616,46 +614,22 @@ namespace Aggregator
 		return result;
 	}
 
-	namespace
-	{
-		QPair<QAction*, ActionInfo> MakeInfoPair (QAction *act)
-		{
-			ActionInfo info = ActionInfo (act->text (),
-					act->shortcuts (),
-					act->icon ());
-			return qMakePair (act, info);
-		}
-	}
-
 	void Aggregator::BuildID2ActionTupleMap ()
 	{
-		Impl_->ID2ActionTuple_ ["ActionAddFeed_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionAddFeed_);
-		Impl_->ID2ActionTuple_ ["ActionUpdateFeeds_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionUpdateFeeds_);
-		Impl_->ID2ActionTuple_ ["ActionRegexpMatcher_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionRegexpMatcher_);
-		Impl_->ID2ActionTuple_ ["ActionImportOPML_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionImportOPML_);
-		Impl_->ID2ActionTuple_ ["ActionExportOPML_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionExportOPML_);
-		Impl_->ID2ActionTuple_ ["ActionImportBinary_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionImportBinary_);
-		Impl_->ID2ActionTuple_ ["ActionExportBinary_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionExportBinary_);
-		Impl_->ID2ActionTuple_ ["ActionExportFB2_"] =
-				MakeInfoPair (Impl_->AppWideActions_.ActionExportFB2_);
-
-		Impl_->ID2ActionTuple_ ["ActionRemoveFeed_"] =
-				MakeInfoPair (Impl_->ChannelActions_.ActionRemoveFeed_);
-		Impl_->ID2ActionTuple_ ["ActionUpdateSelectedFeed_"] =
-				MakeInfoPair (Impl_->ChannelActions_.ActionUpdateSelectedFeed_);
-		Impl_->ID2ActionTuple_ ["ActionMarkChannelAsRead_"] =
-				MakeInfoPair (Impl_->ChannelActions_.ActionMarkChannelAsRead_);
-		Impl_->ID2ActionTuple_ ["ActionMarkChannelAsUnread_"] =
-				MakeInfoPair (Impl_->ChannelActions_.ActionMarkChannelAsUnread_);
-		Impl_->ID2ActionTuple_ ["ActionChannelSettings_"] =
-				MakeInfoPair (Impl_->ChannelActions_.ActionChannelSettings_);
+		typedef Util::ShortcutManager::IDPair_t ID_t;
+		*Impl_->ShortcutMgr_ << ID_t ("ActionAddFeed", Impl_->AppWideActions_.ActionAddFeed_)
+				<< ID_t ("ActionUpdateFeeds_", Impl_->AppWideActions_.ActionUpdateFeeds_)
+				<< ID_t ("ActionRegexpMatcher_", Impl_->AppWideActions_.ActionRegexpMatcher_)
+				<< ID_t ("ActionImportOPML_", Impl_->AppWideActions_.ActionImportOPML_)
+				<< ID_t ("ActionExportOPML_", Impl_->AppWideActions_.ActionExportOPML_)
+				<< ID_t ("ActionImportBinary_", Impl_->AppWideActions_.ActionImportBinary_)
+				<< ID_t ("ActionExportBinary_", Impl_->AppWideActions_.ActionExportBinary_)
+				<< ID_t ("ActionExportFB2_", Impl_->AppWideActions_.ActionExportFB2_)
+				<< ID_t ("ActionRemoveFeed_", Impl_->ChannelActions_.ActionRemoveFeed_)
+				<< ID_t ("ActionUpdateSelectedFeed_", Impl_->ChannelActions_.ActionUpdateSelectedFeed_)
+				<< ID_t ("ActionMarkChannelAsRead_", Impl_->ChannelActions_.ActionMarkChannelAsRead_)
+				<< ID_t ("ActionMarkChannelAsUnread_", Impl_->ChannelActions_.ActionMarkChannelAsUnread_)
+				<< ID_t ("ActionChannelSettings_", Impl_->ChannelActions_.ActionChannelSettings_);
 	}
 
 	void Aggregator::on_ActionAddFeed__triggered ()
@@ -738,7 +712,7 @@ namespace Aggregator
 
 	void Aggregator::on_ActionMarkChannelAsUnread__triggered ()
 	{
-		Perform ([] (const QModelIndex& mi) { Core::Instance ().MarkChannelAsRead (mi); });
+		Perform ([] (const QModelIndex& mi) { Core::Instance ().MarkChannelAsUnread (mi); });
 	}
 
 	void Aggregator::on_ActionChannelSettings__triggered ()
@@ -923,4 +897,4 @@ namespace Aggregator
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_aggregator, LeechCraft::Aggregator::Aggregator);
+LC_EXPORT_PLUGIN (leechcraft_aggregator, LeechCraft::Aggregator::Aggregator);

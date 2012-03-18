@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #ifndef PLUGINS_AZOTH_PLUGINS_CHATHISTORY_STORAGE_H
 #define PLUGINS_AZOTH_PLUGINS_CHATHISTORY_STORAGE_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QSqlQuery>
 #include <QHash>
 #include <QVariant>
@@ -37,7 +37,7 @@ namespace ChatHistory
 	{
 		Q_OBJECT
 
-		boost::shared_ptr<QSqlDatabase> DB_;
+		std::shared_ptr<QSqlDatabase> DB_;
 		QSqlQuery UserSelector_;
 		QSqlQuery AccountSelector_;
 		QSqlQuery UserIDSelector_;

@@ -9,13 +9,15 @@ INCLUDE_DIRECTORIES (${AZOTH_INCLUDE_DIR}
 	${LEECHCRAFT_INCLUDE_DIR}/azoth
 	)
 
-SET (ACETAMIDE_SRCS
+SET (ACETAMIDE_SRCS 
 	acetamide.cpp
 	bookmarkeditwidget.cpp
 	channelclentry.cpp
 	channelconfigwidget.cpp
 	channelhandler.cpp
+	channelparticipantentry.cpp
 	channelpublicmessage.cpp
+	channelsmanager.cpp
 	clientconnection.cpp
 	core.cpp
 	entrybase.cpp
@@ -26,6 +28,7 @@ SET (ACETAMIDE_SRCS
 	ircjoingroupchat.cpp
 	ircmessage.cpp
 	ircparser.cpp
+	ircparticipantentry.cpp
 	ircprotocol.cpp
 	ircserversocket.cpp
 	ircserverclentry.cpp
@@ -38,10 +41,11 @@ SET (ACETAMIDE_SRCS
 	servercommandmessage.cpp
 	serverinfowidget.cpp
 	serverparticipantentry.cpp
-	serverresponcemanager.cpp
+	serverresponsemanager.cpp
 	sortfilterproxymodel.cpp
 	usercommandmanager.cpp
 	xmlsettingsmanager.cpp
+	vcarddialog.cpp
 	)
 
 SET (ACETAMIDE_HEADERS
@@ -50,7 +54,9 @@ SET (ACETAMIDE_HEADERS
 	channelclentry.h
 	channelconfigwidget.h
 	channelhandler.h
+	channelparticipantentry.h
 	channelpublicmessage.h
+	channelsmanager.h
 	clientconnection.h
 	core.h
 	entrybase.h
@@ -61,6 +67,7 @@ SET (ACETAMIDE_HEADERS
 	ircjoingroupchat.h
 	ircmessage.h
 	ircparser.h
+	ircparticipantentry.h
 	ircprotocol.h
 	ircserversocket.h
 	ircserverclentry.h
@@ -73,10 +80,11 @@ SET (ACETAMIDE_HEADERS
 	servercommandmessage.h
 	serverinfowidget.h
 	serverparticipantentry.h
-	serverresponcemanager.h
+	serverresponsemanager.h
 	sortfilterproxymodel.h
 	usercommandmanager.h
 	xmlsettingsmanager.h
+	vcarddialog.h
 	)
 
 SET (ACETAMIDE_FORMS
@@ -89,10 +97,11 @@ SET (ACETAMIDE_FORMS
 	newnickservidentifydialog.ui
 	nickservidentifywidget.ui
 	serverinfowidget.ui
+	vcarddialog.ui
 	)
 SET (ACETAMIDE_RESOURCES azothacetamideresources.qrc)
 
-CreateTrVars ("azoth_acetamide" "de;en;fr;it;ru_RU;uk_UA" ACETAMIDE_TRANSLATIONS ACETAMIDE_COMPILED_TRANSLATIONS)
+CreateTrVars ("azoth_acetamide" "de;en;es;fr;it;ru_RU;uk_UA" ACETAMIDE_TRANSLATIONS ACETAMIDE_COMPILED_TRANSLATIONS)
 
 IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (ACETAMIDE_MOC_SRCS ${ACETAMIDE_HEADERS})

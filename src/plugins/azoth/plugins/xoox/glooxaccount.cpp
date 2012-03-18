@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ namespace Xoox
 	, Name_ (name)
 	, ParentProtocol_ (qobject_cast<GlooxProtocol*> (parent))
 	, Port_ (-1)
+	, KAParams_ (qMakePair (90, 60))
 	, PrivacyDialogAction_ (new QAction (tr ("Privacy lists..."), this))
 	{
 		AccState_.State_ = SOffline;
@@ -91,6 +92,7 @@ namespace Xoox
 	{
 		ClientConnection_.reset (new ClientConnection (JID_ + "/" + Resource_,
 						this));
+		ClientConnection_->SetKAParams (KAParams_);
 
 		TransferManager_.reset (new TransferManager (ClientConnection_->
 						GetTransferManager (),
@@ -212,6 +214,8 @@ namespace Xoox
 	void GlooxAccount::RenameAccount (const QString& name)
 	{
 		Name_ = name;
+		emit accountRenamed (name);
+		emit accountSettingsChanged ();
 	}
 
 	QByteArray GlooxAccount::GetAccountID () const
@@ -246,6 +250,9 @@ namespace Xoox
 			dia->W ()->SetPort (Port_);
 		dia->W ()->SetPriority (AccState_.Priority_);
 
+		dia->W ()->SetKAInterval (KAParams_.first);
+		dia->W ()->SetKATimeout (KAParams_.second);
+
 		if (dia->exec () == QDialog::Rejected)
 			return;
 
@@ -279,6 +286,10 @@ namespace Xoox
 		if (!pass.isNull ())
 			Core::Instance ().GetPluginProxy ()->SetPassword (pass, this);
 
+		KAParams_ = qMakePair (w->GetKAInterval (), w->GetKATimeout ());
+		if (ClientConnection_)
+			ClientConnection_->SetKAParams (KAParams_);
+
 		if (lastState != SOffline)
 			ChangeState (EntryStatus (lastState, AccState_.Status_));
 
@@ -303,11 +314,6 @@ namespace Xoox
 			Init ();
 
 		ClientConnection_->SetState (AccState_);
-	}
-
-	void GlooxAccount::Synchronize ()
-	{
-		ClientConnection_->Synchronize ();
 	}
 
 	void GlooxAccount::Authorize (QObject *entryObj)
@@ -361,6 +367,14 @@ namespace Xoox
 		return ClientConnection_ ?
 				ClientConnection_->GetCLEntry (JID_, QString ()) :
 				0;
+	}
+
+	QImage GlooxAccount::GetSelfAvatar () const
+	{
+		auto self = GetSelfContact ();
+		return self ?
+				qobject_cast<ICLEntry*> (self)->GetAvatar () :
+				QImage ();
 	}
 
 	QObject* GlooxAccount::CreateSDSession ()
@@ -642,11 +656,10 @@ namespace Xoox
 
 	QString GlooxAccount::GetNick () const
 	{
-		return Nick_;
+		return Nick_.isEmpty () ? JID_ : Nick_;
 	}
 
-	void GlooxAccount::JoinRoom (const QString& server,
-			const QString& room, const QString& nick)
+	void GlooxAccount::JoinRoom (const QString& jid, const QString& nick)
 	{
 		if (!ClientConnection_)
 		{
@@ -655,16 +668,21 @@ namespace Xoox
 			return;
 		}
 
-		QString jidStr = QString ("%1@%2")
-				.arg (room, server);
-
-		RoomCLEntry *entry = ClientConnection_->JoinRoom (jidStr, nick);
+		RoomCLEntry *entry = ClientConnection_->JoinRoom (jid, nick);
 		if (!entry)
 			return;
 		emit gotCLItems (QList<QObject*> () << entry);
 	}
 
-	boost::shared_ptr<ClientConnection> GlooxAccount::GetClientConnection () const
+	void GlooxAccount::JoinRoom (const QString& server,
+			const QString& room, const QString& nick)
+	{
+		QString jidStr = QString ("%1@%2")
+				.arg (room, server);
+		JoinRoom (jidStr, nick);
+	}
+
+	std::shared_ptr<ClientConnection> GlooxAccount::GetClientConnection () const
 	{
 		return ClientConnection_;
 	}
@@ -690,9 +708,16 @@ namespace Xoox
 		ClientConnection_->SetBookmarks (set);
 	}
 
+	void GlooxAccount::CreateSDForResource (const QString& resource)
+	{
+		auto sd = new SDSession (this);
+		sd->SetQuery (resource);
+		emit gotSDSession (sd);
+	}
+
 	QByteArray GlooxAccount::Serialize () const
 	{
-		quint16 version = 2;
+		quint16 version = 3;
 
 		QByteArray result;
 		{
@@ -704,7 +729,8 @@ namespace Xoox
 				<< Resource_
 				<< AccState_.Priority_
 				<< Host_
-				<< Port_;
+				<< Port_
+				<< KAParams_;
 		}
 
 		return result;
@@ -717,7 +743,7 @@ namespace Xoox
 		QDataStream in (data);
 		in >> version;
 
-		if (version < 1 || version > 2)
+		if (version < 1 || version > 3)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unknown version"
@@ -735,6 +761,8 @@ namespace Xoox
 		if (version >= 2)
 			in >> result->Host_
 				>> result->Port_;
+		if (version >= 3)
+			in >> result->KAParams_;
 		result->Init ();
 
 		return result;
@@ -752,19 +780,7 @@ namespace Xoox
 	{
 		IProxyObject *proxy =
 			qobject_cast<IProxyObject*> (ParentProtocol_->GetProxyObject ());
-		if (!authfailure)
-		{
-			const QString& result = proxy->GetPassword (this);
-			if (!result.isNull ())
-				return result;
-		}
-
-		QString result = QInputDialog::getText (0,
-				"LeechCraft",
-				tr ("Enter password for %1:").arg (JID_), QLineEdit::Password);
-		if (!result.isNull ())
-			proxy->SetPassword (result, this);
-		return result;
+		return proxy->GetAccountPassword (this, !authfailure);
 	}
 
 	void GlooxAccount::RegenAccountIcon ()

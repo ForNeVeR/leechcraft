@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -385,8 +385,6 @@ namespace Poshuku
 		menu->addAction (Browser_->NotifyWhenFinished_);
 		menu->addSeparator ();
 		menu->addAction (Browser_->ChangeEncoding_->menuAction ());
-		menu->addSeparator ();
-		menu->addAction (Browser_->RecentlyClosedAction_);
 
 		emit hookWebViewContextMenu (proxy, this, e, r,
 				menu, WVSAfterFinish);

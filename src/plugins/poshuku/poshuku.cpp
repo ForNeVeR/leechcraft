@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -113,19 +113,19 @@ namespace Poshuku
 
 		ImportXbel_ = new QAction (tr ("Import XBEL..."),
 				this);
-		ImportXbel_->setProperty ("ActionIcon", "poshuku_importxbel");
+		ImportXbel_->setProperty ("ActionIcon", "document-import");
 
 		ExportXbel_ = new QAction (tr ("Export XBEL..."),
 				this);
-		ExportXbel_->setProperty ("ActionIcon", "poshuku_exportxbel");
+		ExportXbel_->setProperty ("ActionIcon", "document-export");
 
 		CheckFavorites_ = new QAction (tr ("Check favorites..."),
 				this);
-		CheckFavorites_->setProperty ("ActionIcon", "poshuku_checkfavorites");
+		CheckFavorites_->setProperty ("ActionIcon", "checkbox");
 
 		ReloadAll_ = new QAction (tr ("Reload all pages"),
 				this);
-		ReloadAll_->setProperty ("ActionIcon", "poshuku_reloadall");
+		ReloadAll_->setProperty ("ActionIcon", "system-software-update");
 
 
 		try
@@ -173,8 +173,7 @@ namespace Poshuku
 		CheckFavorites_->setShortcuts (proxy->GetShortcuts (this, "EACheckFavorites_"));
 		ReloadAll_->setShortcuts (proxy->GetShortcuts (this, "EAReloadAll_"));
 
-		ToolMenu_ = new QMenu ("Poshuku",
-				Core::Instance ().GetProxy ()->GetMainWindow ());
+		ToolMenu_ = new QMenu ("Poshuku");
 		ToolMenu_->setIcon (GetIcon ());
 		ToolMenu_->addAction (ImportXbel_);
 		ToolMenu_->addAction (ExportXbel_);
@@ -261,7 +260,7 @@ namespace Poshuku
 		Core::Instance ().AddPlugin (plugin);
 	}
 
-	boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> Poshuku::GetSettingsDialog () const
+	std::shared_ptr<LeechCraft::Util::XmlSettingsDialog> Poshuku::GetSettingsDialog () const
 	{
 		return XmlSettingsDialog_;
 	}
@@ -355,13 +354,13 @@ namespace Poshuku
 		return result;
 	}
 
-	void Poshuku::RecoverTabs (const QList<QByteArray>& datas)
+	void Poshuku::RecoverTabs (const QList<TabRecoverInfo>& infos)
 	{
-		Q_FOREACH (const QByteArray& data, datas)
+		Q_FOREACH (const TabRecoverInfo& info, infos)
 		{
-			auto bw = Core::Instance ().NewURL (QUrl ());
-			bw->SetTabRecoverData (data);
-			emit tabRecovered (data, bw);
+			auto bw = Core::Instance ().NewURL (QUrl (), false, info.DynProperties_);
+			bw->SetTabRecoverData (info.Data_);
+			emit tabRecovered (info.Data_, bw);
 		}
 	}
 
@@ -508,7 +507,7 @@ namespace Poshuku
 		QWebSettings::globalSettings ()->setAttribute (QWebSettings::JavaEnabled,
 				XmlSettingsManager::Instance ()->property ("AllowJava").toBool ());
 		QWebSettings::globalSettings ()->setAttribute (QWebSettings::PluginsEnabled,
-				false /*XmlSettingsManager::Instance ()->property ("AllowPlugins").toBool ()*/);
+				XmlSettingsManager::Instance ()->property ("AllowPlugins").toBool ());
 		QWebSettings::globalSettings ()->setAttribute (QWebSettings::JavascriptCanOpenWindows,
 				XmlSettingsManager::Instance ()->property ("JavascriptCanOpenWindows").toBool ());
 		QWebSettings::globalSettings ()->setAttribute (QWebSettings::JavascriptCanAccessClipboard,
@@ -600,4 +599,4 @@ namespace Poshuku
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_poshuku, LeechCraft::Poshuku::Poshuku);
+LC_EXPORT_PLUGIN (leechcraft_poshuku, LeechCraft::Poshuku::Poshuku);

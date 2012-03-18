@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,10 @@ namespace Snails
 				SIGNAL (gotUpdatedMessages (QList<Message_ptr>)),
 				A_,
 				SLOT (handleGotUpdatedMessages (QList<Message_ptr>)));
+		connect (W_,
+				SIGNAL (gotOtherMessages (QList<QByteArray>, QStringList)),
+				A_,
+				SLOT (handleGotOtherMessages (QList<QByteArray>, QStringList)));
 		connect (W_,
 				SIGNAL (gotFolders (QList<QStringList>)),
 				A_,

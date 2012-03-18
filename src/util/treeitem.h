@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ namespace LeechCraft
 		class TreeItem
 		{
 			QList<TreeItem*> Children_;
-			QMap<int, QVector<QVariant> > Data_;
+			QMap<int, QVector<QVariant>> Data_;
 			TreeItem *Parent_;
 		public:
 			UTIL_API TreeItem (const QList<QVariant>&, TreeItem *parent = 0);

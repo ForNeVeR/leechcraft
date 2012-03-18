@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2011  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,6 +56,11 @@ namespace Azoth
 		  emit mucMode ();
 	}
 
+	bool SortFilterProxyModel::IsMUCMode () const
+	{
+		return MUCMode_;
+	}
+
 	void SortFilterProxyModel::SetMUC (QObject *mucEntry)
 	{
 		if (MUCEntry_)
@@ -96,10 +101,11 @@ namespace Azoth
 		invalidate ();
 	}
 
-	void SortFilterProxyModel::handleMUCDestroyed()
+	void SortFilterProxyModel::handleMUCDestroyed ()
 	{
 		SetMUC (0);
 		SetMUCMode (false);
+		emit wholeMode ();
 	}
 
 	namespace
@@ -132,7 +138,11 @@ namespace Azoth
 				return acc == idx.data (Core::CLRAccountObject).value<QObject*> ();
 			}
 			case Core::CLETCategory:
-				return idx.data ().toString () == qobject_cast<IMUCEntry*> (MUCEntry_)->GetGroupName ();
+			{
+				const QString& gName = idx.data ().toString ();
+				return gName == qobject_cast<IMUCEntry*> (MUCEntry_)->GetGroupName () ||
+						qobject_cast<ICLEntry*> (MUCEntry_)->Groups ().contains (gName);
+			}
 			default:
 				break;
 			}
@@ -144,6 +154,9 @@ namespace Azoth
 				return GetType (idx) == Core::CLETContact ?
 						idx.data ().toString ().contains (filterRegExp ()) :
 						true;
+
+			if (idx.data (Core::CLRUnreadMsgCount).toInt ())
+				return true;
 
 			if (GetType (idx) == Core::CLETContact)
 			{
@@ -157,6 +170,15 @@ namespace Azoth
 
 				if (HideMUCParts_ &&
 						entry->GetEntryType () == ICLEntry::ETPrivateChat)
+					return false;
+			}
+			else if (GetType (idx) == Core::CLETCategory)
+			{
+				if (!sourceModel ()->rowCount (idx))
+					return false;
+
+				if (!ShowOffline_ &&
+						!idx.data (Core::CLRNumOnline).toInt ())
 					return false;
 			}
 		}

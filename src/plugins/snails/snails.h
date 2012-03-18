@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_SNAILS_H
-#define PLUGINS_SNAILS_SNAILS_H
+#pragma once
+
 #include <QObject>
 #include <QModelIndex>
 #include <interfaces/iinfo.h>
@@ -56,6 +56,8 @@ namespace Snails
 		Util::XmlSettingsDialog_ptr GetSettingsDialog () const;
 
 		QAbstractItemModel* GetRepresentation () const;
+	private slots:
+		void handleNewTab (const QString& name, QWidget*);
 	signals:
 		void addNewTab (const QString&, QWidget*);
 		void removeTab (QWidget*);
@@ -69,6 +71,3 @@ namespace Snails
 	};
 }
 }
-
-#endif
-

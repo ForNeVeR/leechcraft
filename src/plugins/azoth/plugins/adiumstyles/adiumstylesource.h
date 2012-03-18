@@ -16,14 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_ADIUMSTYLES_ADIUMSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_ADIUMSTYLES_ADIUMSTYLESOURCE_H
-#include <boost/shared_ptr.hpp>
+#pragma once
+
+#include <memory>
 #include <QObject>
 #include <QDateTime>
 #include <QHash>
 #include <QColor>
 #include <interfaces/ichatstyleresourcesource.h>
+#include "plistparser.h"
 
 namespace LeechCraft
 {
@@ -35,6 +36,7 @@ namespace Util
 namespace Azoth
 {
 class IMessage;
+class ICLEntry;
 class IProxyObject;
 
 namespace AdiumStyles
@@ -47,13 +49,14 @@ namespace AdiumStyles
 		Q_OBJECT
 		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
 
-		boost::shared_ptr<Util::ResourceLoader> StylesLoader_;
+		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
 		IProxyObject *Proxy_;
 
 		PackProxyModel *PackProxyModel_;
 
 		mutable QHash<QWebFrame*, QString> Frame2Pack_;
-		mutable QHash<QString, QList<QColor> > Coloring2Colors_;
+		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
+		mutable QHash<QString, PListParser_ptr> PListParsers_;
 		mutable QString LastPack_;
 
 		QHash<QObject*, QWebFrame*> Msg2Frame_;
@@ -68,10 +71,14 @@ namespace AdiumStyles
 		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
 		void FrameFocused (QWebFrame*);
 	private:
-		QString ParseTemplate (QString templ, const QString& path,
+		void PercentTemplate (QString&, const QMap<QString, QString>&) const;
+		void ParseGlobalTemplate (QString& templ, ICLEntry*) const;
+		QString ParseMsgTemplate (QString templ, const QString& path,
 				QWebFrame*, QObject*, const ChatMsgAppendInfo&);
 		QList<QColor> CreateColors (const QString&);
 		QString GetMessageID (QObject*);
+		QImage GetDefaultAvatar () const;
+		PListParser_ptr GetPListParser (const QString&) const;
 	private slots:
 		void handleMessageDelivered ();
 		void handleMessageDestroyed ();
@@ -80,5 +87,3 @@ namespace AdiumStyles
 }
 }
 }
-
-#endif

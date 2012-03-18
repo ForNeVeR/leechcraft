@@ -72,7 +72,7 @@ namespace Poshuku
 		QAction *ReloadAll_;
 
 		std::auto_ptr<QTranslator> Translator_;
-		boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> XmlSettingsDialog_;
+		std::shared_ptr<LeechCraft::Util::XmlSettingsDialog> XmlSettingsDialog_;
 	public:
 		virtual ~Poshuku ();
 		void Init (ICoreProxy_ptr);
@@ -93,7 +93,7 @@ namespace Poshuku
 		QSet<QByteArray> GetExpectedPluginClasses () const;
 		void AddPlugin (QObject*);
 
-		boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> GetSettingsDialog () const;
+		std::shared_ptr<LeechCraft::Util::XmlSettingsDialog> GetSettingsDialog () const;
 
 		EntityTestHandleResult CouldHandle (const LeechCraft::Entity&) const;
 		void Handle (LeechCraft::Entity);
@@ -109,7 +109,7 @@ namespace Poshuku
 
 		QList<QAction*> GetActions (ActionsEmbedPlace) const;
 
-		void RecoverTabs (const QList<QByteArray>&);
+		void RecoverTabs (const QList<TabRecoverInfo>&);
 	private:
 		void InitConnections ();
 		void RegisterSettings ();

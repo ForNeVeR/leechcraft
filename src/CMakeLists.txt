@@ -12,7 +12,7 @@ IF (MSVC)
 	SET (CMAKE_CXX_FLAGS "/EHa /W3")
 	SET (CMAKE_CXX_FLAGS_RELEASE "/Ob2 /O2 /Ot /Oi /Oy /GT /GL /MD /D NDEBUG")
 	SET (CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /GT /MDd")
-	
+
 	SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 	INCLUDE (LibHelperWin32Macros)
 ENDIF (MSVC)
@@ -96,77 +96,63 @@ IF (STRICT_LICENSING)
 	ADD_DEFINITIONS (-DSTRICT_LICENSING)
 ENDIF (STRICT_LICENSING)
 
+OPTION (WITH_PLUGINS "Build a somewhat standard set of plugins as well" ON)
+
 # Basic & traditional set of options
-OPTION (ENABLE_AGGREGATOR "Build Aggregator, the RSS/Atom feed reader" ON)
-OPTION (ENABLE_ANHERO "Build AnHero, the crash handler" ON)
-OPTION (ENABLE_AUSCRIE "Build Auscrie, the auto screenshooter" ON)
-OPTION (ENABLE_DBUSMANAGER "Build DBusManager, the D-Bus support for the LeechCraft" ON)
-OPTION (ENABLE_DEADLYRICS "Build DeadLyrics, the client for the lyricwiki.org site" ON)
-OPTION (ENABLE_HISTORYHOLDER "Build HistoryHolder, the keeper of the history" ON)
-OPTION (ENABLE_HTTP "Build CSTP, the HTTP implementation" ON)
-OPTION (ENABLE_KINOTIFY "Build Kinotify, fancy kinetic notifications" ON)
-OPTION (ENABLE_LMP "Build LMP, the LeechCraft Media Previewer" ON)
-OPTION (ENABLE_NETWORKMONITOR "Build NetworkMonitor, the monitor for HTTP requests" ON)
-OPTION (ENABLE_NEWLIFE "Build NewLife, the settings importer" ON)
-OPTION (ENABLE_POSHUKU "Build Poshuku, the WWW Browser" ON)
-OPTION (ENABLE_SEEKTHRU "Build SeekThru, the client for the OpenSearch-aware web sites" ON)
-OPTION (ENABLE_SUMMARY "Build Summary, the plugin that shows a handy summary of the stuff going on" ON)
-OPTION (ENABLE_TABPP "Build Tab++, the enhanced tab manager" ON)
-OPTION (ENABLE_TORRENT "Build BitTorrent, the BitTorrent client" ON)
-OPTION (ENABLE_VGRABBER "Build vGrabber, the vkontakte.ru music/video getter" ON)
+OPTION (ENABLE_AGGREGATOR "Build Aggregator, the RSS/Atom feed reader" ${WITH_PLUGINS})
+OPTION (ENABLE_ANHERO "Build AnHero, the crash handler" ${WITH_PLUGINS})
+OPTION (ENABLE_AUSCRIE "Build Auscrie, the auto screenshooter" ${WITH_PLUGINS})
+OPTION (ENABLE_DBUSMANAGER "Build DBusManager, the D-Bus support for the LeechCraft" ${WITH_PLUGINS})
+OPTION (ENABLE_DEADLYRICS "Build DeadLyrics, the client for the lyricwiki.org site" ${WITH_PLUGINS})
+OPTION (ENABLE_HISTORYHOLDER "Build HistoryHolder, the keeper of the history" ${WITH_PLUGINS})
+OPTION (ENABLE_HTTP "Build CSTP, the HTTP implementation" ${WITH_PLUGINS})
+OPTION (ENABLE_KINOTIFY "Build Kinotify, fancy kinetic notifications" ${WITH_PLUGINS})
+OPTION (ENABLE_LMP "Build LMP, the LeechCraft Media Previewer" ${WITH_PLUGINS})
+OPTION (ENABLE_NETWORKMONITOR "Build NetworkMonitor, the monitor for HTTP requests" ${WITH_PLUGINS})
+OPTION (ENABLE_NEWLIFE "Build NewLife, the settings importer" ${WITH_PLUGINS})
+OPTION (ENABLE_POSHUKU "Build Poshuku, the WWW Browser" ${WITH_PLUGINS})
+OPTION (ENABLE_SEEKTHRU "Build SeekThru, the client for the OpenSearch-aware web sites" ${WITH_PLUGINS})
+OPTION (ENABLE_SUMMARY "Build Summary, the plugin that shows a handy summary of the stuff going on" ${WITH_PLUGINS})
+OPTION (ENABLE_TORRENT "Build BitTorrent, the BitTorrent client" ${WITH_PLUGINS})
+OPTION (ENABLE_VGRABBER "Build vGrabber, the vkontakte.ru music/video getter" ${WITH_PLUGINS})
 
 # New
-OPTION (ENABLE_ADVANCEDNOTIFICATIONS "Build Advanced Notifications module for more customizable notifications" OFF)
-OPTION (ENABLE_AZOTH "Build Azoth, the IM client" OFF)
+OPTION (ENABLE_ADVANCEDNOTIFICATIONS "Build Advanced Notifications module for more customizable notifications" ${WITH_PLUGINS})
+OPTION (ENABLE_AZOTH "Build Azoth, the IM client" ${WITH_PLUGINS})
 OPTION (ENABLE_BLACKDASH "Build BlackDash, the dashboard plugin for LeechCraft" OFF)
 OPTION (ENABLE_CHOROID "Build Choroid, image viewer" OFF)
 OPTION (ENABLE_EISKALTDCPP "Build EiskaltDC++ client" OFF)
-OPTION (ENABLE_GLANCE "Quick overview of tabs" OFF)
-OPTION (ENABLE_GMAILNOTIFIER "Build GMail Notifier which notifies about new mail in your GMail inbox" OFF)
-OPTION (ENABLE_KNOWHOW "Build KnowHow for displaying tips of the day" OFF)
-OPTION (ENABLE_LACKMAN "Build LackMan, the package manager for LeechCraft" OFF)
-OPTION (ENABLE_LIZNOO "Build Liznoo, our nice power manager" OFF)
-OPTION (ENABLE_NETSTOREMANAGER "Build NetStoreManager for managing network data storages like Yandex.Disk" OFF)
+OPTION (ENABLE_GLANCE "Quick overview of tabs" ${WITH_PLUGINS})
+OPTION (ENABLE_GMAILNOTIFIER "Build GMail Notifier which notifies about new mail in your GMail inbox" ${WITH_PLUGINS})
+OPTION (ENABLE_KNOWHOW "Build KnowHow for displaying tips of the day" ${WITH_PLUGINS})
+OPTION (ENABLE_LACKMAN "Build LackMan, the package manager for LeechCraft" ${WITH_PLUGINS})
+OPTION (ENABLE_LIZNOO "Build Liznoo, our nice power manager" ${WITH_PLUGINS})
+OPTION (ENABLE_NETSTOREMANAGER "Build NetStoreManager for managing network data storages like Yandex.Disk" ${WITH_PLUGINS})
 OPTION (ENABLE_POPISHU "Build Popishu, a simple QScintilla-based text editor" OFF)
 OPTION (ENABLE_QROSP "Build Qrosp, the scripting support plugin" OFF)
-OPTION (ENABLE_SECMAN "Build SecMan, security & personal data manager" OFF)
-OPTION (ENABLE_SHELLOPEN "Build ShellOpen, the plugin supporting handling entities via external applications" ON)
-OPTION (ENABLE_SIDEBAR "Build Sidebar, a nice side bar with quick launch, tabs and tray areas" OFF)
+OPTION (ENABLE_SECMAN "Build SecMan, security & personal data manager" ${WITH_PLUGINS})
+OPTION (ENABLE_SHELLOPEN "Build ShellOpen, the plugin supporting handling entities via external applications" ${WITH_PLUGINS})
+OPTION (ENABLE_SIDEBAR "Build Sidebar, a nice side bar with quick launch, tabs and tray areas" ${WITH_PLUGINS})
 OPTION (ENABLE_SNAILS "Build Snails, LeechCraft mail client" OFF)
-OPTION (ENABLE_SYNCER "Build Syncer, the synchronization plugin for LeechCraft" OFF)
-OPTION (ENABLE_TABSESSMANAGER "Build Tab Session Manager" OFF)
-OPTION (ENABLE_TABSLIST "Quick overview of tabs" OFF)
-OPTION (ENABLE_VFSCORE "Build VFS core" OFF)
+OPTION (ENABLE_SYNCER "Build Syncer, the synchronization plugin for LeechCraft" ${WITH_PLUGINS})
+OPTION (ENABLE_TABSESSMANAGER "Build Tab Session Manager" ${WITH_PLUGINS})
+OPTION (ENABLE_TABSLIST "Quick overview of tabs" ${WITH_PLUGINS})
+OPTION (ENABLE_LASTFMSCROBBLE "Build Last.fm scrobbler" OFF)
+OPTION (ENABLE_LHTR "Build LeechCraft HTML Text editoR" ${WITH_PLUGINS})
+OPTION (ENABLE_GACTS "Build Global Actions provider plugin" OFF)
+OPTION (ENABLE_CEMENTO "Build Cemento, LeechCraft common persistent storage" OFF)
+OPTION (ENABLE_PINTAB "Build Pintab for pinning important tabs" ${WITH_PLUGINS})
 
 # Defunct
-OPTION (ENABLE_FTP "Build LCFTP, the FTP client" ON)
+OPTION (ENABLE_TABPP "Build Tab++, the enhanced tab manager" OFF)
+OPTION (ENABLE_FTP "Build LCFTP, the FTP client" OFF)
 OPTION (ENABLE_JUFFED "Build JuffEd, the advanced text editor" OFF)
 OPTION (ENABLE_OTZERKALU "Build Otzerkalu, which allows one to download web sites recursively" OFF)
 OPTION (ENABLE_LAURE "Build Laure, the new generation audio/video player" OFF)
 OPTION (ENABLE_TRANSPARENTARCH "Build TransparentArch, the plugin for transparent access to archives in various formats" OFF)
+OPTION (ENABLE_VFSCORE "Build VFS core" OFF)
 
 ENABLE_TESTING ()
-
-OPTION (ENABLE_RECOMMENDED "Build all new recommended plugins" OFF)
-
-IF (ENABLE_RECOMMENDED)
-	SET (ENABLE_ADVANCEDNOTIFICATIONS TRUE)
-	SET (ENABLE_AZOTH TRUE)
-	SET (ENABLE_BLACKDASH TRUE)
-	SET (ENABLE_EISKALTDCPP TRUE)
-	SET (ENABLE_GLANCE TRUE)
-	SET (ENABLE_GMAILNOTIFIER TRUE)
-	SET (ENABLE_LACKMAN TRUE)
-	SET (ENABLE_POPISHU TRUE)
-	SET (ENABLE_QROSP TRUE)
-	SET (ENABLE_SECMAN TRUE)
-	SET (ENABLE_SHELLOPEN TRUE)
-	SET (ENABLE_SYNCER TRUE)
-	SET (ENABLE_TABSESSMANAGER TRUE)
-	SET (ENABLE_TABSLIST TRUE)
-	SET (ENABLE_VFSCORE TRUE)
-	SET (ENABLE_KNOWHOW TRUE)
-ENDIF (ENABLE_RECOMMENDED)
 
 FUNCTION (CreateTrVars PlugName Langs TranVar CompiledTranVar)
 	STRING (LENGTH "${PlugName}" _pnameLength)
@@ -353,6 +339,26 @@ IF (ENABLE_TABSESSMANAGER)
 	ADD_SUBDIRECTORY (plugins/tabsessmanager)
 ENDIF (ENABLE_TABSESSMANAGER)
 
+IF (ENABLE_LASTFMSCROBBLE)
+	ADD_SUBDIRECTORY (plugins/lastfmscrobble)
+ENDIF (ENABLE_LASTFMSCROBBLE)
+
+IF (ENABLE_LHTR)
+	ADD_SUBDIRECTORY (plugins/lhtr)
+ENDIF (ENABLE_LHTR)
+
+IF (ENABLE_CEMENTO)
+	ADD_SUBDIRECTORY (plugins/cemento)
+ENDIF (ENABLE_CEMENTO)
+
+IF (ENABLE_GACTS)
+	ADD_SUBDIRECTORY (plugins/gacts)
+ENDIF (ENABLE_GACTS)
+
+IF (ENABLE_PINTAB)
+	ADD_SUBDIRECTORY (plugins/pintab)
+ENDIF (ENABLE_PINTAB)
+
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
 SET (QT_USE_QTSQL TRUE)
@@ -408,6 +414,7 @@ SET (SRCS
 	mwproxy.cpp
 	winwarndialog.cpp
 	coreplugin2manager.cpp
+	dockmanager.cpp
 	)
 SET (HEADERS
 	mainwindow.h
@@ -452,6 +459,7 @@ SET (HEADERS
 	mwproxy.h
 	winwarndialog.h
 	coreplugin2manager.h
+	dockmanager.h
 	3dparty/qxttooltip.h
 	3dparty/qxttooltip_p.h
 	interfaces/structures.h
@@ -576,7 +584,7 @@ INSTALL (FILES xmlsettingsdialog/datasourceroles.h DESTINATION include/leechcraf
 INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/leechcraft/)
 
 INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/FindLeechCraft.cmake DESTINATION share/leechcraft/cmake/)
-INSTALL (FILES InitLCPlugin.cmake DESTINATION /usr/share/cmake/Modules)
+INSTALL (FILES InitLCPlugin.cmake DESTINATION share/cmake/Modules)
 
 INSTALL (DIRECTORY freedesktop/icons/ DESTINATION share/icons/hicolor
 	PATTERN ".svn" EXCLUDE)

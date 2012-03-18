@@ -533,18 +533,17 @@ namespace LackMan
 		InstalledDependencyInfoList result;
 
 		QFileInfoList infoEntries;
-#if defined(Q_WS_X11)
+#if defined(Q_OS_WIN32)
+		infoEntries += QDir (QApplication::applicationDirPath () + "/share/installed")
+				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
+#elif defined(Q_OS_MAC)
+		infoEntries += QDir (QCoreApplication::applicationDirPath () + "/../installed")
+				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
+#else
 		infoEntries += QDir ("/usr/share/leechcraft/installed")
 				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
 		infoEntries += QDir ("/usr/local/share/leechcraft/installed")
 				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
-#elif defined(Q_WS_WIN)
-		infoEntries += QDir (QApplication::applicationDirPath () + "/share/installed")
-				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
-#elif defined(Q_WS_MAC)
-		infoEntries += QDir (QCoreApplication::applicationDirPath () + "/../installed")
-				.entryInfoList (QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files);
-
 #endif
 
 		QStringList entries;
@@ -616,7 +615,7 @@ namespace LackMan
 
 	void Core::PopulatePluginsModel ()
 	{
-		QMap<QString, QList<ListPackageInfo> > infos;
+		QMap<QString, QList<ListPackageInfo>> infos;
 		try
 		{
 			infos = Storage_->GetListPackageInfos ();
@@ -659,7 +658,7 @@ namespace LackMan
 	void Core::HandleNewPackages (const PackageShortInfoList& shortInfos,
 			int componentId, const QString& component, const QUrl& repoUrl)
 	{
-		QMap<QString, QList<QString> > PackageName2NewVersions_;
+		QMap<QString, QList<QString>> PackageName2NewVersions_;
 
 		Q_FOREACH (const PackageShortInfo& info, shortInfos)
 			Q_FOREACH (const QString& version, info.Versions_)

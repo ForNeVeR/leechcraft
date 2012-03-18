@@ -38,7 +38,7 @@ namespace Acetamide
 
 		qsrand (time (NULL));
 
-		qRegisterMetaTypeStreamOperators<QList<QStringList> > ("QList<QStringList>");
+		qRegisterMetaTypeStreamOperators<QList<QStringList>> ("QList<QStringList>");
 
 		SettingsDialog_.reset (new Util::XmlSettingsDialog);
 		SettingsDialog_->RegisterObject (&XmlSettingsManager::Instance (),
@@ -49,8 +49,6 @@ namespace Acetamide
 
 		SettingsDialog_->SetCustomWidget ("NickServIdentifyWidget",
 				Core::Instance ().GetNickServIdentifyWidget ());
-// 		SettingsDialog_->SetDataSource ("NickServIdentifyModel",
-// 				Core::Instance ().GetNickServIdentifyModel ());
 
 		connect (&Core::Instance (),
 				SIGNAL (gotEntity (const LeechCraft::Entity&)),
@@ -139,5 +137,5 @@ QDataStream& operator>> (QDataStream& in, QList<QStringList>& list)
 	return in;
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_azoth_acetamide,
+LC_EXPORT_PLUGIN (leechcraft_azoth_acetamide,
 		LeechCraft::Azoth::Acetamide::Plugin);

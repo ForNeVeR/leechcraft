@@ -19,7 +19,6 @@
 #ifndef CORE_H
 #define CORE_H
 #include <memory>
-#include <boost/shared_ptr.hpp>
 #include <QObject>
 #include <QString>
 #include <QPair>
@@ -45,6 +44,7 @@ namespace LeechCraft
 	class LocalSocketHandler;
 	class DirectoryWatcher;
 	class CoreInstanceObject;
+	class DockManager;
 
 	/** Contains all the plugins' models, maps from end-user's tree view
 	 * to plugins' models and much more.
@@ -55,14 +55,15 @@ namespace LeechCraft
 
 		PluginManager *PluginManager_;
 		MainWindow *ReallyMainWindow_;
-		boost::shared_ptr<TabManager> TabManager_;
-		boost::shared_ptr<QNetworkAccessManager> NetworkAccessManager_;
-		boost::shared_ptr<StorageBackend> StorageBackend_;
-		boost::shared_ptr<DirectoryWatcher> DirectoryWatcher_;
-		boost::shared_ptr<ClipboardWatcher> ClipboardWatcher_;
-		boost::shared_ptr<LocalSocketHandler> LocalSocketHandler_;
-		boost::shared_ptr<NewTabMenuManager> NewTabMenuManager_;
-		boost::shared_ptr<CoreInstanceObject> CoreInstanceObject_;
+		DockManager *DM_;
+		std::shared_ptr<TabManager> TabManager_;
+		std::shared_ptr<QNetworkAccessManager> NetworkAccessManager_;
+		std::shared_ptr<StorageBackend> StorageBackend_;
+		std::shared_ptr<DirectoryWatcher> DirectoryWatcher_;
+		std::shared_ptr<ClipboardWatcher> ClipboardWatcher_;
+		std::shared_ptr<LocalSocketHandler> LocalSocketHandler_;
+		std::shared_ptr<NewTabMenuManager> NewTabMenuManager_;
+		std::shared_ptr<CoreInstanceObject> CoreInstanceObject_;
 		QList<Entity> QueuedEntities_;
 		bool IsShuttingDown_;
 
@@ -91,6 +92,10 @@ namespace LeechCraft
 		 */
 		MainWindow* GetReallyMainWindow ();
 
+		/** Returns the dock manager over the main window.
+		 */
+		DockManager* GetDockManager () const;
+
 		/** Returns the pointer to the app-wide shortcut proxy.
 		 */
 		IShortcutProxy* GetShortcutProxy () const;
@@ -114,7 +119,7 @@ namespace LeechCraft
 		 *
 		 * @return List of actions.
 		 */
-		QList<QList<QAction*> > GetActions2Embed () const;
+		QList<QList<QAction*>> GetActions2Embed () const;
 
 		/** Returns the model which manages the plugins, displays
 		 * various info about them like name, description, icon and

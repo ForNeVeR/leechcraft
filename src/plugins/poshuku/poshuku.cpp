@@ -260,7 +260,7 @@ namespace Poshuku
 		Core::Instance ().AddPlugin (plugin);
 	}
 
-	boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> Poshuku::GetSettingsDialog () const
+	std::shared_ptr<LeechCraft::Util::XmlSettingsDialog> Poshuku::GetSettingsDialog () const
 	{
 		return XmlSettingsDialog_;
 	}
@@ -354,13 +354,13 @@ namespace Poshuku
 		return result;
 	}
 
-	void Poshuku::RecoverTabs (const QList<QByteArray>& datas)
+	void Poshuku::RecoverTabs (const QList<TabRecoverInfo>& infos)
 	{
-		Q_FOREACH (const QByteArray& data, datas)
+		Q_FOREACH (const TabRecoverInfo& info, infos)
 		{
-			auto bw = Core::Instance ().NewURL (QUrl ());
-			bw->SetTabRecoverData (data);
-			emit tabRecovered (data, bw);
+			auto bw = Core::Instance ().NewURL (QUrl (), false, info.DynProperties_);
+			bw->SetTabRecoverData (info.Data_);
+			emit tabRecovered (info.Data_, bw);
 		}
 	}
 
@@ -599,4 +599,4 @@ namespace Poshuku
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_poshuku, LeechCraft::Poshuku::Poshuku);
+LC_EXPORT_PLUGIN (leechcraft_poshuku, LeechCraft::Poshuku::Poshuku);

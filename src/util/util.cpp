@@ -141,11 +141,11 @@ QTranslator* LeechCraft::Util::InstallTranslator (const QString& baseName,
 	filename.append (localeName);
 
 	QTranslator *transl = new QTranslator;
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN32
 	if (transl->load (filename, ":/") ||
 			transl->load (filename,
 					QCoreApplication::applicationDirPath () + "/translations"))
-#elif defined (Q_WS_MAC)
+#elif defined (Q_OS_MAC)
 	if (transl->load (filename, ":/") ||
 			transl->load (filename,
 					QCoreApplication::applicationDirPath () + "/../Resources/translations"))
@@ -276,6 +276,24 @@ LeechCraft::Entity LeechCraft::Util::MakeNotification (const QString& header,
 	return result;
 }
 
+LeechCraft::Entity LeechCraft::Util::MakeANCancel (const LeechCraft::Entity& event)
+{
+	Entity e = MakeNotification (event.Entity_.toString (), QString (), PInfo_);
+	e.Additional_ ["org.LC.AdvNotifications.SenderID"] = event.Additional_ ["org.LC.AdvNotifications.SenderID"];
+	e.Additional_ ["org.LC.AdvNotifications.EventID"] = event.Additional_ ["org.LC.AdvNotifications.EventID"];
+	e.Additional_ ["org.LC.AdvNotifications.EventCategory"] = "org.LC.AdvNotifications.Cancel";
+	return e;
+}
+
+LeechCraft::Entity LeechCraft::Util::MakeANCancel (const QString& senderId, const QString& eventId)
+{
+	Entity e = MakeNotification (QString (), QString (), PInfo_);
+	e.Additional_ ["org.LC.AdvNotifications.SenderID"] = senderId;
+	e.Additional_ ["org.LC.AdvNotifications.EventID"] = eventId;
+	e.Additional_ ["org.LC.AdvNotifications.EventCategory"] = "org.LC.AdvNotifications.Cancel";
+	return e;
+}
+
 QModelIndexList LeechCraft::Util::GetSummarySelectedRows (QObject *sender)
 {
 	QAction *senderAct = qobject_cast<QAction*> (sender);
@@ -291,7 +309,7 @@ QModelIndexList LeechCraft::Util::GetSummarySelectedRows (QObject *sender)
 	}
 
 	return senderAct->
-			property ("SelectedRows").value<QList<QModelIndex> > ();
+			property ("SelectedRows").value<QList<QModelIndex>> ();
 }
 
 QAction* LeechCraft::Util::CreateSeparator (QObject *parent)

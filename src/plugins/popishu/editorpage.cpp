@@ -18,6 +18,7 @@
 
 #include "editorpage.h"
 #include <iostream>
+#include <algorithm>
 #include <QToolBar>
 #include <QFileDialog>
 #include <QFile>
@@ -272,7 +273,7 @@ namespace LeechCraft
 				return QList<QAction*> ();
 			}
 
-			QMap<QString, QList<QAction*> > EditorPage::GetWindowMenus () const
+			QMap<QString, QList<QAction*>> EditorPage::GetWindowMenus () const
 			{
 				return WindowMenus_;
 			}

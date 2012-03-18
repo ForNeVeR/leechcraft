@@ -56,6 +56,11 @@ namespace Azoth
 		  emit mucMode ();
 	}
 
+	bool SortFilterProxyModel::IsMUCMode () const
+	{
+		return MUCMode_;
+	}
+
 	void SortFilterProxyModel::SetMUC (QObject *mucEntry)
 	{
 		if (MUCEntry_)
@@ -96,10 +101,11 @@ namespace Azoth
 		invalidate ();
 	}
 
-	void SortFilterProxyModel::handleMUCDestroyed()
+	void SortFilterProxyModel::handleMUCDestroyed ()
 	{
 		SetMUC (0);
 		SetMUCMode (false);
+		emit wholeMode ();
 	}
 
 	namespace
@@ -132,7 +138,11 @@ namespace Azoth
 				return acc == idx.data (Core::CLRAccountObject).value<QObject*> ();
 			}
 			case Core::CLETCategory:
-				return idx.data ().toString () == qobject_cast<IMUCEntry*> (MUCEntry_)->GetGroupName ();
+			{
+				const QString& gName = idx.data ().toString ();
+				return gName == qobject_cast<IMUCEntry*> (MUCEntry_)->GetGroupName () ||
+						qobject_cast<ICLEntry*> (MUCEntry_)->Groups ().contains (gName);
+			}
 			default:
 				break;
 			}

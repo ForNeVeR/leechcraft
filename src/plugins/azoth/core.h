@@ -49,7 +49,9 @@ namespace LeechCraft
 namespace Util
 {
 	class ResourceLoader;
+	class ShortcutManager;
 }
+
 namespace Azoth
 {
 	class ICLEntry;
@@ -66,10 +68,9 @@ namespace Azoth
 	class EventsNotifier;
 	class ActionsManager;
 	class ImportManager;
-
 	class CLModel;
-
 	class ServiceDiscoveryWidget;
+	class UnreadQueueManager;
 
 	class Core : public QObject
 	{
@@ -103,7 +104,7 @@ namespace Azoth
 
 		QHash<IAccount*, EntryStatus> SavedStatus_;
 
-		typedef QHash<ICLEntry*, QList<QStandardItem*> > Entry2Items_t;
+		typedef QHash<ICLEntry*, QList<QStandardItem*>> Entry2Items_t;
 		Entry2Items_t Entry2Items_;
 
 		ActionsManager *ActionsManager_;
@@ -111,7 +112,7 @@ namespace Azoth
 		typedef QHash<QString, QObject*> ID2Entry_t;
 		ID2Entry_t ID2Entry_;
 
-		typedef QHash<ICLEntry*, QMap<QString, QIcon> > EntryClientIconCache_t;
+		typedef QHash<ICLEntry*, QMap<QString, QIcon>> EntryClientIconCache_t;
 		EntryClientIconCache_t EntryClientIconCache_;
 
 		typedef QHash<ICLEntry*, QImage> Entry2SmoothAvatarCache_t;
@@ -131,18 +132,18 @@ namespace Azoth
 			RLTMoodIconLoader
 		};
 	private:
-		QMap<ResourceLoaderType, boost::shared_ptr<Util::ResourceLoader>> ResourceLoaders_;
-		boost::shared_ptr<SourceTrackingModel<IEmoticonResourceSource>> SmilesOptionsModel_;
-		boost::shared_ptr<SourceTrackingModel<IChatStyleResourceSource>> ChatStylesOptionsModel_;
+		QMap<ResourceLoaderType, std::shared_ptr<Util::ResourceLoader>> ResourceLoaders_;
+		std::shared_ptr<SourceTrackingModel<IEmoticonResourceSource>> SmilesOptionsModel_;
+		std::shared_ptr<SourceTrackingModel<IChatStyleResourceSource>> ChatStylesOptionsModel_;
 
-		boost::shared_ptr<PluginManager> PluginManager_;
-		boost::shared_ptr<ProxyObject> PluginProxyObject_;
-
-		boost::shared_ptr<TransferJobManager> XferJobManager_;
-		boost::shared_ptr<CallManager> CallManager_;
-		boost::shared_ptr<EventsNotifier> EventsNotifier_;
-
-		boost::shared_ptr<ImportManager> ImportManager_;
+		std::shared_ptr<PluginManager> PluginManager_;
+		std::shared_ptr<ProxyObject> PluginProxyObject_;
+		std::shared_ptr<TransferJobManager> XferJobManager_;
+		std::shared_ptr<CallManager> CallManager_;
+		std::shared_ptr<EventsNotifier> EventsNotifier_;
+		std::shared_ptr<ImportManager> ImportManager_;
+		std::shared_ptr<UnreadQueueManager> UnreadQueueManager_;
+		std::shared_ptr<Util::ShortcutManager> ShortcutManager_;
 
 		Core ();
 	public:
@@ -170,7 +171,7 @@ namespace Azoth
 				*/
 			CLETContact
 		};
-	public:
+
 		static Core& Instance ();
 		void Release ();
 
@@ -182,7 +183,8 @@ namespace Azoth
 		Util::ResourceLoader* GetResourceLoader (ResourceLoaderType) const;
 		QAbstractItemModel* GetSmilesOptionsModel () const;
 		IEmoticonResourceSource* GetCurrentEmoSource () const;
-		QAbstractItemModel* GetChatStylesOptionsModel ();
+		QAbstractItemModel* GetChatStylesOptionsModel () const;
+		Util::ShortcutManager* GetShortcutManager () const;
 
 		QSet<QByteArray> GetExpectedPluginClasses () const;
 		void AddPlugin (QObject*);
@@ -282,6 +284,7 @@ namespace Azoth
 		 * @return Entry's avatar scaled to the given size.
 		 */
 		QImage GetAvatar (ICLEntry *entry, int size);
+		QImage GetDefaultAvatar (int size);
 
 		ActionsManager* GetActionsManager () const;
 
@@ -403,6 +406,8 @@ namespace Azoth
 		 * plugin's IProtocol::InitiateMUCJoin() function.
 		 */
 		void handleMucJoinRequested ();
+
+		void handleShowNextUnread ();
 	private slots:
 		void handleNewProtocols (const QList<QObject*>&);
 
@@ -441,6 +446,8 @@ namespace Azoth
 		/** Handles the status change of an account to new status.
 		 */
 		void handleAccountStatusChanged (const EntryStatus& status);
+
+		void handleAccountRenamed (const QString&);
 
 		/** Handles the status change of a CL entry to new status.
 		 */

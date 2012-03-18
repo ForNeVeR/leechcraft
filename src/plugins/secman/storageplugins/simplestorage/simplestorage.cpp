@@ -128,7 +128,7 @@ namespace LeechCraft
 						return Storage_->value (key).toList ();
 					}
 
-					void Plugin::Save (const QList<QPair<QByteArray, QVariantList> >& keyValues,
+					void Plugin::Save (const QList<QPair<QByteArray, QVariantList>>& keyValues,
 							IStoragePlugin::StorageType st, bool overwrite)
 					{
 						QPair<QByteArray, QVariantList> keyValue;
@@ -149,4 +149,4 @@ namespace LeechCraft
 	}
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_secman_simplestorage, LeechCraft::Plugins::SecMan::StoragePlugins::SimpleStorage::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_secman_simplestorage, LeechCraft::Plugins::SecMan::StoragePlugins::SimpleStorage::Plugin);

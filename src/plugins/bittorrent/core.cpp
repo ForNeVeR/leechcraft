@@ -60,6 +60,7 @@
 #include <interfaces/entitytesthandleresult.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/itagsmanager.h>
+#include <interfaces/ijobholder.h>
 #include <util/tagscompletionmodel.h>
 #include <util/util.h>
 #include "xmlsettingsmanager.h"
@@ -183,8 +184,7 @@ namespace LeechCraft
 					ver = ver.split ('-', QString::SkipEmptyParts).at (0);
 					QStringList vers = ver.split ('.', QString::SkipEmptyParts);
 					if (vers.size () != 3)
-						throw std::runtime_error ("Malformed version string "
-								"(could not split it to three parts)");
+						throw std::runtime_error ("Malformed version string " + ver.toStdString ());
 					ver = QString ("%1%2")
 						.arg (vers.at (1).toInt (),
 								2, 10, QChar ('0'))
@@ -321,8 +321,8 @@ namespace LeechCraft
 					QUrl url = e.Entity_.toUrl ();
 					if (url.scheme () == "magnet")
 					{
-						QList<QPair<QString, QString> > queryItems = url.queryItems ();
-						for (QList<QPair<QString, QString> >::const_iterator i = queryItems.begin (),
+						QList<QPair<QString, QString>> queryItems = url.queryItems ();
+						for (QList<QPair<QString, QString>>::const_iterator i = queryItems.begin (),
 								end = queryItems.end (); i != end; ++i)
 							if (i->first == "xt" &&
 									i->second.startsWith ("urn:btih:"))
@@ -576,6 +576,12 @@ namespace LeechCraft
 						}
 					case RoleTags:
 						return Handles_.at (row).Tags_;
+					case CustomDataRoles::RoleJobHolderRow:
+						return QVariant::fromValue<JobHolderRow> (JobHolderRow::DownloadProgress);
+					case ProcessState::Done:
+						return static_cast<qlonglong> (status.total_wanted_done);
+					case ProcessState::Total:
+						return static_cast<qlonglong> (status.total_wanted);
 					default:
 						return QVariant ();
 				}
@@ -730,7 +736,7 @@ namespace LeechCraft
 						QString::fromStdString (pi.ip.address ().to_string ()),
 						QString::fromUtf8 (pi.client.c_str ()),
 						interesting,
-						boost::shared_ptr<libtorrent::peer_info> (new libtorrent::peer_info (pi))
+						std::shared_ptr<libtorrent::peer_info> (new libtorrent::peer_info (pi))
 					};
 					result << ppi;
 				}
@@ -1472,11 +1478,11 @@ namespace LeechCraft
 
 			QMap<Core::BanRange_t, bool> Core::GetFilter () const
 			{
-				boost::tuple<std::vector<libtorrent::ip_range<libtorrent::address_v4> >,
-					std::vector<libtorrent::ip_range<libtorrent::address_v6> > > both =
+				boost::tuple<std::vector<libtorrent::ip_range<libtorrent::address_v4>>,
+					std::vector<libtorrent::ip_range<libtorrent::address_v6>>> both =
 						Session_->get_ip_filter ().export_filter ();
-				std::vector<libtorrent::ip_range<libtorrent::address_v4> > v4 = both.get<0> ();
-				std::vector<libtorrent::ip_range<libtorrent::address_v6> > v6 = both.get<1> ();
+				std::vector<libtorrent::ip_range<libtorrent::address_v4>> v4 = both.get<0> ();
+				std::vector<libtorrent::ip_range<libtorrent::address_v6>> v6 = both.get<1> ();
 
 				QMap<Core::BanRange_t, bool> result;
 				Q_FOREACH (libtorrent::ip_range<libtorrent::address_v4> range, v4)
@@ -1541,9 +1547,11 @@ namespace LeechCraft
 				std::fill (torrent->FilePriorities_.begin (),
 						torrent->FilePriorities_.end (), 1);
 
-				boost::shared_array<char> metadata = info.metadata ();
-				std::copy (metadata.get (), metadata.get () + info.metadata_size (),
-						std::back_inserter (torrent->TorrentFileContents_));
+				libtorrent::entry infoE = libtorrent::bdecode (info.metadata ().get (),
+						info.metadata ().get () + info.metadata_size ());
+				libtorrent::entry e;
+				e ["info"] = infoE;
+				libtorrent::bencode (std::back_inserter (torrent->TorrentFileContents_), e);
 
 				qDebug () << "HandleMetadata"
 					<< std::distance (Handles_.begin (), torrent)
@@ -1834,6 +1842,7 @@ namespace LeechCraft
 						QCoreApplication::applicationName () + "_Torrent");
 				settings.beginGroup ("Core");
 				int torrents = settings.beginReadArray ("AddedTorrents");
+				qDebug () << Q_FUNC_INFO << "gonna restore" << torrents << "torrents";
 				for (int i = 0; i < torrents; ++i)
 				{
 					settings.setArrayIndex (i);
@@ -1848,7 +1857,12 @@ namespace LeechCraft
 					QByteArray data = torrent.readAll ();
 					torrent.close ();
 					if (data.isEmpty ())
+					{
+						qWarning () << Q_FUNC_INFO
+								<< "empty torrent data for"
+								<< filename;
 						continue;
+					}
 
 					QFile resumeDataFile (QDir::homePath () + "/.leechcraft/bittorrent/" +
 							filename + ".resume");
@@ -1870,7 +1884,12 @@ namespace LeechCraft
 								automanaged,
 								taskParameters & NoAutostart);
 					if (!handle.is_valid ())
+					{
+						qWarning () << Q_FUNC_INFO
+								<< "got invalid handle for"
+								<< filename;
 						continue;
+					}
 
 					std::vector<int> priorities;
 					QByteArray prioritiesLine = settings.value ("Priorities").toByteArray ();
@@ -1901,6 +1920,7 @@ namespace LeechCraft
 					beginInsertRows (QModelIndex (), Handles_.size (), Handles_.size ());
 					Handles_.append (tmp);
 					endInsertRows ();
+					qDebug () << "restored a torrent";
 				}
 				settings.endArray ();
 
@@ -1951,6 +1971,7 @@ namespace LeechCraft
 				}
 				catch (const libtorrent::libtorrent_exception& e)
 				{
+					qWarning () << Q_FUNC_INFO << e.what ();
 					HandleLibtorrentException (e);
 				}
 
@@ -2243,6 +2264,7 @@ namespace LeechCraft
 					{
 						qWarning () << Q_FUNC_INFO << "unknown exception";
 					}
+					qDebug () << Q_FUNC_INFO << "saved torrent" << Handles_.at (i).TorrentFileName_ << Handles_.at (i).Handle_.has_metadata ();
 					CurrentTorrent_ = oldCurrent;
 				}
 				settings.endArray ();

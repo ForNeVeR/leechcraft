@@ -35,6 +35,7 @@
 #include "interfaces/iaccount.h"
 #include "interfaces/itransfermanager.h"
 #include "interfaces/iconfigurablemuc.h"
+#include "interfaces/ihavedirectedstatus.h"
 
 #ifdef ENABLE_CRYPT
 #include "interfaces/isupportpgp.h"
@@ -53,6 +54,7 @@
 #include "transferjobmanager.h"
 #include "bookmarksmanagerdialog.h"
 #include "simpledialog.h"
+#include "setstatusdialog.h"
 
 namespace LeechCraft
 {
@@ -82,6 +84,7 @@ namespace Azoth
 		result << id2action.value ("changegroups");
 		result << id2action.value ("remove");
 		result << id2action.value ("sep_afterrostermodify");
+		result << id2action.value ("directedpresence");
 		result << id2action.value ("authorization");
 		IMUCPerms *perms = qobject_cast<IMUCPerms*> (entry->GetParentCLEntry ());
 		if (perms)
@@ -276,6 +279,18 @@ namespace Azoth
 			Action2Areas_ [changeGroups] << CLEAAContactListCtxtMenu;
 		}
 
+		if (qobject_cast<IHaveDirectedStatus*> (entry->GetObject ()))
+		{
+			QAction *sendDirected = new QAction (tr ("Send directed status..."), entry->GetObject ());
+			connect (sendDirected,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (handleActionSendDirectedStatusTriggered ()));
+			sendDirected->setProperty ("ActionIcon", "im-status-message-edit");
+			Entry2Actions_ [entry] ["directedpresence"] = sendDirected;
+			Action2Areas_ [sendDirected] << CLEAAContactListCtxtMenu;
+		}
+
 		if (entry->GetEntryFeatures () & ICLEntry::FSupportsAuth)
 		{
 			QMenu *authMenu = new QMenu (tr ("Authorization"));
@@ -360,7 +375,7 @@ namespace Azoth
 		{
 			if (perms)
 			{
-				const QMap<QByteArray, QList<QByteArray> >& possible = perms->GetPossiblePerms ();
+				const QMap<QByteArray, QList<QByteArray>>& possible = perms->GetPossiblePerms ();
 				Q_FOREACH (const QByteArray& permClass, possible.keys ())
 				{
 					QMenu *changeClass = new QMenu (perms->GetUserString (permClass));
@@ -568,7 +583,7 @@ namespace Azoth
 		{
 			if (mucPerms)
 			{
-				const QMap<QByteArray, QList<QByteArray> > possible = mucPerms->GetPossiblePerms ();
+				const QMap<QByteArray, QList<QByteArray>> possible = mucPerms->GetPossiblePerms ();
 				QObject *entryObj = entry->GetObject ();
 				Q_FOREACH (const QByteArray& permClass, possible.keys ())
 					Q_FOREACH (QAction *action,
@@ -669,6 +684,14 @@ namespace Azoth
 		QObject *job = xferMgr->SendFile (entry->GetEntryID (),
 				Core::Instance ().GetChatTabsManager ()->GetActiveVariant (entry),
 				filename);
+		if (!job)
+		{
+			Core::Instance ().SendEntity (Util::MakeNotification ("Azoth",
+						tr ("Unable to send file to %1.")
+							.arg (entry->GetEntryName ()),
+						PCritical_));
+			return;
+		}
 		Core::Instance ().GetTransferJobManager ()->HandleJob (job);
 	}
 
@@ -723,6 +746,38 @@ namespace Azoth
 			return;
 
 		entry->SetGroups (dia.GetGroups ());
+	}
+
+	void ActionsManager::handleActionSendDirectedStatusTriggered ()
+	{
+		ICLEntry *entry = sender ()->
+				property ("Azoth/Entry").value<ICLEntry*> ();
+		auto ihds = qobject_cast<IHaveDirectedStatus*> (entry->GetObject ());
+
+		QStringList variants (tr ("All variants"));
+		Q_FOREACH (const QString& var, entry->Variants ())
+			if (!var.isEmpty () &&
+					ihds->CanSendDirectedStatusNow (var))
+				variants << var;
+
+		QString variant = QInputDialog::getItem (0,
+				tr ("Select variant"),
+				tr ("Select variant to send directed status to:"),
+				variants,
+				0,
+				false);
+		if (variant.isEmpty ())
+			return;
+
+		if (variant == variants.front ())
+			variant.clear ();
+
+		SetStatusDialog dia ((QString ()));
+		if (dia.exec () != QDialog::Accepted)
+			return;
+
+		const EntryStatus st (dia.GetState (), dia.GetStatusText ());
+		ihds->SendDirectedStatus (st, variant);
 	}
 
 	void ActionsManager::handleActionRemoveTriggered ()

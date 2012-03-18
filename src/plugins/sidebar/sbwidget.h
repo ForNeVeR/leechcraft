@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SIDEBAR_SBWIDGET_H
-#define PLUGINS_SIDEBAR_SBWIDGET_H
+#pragma once
+
 #include <QWidget>
+#include <interfaces/core/icoreproxy.h>
 #include "ui_sbwidget.h"
 
 class QToolButton;
@@ -41,31 +42,40 @@ namespace Sidebar
 		Ui::SBWidget Ui_;
 		Util::FlowLayout *TrayLay_;
 
+		ICoreProxy_ptr Proxy_;
+
 		const QSize IconSize_;
 
 		QMap<QByteArray, QList<QAction*>> TabClass2Action_;
 		QMap<QByteArray, QToolButton*> TabClass2Folder_;
+		QMap<QAction*, QWidget*> TabAction2Tab_;
 
 		QMap<QAction*, QToolButton*> CurTab2Button_;
 		QMap<QAction*, QToolButton*> TrayAct2Button_;
 	public:
-		SBWidget (QWidget* = 0);
+		SBWidget (ICoreProxy_ptr, QWidget* = 0);
 
 		void AddTabOpenAction (QAction*);
+		void RemoveTabOpenAction (QAction*);
+
 		void AddQLAction (QAction*);
+		void RemoveQLAction (QAction*);
+
 		void AddCurTabAction (QAction*, QWidget*);
 		void RemoveCurTabAction (QAction*, QWidget*);
+
 		void AddTrayAction (QAction*);
+		void RemoveTrayAction (QAction*);
 	private:
 		QToolButton* AddTabButton (QAction*, QLayout*);
+		void RemoveTabButton (QAction*, QLayout*);
 		void FoldTabClass (const TabClassInfo&, QAction*);
 		void AddToFolder (const QByteArray&, QAction*);
 		void UnfoldTabClass (const TabClassInfo&);
 	private slots:
+		void handleTabContextMenu (const QPoint&);
 		void showFolded ();
 		void handleTrayActDestroyed ();
 	};
 }
 }
-
-#endif

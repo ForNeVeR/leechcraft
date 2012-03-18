@@ -38,6 +38,7 @@
 #include <interfaces/core/itagsmanager.h>
 #include <util/tagscompletionmodel.h>
 #include <util/util.h>
+#include <util/shortcuts/shortcutmanager.h>
 #include "core.h"
 #include "addtorrent.h"
 #include "addmultipletorrents.h"
@@ -176,8 +177,8 @@ namespace LeechCraft
 							tags << Core::Instance ()->GetProxy ()->
 								GetTagsManager ()->GetID (tag);
 
-						QList<QPair<QString, QString> > queryItems = resource.queryItems ();
-						for (QList<QPair<QString, QString> >::const_iterator i = queryItems.begin (),
+						QList<QPair<QString, QString>> queryItems = resource.queryItems ();
+						for (QList<QPair<QString, QString>>::const_iterator i = queryItems.begin (),
 								end = queryItems.end (); i != end; ++i)
 							if (i->first == "kt")
 							{
@@ -319,7 +320,7 @@ namespace LeechCraft
 				Core::Instance ()->UpdateTags (tags, torrent);
 			}
 
-			boost::shared_ptr<XmlSettingsDialog> TorrentPlugin::GetSettingsDialog () const
+			std::shared_ptr<XmlSettingsDialog> TorrentPlugin::GetSettingsDialog () const
 			{
 				return XmlSettingsDialog_;
 			}
@@ -327,35 +328,13 @@ namespace LeechCraft
 			void TorrentPlugin::SetShortcut (const QString& name,
 					const QKeySequences_t& shortcuts)
 			{
-				ActionID2Action_ [name]->setShortcuts (shortcuts);
+				ShortcutMgr_->SetShortcut (name, shortcuts);
 			}
 
-#define _L(a) result ["Torrent"#a] = ActionInfo (a->text (), \
-					a->shortcut (), a->icon ())
 			QMap<QString, ActionInfo> TorrentPlugin::GetActionInfo () const
 			{
-				QMap<QString, ActionInfo> result;
-				_L (OpenTorrent_);
-				_L (ChangeTrackers_);
-				_L (CreateTorrent_);
-				_L (OpenMultipleTorrents_);
-				_L (IPFilter_);
-				_L (RemoveTorrent_);
-				_L (Resume_);
-				_L (Stop_);
-				_L (MoveUp_);
-				_L (MoveDown_);
-				_L (MoveToTop_);
-				_L (MoveToBottom_);
-				_L (ForceReannounce_);
-				_L (ForceRecheck_);
-				_L (MoveFiles_);
-				_L (Import_);
-				_L (Export_);
-				_L (MakeMagnetLink_);
-				return result;
+				return ShortcutMgr_->GetActionInfo ();
 			}
-#undef _L
 
 			QList<QWizardPage*> TorrentPlugin::GetWizardPages () const
 			{
@@ -449,7 +428,7 @@ namespace LeechCraft
 					return;
 
 				Core::Instance ()->ClearFilter ();
-				QList<QPair<Core::BanRange_t, bool> > filter = dia.GetFilter ();
+				QList<QPair<Core::BanRange_t, bool>> filter = dia.GetFilter ();
 				QPair<Core::BanRange_t, bool> pair;
 				Q_FOREACH (pair, filter)
 					Core::Instance ()->BanPeers (pair.first, pair.second);
@@ -876,6 +855,8 @@ namespace LeechCraft
 
 			void TorrentPlugin::SetupCore ()
 			{
+				ShortcutMgr_ = new Util::ShortcutManager (Core::Instance ()->GetProxy (), this);
+
 				XmlSettingsDialog_.reset (new XmlSettingsDialog ());
 				XmlSettingsDialog_->RegisterObject (XmlSettingsManager::Instance (),
 						"torrentsettings.xml");
@@ -944,7 +925,7 @@ namespace LeechCraft
 #define _LC_MERGE(a) "Torrent"#a
 
 #define _LC_SINGLE(a) \
-				ActionID2Action_ [_LC_MERGE(a)] = a.get ();
+				ShortcutMgr_->RegisterAction (_LC_MERGE(a), a.get ());
 
 #define _LC_TRAVERSER(z,i,array) \
 				_LC_SINGLE (BOOST_PP_SEQ_ELEM(i, array))
@@ -1187,5 +1168,5 @@ namespace LeechCraft
 	};
 };
 
-Q_EXPORT_PLUGIN2 (leechcraft_bittorrent, LeechCraft::Plugins::BitTorrent::TorrentPlugin);
+LC_EXPORT_PLUGIN (leechcraft_bittorrent, LeechCraft::Plugins::BitTorrent::TorrentPlugin);
 

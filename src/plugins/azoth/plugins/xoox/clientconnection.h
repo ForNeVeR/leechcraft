@@ -18,8 +18,8 @@
 
 #ifndef PLUGINS_AZOTH_PLUGINS_XOOX_CLIENTCONNECTION_H
 #define PLUGINS_AZOTH_PLUGINS_XOOX_CLIENTCONNECTION_H
-#include <boost/shared_ptr.hpp>
-#include <boost/function.hpp>
+#include <functional>
+#include <memory>
 #include <QObject>
 #include <QMap>
 #include <QHash>
@@ -77,6 +77,8 @@ namespace Xoox
 	class LastActivityManager;
 	class JabberSearchManager;
 	class UserAvatarManager;
+	class MsgArchivingManager;
+	class SDManager;
 
 #ifdef ENABLE_CRYPT
 	class PgpManager;
@@ -107,6 +109,8 @@ namespace Xoox
 		JabberSearchManager *JabberSearchManager_;
 		UserAvatarManager *UserAvatarManager_;
 		RIEXManager *RIEXManager_;
+		MsgArchivingManager *MsgArchivingManager_;
+		SDManager *SDManager_;
 
 #ifdef ENABLE_CRYPT
 		PgpManager *PGPManager_;
@@ -144,22 +148,22 @@ namespace Xoox
 		FetchQueue *VersionQueue_;
 
 		int SocketErrorAccumulator_;
+		int KAInterval_;
+		int KATimeout_;
 
 		QList<QXmppMessage> OfflineMsgQueue_;
-		QList<QPair<QString, PEPEventBase*> > InitialEventQueue_;
-
-		QHash<QString, QPointer<VCardDialog> > AwaitingVCardDialogs_;
-
-		QHash<QString, QPointer<GlooxMessage> > UndeliveredMessages_;
+		QList<QPair<QString, PEPEventBase*>> InitialEventQueue_;
+		QHash<QString, QPointer<GlooxMessage>> UndeliveredMessages_;
 
 		QSet<QString> SignedPresences_;
 		QSet<QString> SignedMessages_;
 		QHash<QString, QString> EncryptedMessages_;
 		QSet<QString> Entries2Crypt_;
 
-		QHash<QString, QList<RIEXManager::Item> > AwaitingRIEXItems_;
+		QHash<QString, QList<RIEXManager::Item>> AwaitingRIEXItems_;
 	public:
-		typedef boost::function<void (const QXmppDiscoveryIq&)> DiscoCallback_t;
+		typedef std::function<void (const QXmppDiscoveryIq&)> DiscoCallback_t;
+		typedef std::function<void (const QXmppVCardIq&)> VCardCallback_t;
 	private:
 		QHash<QString, DiscoCallback_t> AwaitingDiscoInfo_;
 		QHash<QString, DiscoCallback_t> AwaitingDiscoItems_;
@@ -167,6 +171,8 @@ namespace Xoox
 		typedef QPair<QPointer<QObject>, QByteArray> PacketCallback_t;
 		typedef QHash<QString, PacketCallback_t> PacketID2Callback_t;
 		QHash<QString, PacketID2Callback_t> AwaitingPacketCallbacks_;
+
+		QHash<QString, QList<VCardCallback_t>> VCardFetchCallbacks_;
 	public:
 		ClientConnection (const QString&,
 				GlooxAccount*);
@@ -174,7 +180,9 @@ namespace Xoox
 
 		void SetState (const GlooxAccountState&);
 		GlooxAccountState GetLastState () const;
-		void Synchronize ();
+
+		QPair<int, int> GetKAParams () const;
+		void SetKAParams (const QPair<int, int>&);
 
 		void SetPassword (const QString&);
 
@@ -202,6 +210,7 @@ namespace Xoox
 		JabberSearchManager* GetJabberSearchManager () const;
 		UserAvatarManager* GetUserAvatarManager () const;
 		RIEXManager* GetRIEXManager () const;
+		SDManager* GetSDManager () const;
 #ifdef ENABLE_CRYPT
 		PgpManager* GetPGPManager () const;
 
@@ -236,7 +245,7 @@ namespace Xoox
 		GlooxCLEntry* AddODSCLEntry (OfflineDataSource_ptr);
 		QList<QObject*> GetCLEntries () const;
 		void FetchVCard (const QString&);
-		void FetchVCard (const QString&, VCardDialog*);
+		void FetchVCard (const QString&, VCardCallback_t);
 		void FetchVersion (const QString&);
 		QXmppBookmarkSet GetBookmarks () const;
 		void SetBookmarks (const QXmppBookmarkSet&);

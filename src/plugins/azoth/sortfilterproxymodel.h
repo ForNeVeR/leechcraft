@@ -37,6 +37,7 @@ namespace Azoth
 		SortFilterProxyModel (QObject* = 0);
 
 		void SetMUCMode (bool);
+		bool IsMUCMode () const;
 		void SetMUC (QObject*);
 	public slots:
 		void showOfflineContacts (bool);
@@ -49,6 +50,7 @@ namespace Azoth
 		bool lessThan (const QModelIndex&, const QModelIndex&) const;
 	signals:
 		void mucMode ();
+		void wholeMode ();
 	};
 }
 }

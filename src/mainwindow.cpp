@@ -58,7 +58,7 @@
 #include "coreinstanceobject.h"
 #include "coreplugin2manager.h"
 
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN32
 #include "winwarndialog.h"
 #endif
 
@@ -86,7 +86,7 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 	Splash_->showMessage (tr ("Initializing LeechCraft..."), Qt::AlignLeft | Qt::AlignBottom);
 	QApplication::processEvents ();
 
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN32
 	new WinWarnDialog;
 #endif
 
@@ -187,6 +187,11 @@ SeparateTabWidget* LeechCraft::MainWindow::GetTabWidget () const
 	return Ui_.MainTabWidget_;
 }
 
+QSplitter* LeechCraft::MainWindow::GetMainSplitter () const
+{
+	return Ui_.MainSplitter_;
+}
+
 IShortcutProxy* LeechCraft::MainWindow::GetShortcutProxy () const
 {
 	return ShortcutManager_;
@@ -210,6 +215,19 @@ LeechCraft::FancyPopupManager* LeechCraft::MainWindow::GetFancyPopupManager () c
 	return FancyPopupManager_;
 }
 
+QWidget* LeechCraft::MainWindow::GetDockListWidget (Qt::DockWidgetArea area) const
+{
+	switch (area)
+	{
+	case Qt::LeftDockWidgetArea:
+		return Ui_.LeftDockButtons_;
+	case Qt::RightDockWidgetArea:
+		return Ui_.RightDockButtons_;
+	default:
+		return 0;
+	}
+}
+
 void LeechCraft::MainWindow::ToggleViewActionVisiblity (QDockWidget *widget, bool visible)
 {
 	QAction *act = widget->toggleViewAction ();
@@ -220,7 +238,7 @@ void LeechCraft::MainWindow::ToggleViewActionVisiblity (QDockWidget *widget, boo
 		MenuView_->insertAction (MenuView_->actions ().first (), act);
 }
 
-void LeechCraft::MainWindow::AddMenus (const QMap<QString, QList<QAction*> >& menus)
+void LeechCraft::MainWindow::AddMenus (const QMap<QString, QList<QAction*>>& menus)
 {
 	Q_FOREACH (const QString& menuName, menus.keys ())
 	{
@@ -246,14 +264,16 @@ void LeechCraft::MainWindow::AddMenus (const QMap<QString, QList<QAction*> >& me
 					menus [menuName]);
 		else
 		{
-			QMenu *menu = new QMenu (menuName);
+			QMenu *menu = new QMenu (menuName, Ui_.ActionMenu_->menu ());
 			menu->addActions (menus [menuName]);
 			Ui_.ActionMenu_->menu ()->insertMenu (MenuTools_->menuAction (), menu);
 		}
+
+		SkinEngine::Instance ().UpdateIconSet (menus [menuName]);
 	}
 }
 
-void LeechCraft::MainWindow::RemoveMenus (const QMap<QString, QList<QAction*> >& menus)
+void LeechCraft::MainWindow::RemoveMenus (const QMap<QString, QList<QAction*>>& menus)
 {
 	if (IsQuitting_)
 		return;
@@ -551,7 +571,7 @@ void LeechCraft::MainWindow::handleAppStyle ()
 
 	if (style.isEmpty ())
 	{
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN32
 		style = "Plastique";
 		XmlSettingsManager::Instance ()->
 		setProperty ("AppQStyle", style);
@@ -744,7 +764,7 @@ void LeechCraft::MainWindow::FillQuickLaunch ()
 			.GetPluginManager ()->GetAllCastableTo<IActionsExporter*> ();
 	Q_FOREACH (IActionsExporter *exp, exporters)
 	{
-		QMap<QString, QList<QAction*> > map = exp->GetMenuActions ();
+		QMap<QString, QList<QAction*>> map = exp->GetMenuActions ();
 		if (!map.isEmpty ())
 			AddMenus (map);
 	}
@@ -776,11 +796,12 @@ void LeechCraft::MainWindow::FillTray ()
 	menu->addMenu (MenuTools_);
 	iconMenu->addSeparator ();
 
-	QList<IActionsExporter*> trayMenus = Core::Instance ()
-			.GetPluginManager ()->GetAllCastableTo<IActionsExporter*> ();
+	const auto& trayMenus = Core::Instance ().GetPluginManager ()->
+			GetAllCastableTo<IActionsExporter*> ();
 	Q_FOREACH (IActionsExporter *o, trayMenus)
 	{
-		QList<QAction*> actions = o->GetActions (AEPTrayMenu);
+		const auto& actions = o->GetActions (AEPTrayMenu);
+		SkinEngine::Instance ().UpdateIconSet (actions);
 		iconMenu->addActions (actions);
 		if (actions.size ())
 			iconMenu->addSeparator ();
@@ -804,10 +825,12 @@ void LeechCraft::MainWindow::FillToolMenu ()
 			Core::Instance ().GetPluginManager ()->
 				GetAllCastableTo<IActionsExporter*> ())
 	{
-		QList<QAction*> acts = e->GetActions (AEPToolsMenu);
+		const auto& acts = e->GetActions (AEPToolsMenu);
+		SkinEngine::Instance ().UpdateIconSet (acts);
 
 		Q_FOREACH (QAction *action, acts)
 			MenuTools_->insertAction (Ui_.ActionLogger_, action);
+
 		if (acts.size ())
 			MenuTools_->insertSeparator (Ui_.ActionLogger_);
 	}

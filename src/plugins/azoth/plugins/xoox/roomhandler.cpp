@@ -34,6 +34,7 @@
 #include "util.h"
 #include "glooxprotocol.h"
 #include "formbuilder.h"
+#include "sdmanager.h"
 
 namespace LeechCraft
 {
@@ -49,6 +50,12 @@ namespace Xoox
 	, Room_ (MUCManager_->addRoom (jid))
 	, CLEntry_ (new RoomCLEntry (this, Account_))
 	{
+		const QString& server = jid.split ('@', QString::SkipEmptyParts).value (1);
+		auto sdManager = Account_->GetClientConnection ()->GetSDManager ();
+		sdManager->RequestInfo ([this] (const QXmppDiscoveryIq& iq)
+					{ ServerDisco_ = iq; },
+				server);
+
 		Room_->setNickName (ourNick);
 
 		connect (Room_,
@@ -328,6 +335,9 @@ namespace Xoox
 		case QXmppStanza::Error::RemoteServerTimeout:
 			hrText = tr ("timeout connecting to remote server (try contacting your server's administrator)");
 			break;
+		case QXmppStanza::Error::ServiceUnavailable:
+			hrText = tr ("service unavailable");
+			break;
 		default:
 			hrText = tr ("unknown condition %1 (please report to developers)")
 				.arg (pres.error ().condition ());
@@ -414,7 +424,7 @@ namespace Xoox
 		RoomParticipantEntry_ptr entry = GetParticipantEntry (nick, false);
 		if (msg.type () == QXmppMessage::Chat && !nick.isEmpty ())
 		{
-			if (msg.isAttention ())
+			if (msg.isAttentionRequested ())
 				entry->HandleAttentionMessage (msg);
 
 			if (msg.state ())
@@ -581,6 +591,9 @@ namespace Xoox
 	{
 		RoomParticipantEntry_ptr entry (new RoomParticipantEntry (nick,
 					this, Account_));
+		if (IsGateway ())
+			entry->SetVersionReqsEnabled (false);
+
 		connect (entry.get (),
 				SIGNAL (messagesAreRead ()),
 				this,
@@ -622,7 +635,9 @@ namespace Xoox
 				QString ());
 		entry->SetClientInfo ("", pres);
 
-		Account_->GetClientConnection ()->FetchVCard (jid);
+		if (!IsGateway ())
+			Account_->GetClientConnection ()->FetchVCard (jid);
+
 		MakeJoinMessage (pres, nick);
 	}
 
@@ -742,10 +757,19 @@ namespace Xoox
 			RemoveEntry (entry);
 	}
 
+	bool RoomHandler::IsGateway () const
+	{
+		if (ServerDisco_.identities ().size () != 1)
+			return true;
+
+		auto id = ServerDisco_.identities ().at (0);
+		return id.category () == "conference" && id.type () != "text";
+	}
+
 	void RoomHandler::RemoveEntry (RoomParticipantEntry *entry)
 	{
-		Nick2Entry_.remove (entry->GetNick ());
 		Account_->handleEntryRemoved (entry);
+		Nick2Entry_.remove (entry->GetNick ());
 	}
 
 	void RoomHandler::RemoveThis ()

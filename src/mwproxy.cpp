@@ -20,6 +20,7 @@
 #include <QDockWidget>
 #include "core.h"
 #include "mainwindow.h"
+#include "dockmanager.h"
 
 namespace LeechCraft
 {
@@ -30,13 +31,18 @@ namespace LeechCraft
 
 	void MWProxy::AddDockWidget (Qt::DockWidgetArea area, QDockWidget *w)
 	{
-		Core::Instance ().GetReallyMainWindow ()->addDockWidget (area, w);
+		Core::Instance ().GetDockManager ()->AddDockWidget (w, area);
 		ToggleViewActionVisiblity (w, true);
 	}
 
 	void MWProxy::ToggleViewActionVisiblity (QDockWidget *w, bool visible)
 	{
 		Core::Instance ().GetReallyMainWindow ()->ToggleViewActionVisiblity (w, visible);
+	}
+
+	void MWProxy::SetViewActionShortcut (QDockWidget *w, const QKeySequence& seq)
+	{
+		w->toggleViewAction ()->setShortcut (seq);
 	}
 
 	void MWProxy::AddToolbar (QToolBar *bar, Qt::ToolBarArea area)
@@ -48,15 +54,16 @@ namespace LeechCraft
 	void MWProxy::AddSideWidget (QWidget *w, WidgetArea area)
 	{
 		MainWindow *mw = Core::Instance ().GetReallyMainWindow ();
-		QHBoxLayout *lay = qobject_cast<QHBoxLayout*> (mw->centralWidget ()->layout ());
+
+		auto splitter = mw->GetMainSplitter ();
 
 		switch (area)
 		{
 		case WALeft:
-			lay->insertWidget (0, w, 0, Qt::AlignTop);
+			splitter->insertWidget (0, w);
 			break;
 		case WARight:
-			lay->addWidget (w, 0, Qt::AlignTop);
+			splitter->addWidget (w);
 			break;
 		case WABottom:
 			qWarning () << Q_FUNC_INFO

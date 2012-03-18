@@ -18,7 +18,7 @@
 
 #ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
 #define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QObject>
 #include <QDateTime>
 #include <QHash>
@@ -45,12 +45,12 @@ namespace StandardStyles
 		Q_OBJECT
 		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
 
-		boost::shared_ptr<Util::ResourceLoader> StylesLoader_;
+		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
 
 		QMap<QWebFrame*, bool> HasBeenAppended_;
 		IProxyObject *Proxy_;
 
-		mutable QHash<QString, QList<QColor> > Coloring2Colors_;
+		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
 		mutable QString LastPack_;
 
 		QHash<QObject*, QWebFrame*> Msg2Frame_;

@@ -16,12 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_VADER_MRIMACCOUNT_H
-#define PLUGINS_AZOTH_PLUGINS_VADER_MRIMACCOUNT_H
+#pragma once
+
 #include <QObject>
+#include <QImage>
 #include <interfaces/iaccount.h>
 #include <interfaces/isupporttune.h>
+#include <interfaces/iextselfinfoaccount.h>
 #include "proto/contactinfo.h"
+#include "proto/headers.h"
 
 namespace LeechCraft
 {
@@ -39,14 +42,17 @@ namespace Vader
 	class MRIMAccountConfigWidget;
 	class MRIMBuddy;
 	class GroupManager;
+	class SelfAvatarFetcher;
 
 	class MRIMAccount : public QObject
 					  , public IAccount
 					  , public ISupportTune
+					  , public IExtSelfInfoAccount
 	{
 		Q_OBJECT
 		Q_INTERFACES (LeechCraft::Azoth::IAccount
-				LeechCraft::Azoth::ISupportTune);
+				LeechCraft::Azoth::ISupportTune
+				LeechCraft::Azoth::IExtSelfInfoAccount);
 
 		MRIMProtocol *Proto_;
 		QString Name_;
@@ -54,12 +60,15 @@ namespace Vader
 
 		Proto::Connection *Conn_;
 		GroupManager *GM_;
+		SelfAvatarFetcher *AvatarFetcher_;
 
 		EntryStatus Status_;
 		QHash<QString, MRIMBuddy*> Buddies_;
 		QHash<quint32, Proto::ContactInfo> PendingAdditions_;
 
 		QList<QAction*> Actions_;
+
+		QImage SelfAvatar_;
 	public:
 		MRIMAccount (const QString&, MRIMProtocol*);
 
@@ -67,6 +76,7 @@ namespace Vader
 		Proto::Connection* GetConnection () const;
 		GroupManager* GetGroupManager () const;
 		void SetTypingState (const QString&, ChatPartState);
+		void RequestInfo (const QString&);
 
 		// IAccount
 		QObject* GetObject ();
@@ -82,7 +92,6 @@ namespace Vader
 		void OpenConfigurationDialog ();
 		EntryStatus GetState () const;
 		void ChangeState (const EntryStatus&);
-		void Synchronize ();
 		void Authorize (QObject*);
 		void DenyAuth (QObject*);
 		void RequestAuth (const QString&, const QString&, const QString&, const QStringList&);
@@ -92,14 +101,24 @@ namespace Vader
 		// ISupportTune
 		void PublishTune (const QMap<QString, QVariant>&);
 
+		// IExtSelfInfoAccount
+		QObject* GetSelfContact () const;
+		QImage GetSelfAvatar () const;
+		QIcon GetAccountIcon () const;
+
 		QByteArray Serialize () const;
 		static MRIMAccount* Deserialize (const QByteArray&, MRIMProtocol*);
 	private:
 		MRIMBuddy* GetBuddy (const Proto::ContactInfo&);
 	private slots:
+		void updateSelfAvatar (const QImage&);
+
 		void handleGotContacts (const QList<Proto::ContactInfo>&);
 		void handleUserStatusChanged (const Proto::ContactInfo&);
 		void handleContactAdded (quint32, quint32);
+
+		void handleGotUserInfoError (const QString&, Proto::AnketaInfoStatus);
+		void handleGotUserInfo (const QString&, const QMap<QString, QString>&);
 
 		void handleGotAuthRequest (const QString&, const QString&);
 		void handleGotAuthAck (const QString&);
@@ -116,10 +135,13 @@ namespace Vader
 
 		void handleOpenMailbox ();
 		void handleServices ();
+
+		void handleShowTechSupport ();
 	signals:
 		void gotCLItems (const QList<QObject*>&);
 		void removedCLItems (const QList<QObject*>&);
 		void authorizationRequested (QObject*, const QString&);
+		void accountRenamed (const QString&);
 		void itemSubscribed (QObject*, const QString&);
 		void itemUnsubscribed (QObject*, const QString&);
 		void itemUnsubscribed (const QString&, const QString&);
@@ -134,5 +156,3 @@ namespace Vader
 }
 }
 }
-
-#endif

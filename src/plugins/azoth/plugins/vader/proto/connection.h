@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_VADER_PROTO_CONNECTION_H
-#define PLUGINS_AZOTH_PLUGINS_VADER_PROTO_CONNECTION_H
+#pragma once
+
 #include <functional>
 #include <QObject>
 #include <QMap>
@@ -56,6 +56,7 @@ namespace Proto
 		PacketFactory PF_;
 		PacketExtractor PE_;
 		QMap<quint16, std::function<void (HalfPacket)>> PacketActors_;
+		QHash<quint32, QString> RequestedInfos_;
 
 		QString Host_;
 		int Port_;
@@ -78,7 +79,10 @@ namespace Proto
 		void Connect ();
 
 		void SetState (const EntryStatus&);
+		void RequestInfo (const QString&);
 		quint32 SendMessage (const QString& to, const QString& message);
+		quint32 SendSMS (const QString& to, const QString& message);
+		quint32 SendSMS2Number (const QString& phone, const QString& message);
 		void SendAttention (const QString& to, const QString& message);
 		void SetTypingState (const QString& to, bool isTyping);
 		void PublishTune (const QString& tune);
@@ -96,15 +100,22 @@ namespace Proto
 		void CorrectAuth (HalfPacket);
 		void IncorrectAuth (HalfPacket);
 		void ConnParams (HalfPacket);
+
 		void UserInfo (HalfPacket);
 		void UserStatus (HalfPacket);
 		void ContactList (HalfPacket);
+
+		void HandleWPInfo (HalfPacket, const QString&);
+
 		void IncomingMsg (HalfPacket);
 		void MsgStatus (HalfPacket);
+		void SMSAck (HalfPacket);
 		void OfflineMsg (HalfPacket);
 		void MicroblogRecv (HalfPacket);
+
 		void AuthAck (HalfPacket);
 		void ContactAdded (HalfPacket);
+
 		void NewMail (HalfPacket);
 		void MPOPKey (HalfPacket);
 
@@ -126,6 +137,9 @@ namespace Proto
 		void gotGroups (const QStringList&);
 		void gotContacts (const QList<Proto::ContactInfo>&);
 
+		void gotUserInfoError (const QString& email, Proto::AnketaInfoStatus);
+		void gotUserInfoResult (const QString& email, const QMap<QString, QString>& vals);
+
 		void gotMessage (const Proto::Message&);
 		void gotOfflineMessage (const Proto::Message&);
 
@@ -134,6 +148,9 @@ namespace Proto
 
 		void gotAttentionRequest (const QString& from, const QString& msg);
 		void messageDelivered (quint32);
+		void smsDelivered (quint32);
+		void smsServiceUnavailable (quint32);
+		void smsBadParms (quint32);
 
 		void statusChanged (EntryStatus);
 		void contactAdded (quint32 seq, quint32 cid);
@@ -151,5 +168,3 @@ namespace Proto
 }
 }
 }
-
-#endif

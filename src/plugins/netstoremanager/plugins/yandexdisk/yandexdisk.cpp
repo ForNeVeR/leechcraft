@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "yandexdisk.h"
+#include <algorithm>
 #include <QIcon>
 #include <QSettings>
 #include <QCoreApplication>
@@ -106,6 +107,19 @@ namespace YandexDisk
 		return result;
 	}
 
+	void Plugin::RemoveAccount (QObject *obj)
+	{
+		auto pos = std::find_if (Accounts_.begin (), Accounts_.end (),
+				[obj] (decltype (Accounts_.front ()) acc)
+					{ return acc.get () == obj; });
+		if (pos == Accounts_.end ())
+			return;
+
+		Accounts_.erase (pos);
+		WriteAccounts ();
+		emit accountRemoved (obj);
+	}
+
 	void Plugin::ReadAccounts ()
 	{
 		QSettings settings (QSettings::IniFormat, QSettings::UserScope,
@@ -144,4 +158,4 @@ namespace YandexDisk
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_netstoremanager_yandexdisk, LeechCraft::NetStoreManager::YandexDisk::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_netstoremanager_yandexdisk, LeechCraft::NetStoreManager::YandexDisk::Plugin);

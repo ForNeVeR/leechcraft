@@ -17,10 +17,12 @@
  **********************************************************************/
 
 #include "notificationruleswidget.h"
+#include <algorithm>
 #include <QSettings>
 #include <QStandardItemModel>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QInputDialog>
 #include <interfaces/ianemitter.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
@@ -30,7 +32,6 @@
 #include "matchconfigdialog.h"
 #include "typedmatchers.h"
 #include "core.h"
-#include <QInputDialog>
 
 namespace LeechCraft
 {
@@ -176,7 +177,7 @@ namespace AdvancedNotifications
 		QSettings settings (QCoreApplication::organizationName (),
 				QCoreApplication::applicationName () + "_AdvancedNotifications");
 		settings.beginGroup ("rules");
-		Rules_ = settings.value ("RulesList").value<QList<NotificationRule> > ();
+		Rules_ = settings.value ("RulesList").value<QList<NotificationRule>> ();
 		settings.endGroup ();
 
 		if (Rules_.isEmpty ())
@@ -277,24 +278,6 @@ namespace AdvancedNotifications
 		return items;
 	}
 
-	namespace
-	{
-		struct FieldMatchFinder
-		{
-			const QString& F_;
-
-			FieldMatchFinder (const QString& f)
-			: F_ (f)
-			{
-			}
-
-			bool operator() (const ANFieldData& fd)
-			{
-				return fd.ID_ == F_;
-			}
-		};
-	}
-
 	QList<QStandardItem*> NotificationRulesWidget::MatchToRow (const FieldMatch& match) const
 	{
 		QString fieldName = match.GetFieldName ();
@@ -332,7 +315,7 @@ namespace AdvancedNotifications
 		QSettings settings (QCoreApplication::organizationName (),
 				QCoreApplication::applicationName () + "_AdvancedNotifications");
 		settings.beginGroup ("rules");
-		settings.setValue ("RulesList", QVariant::fromValue<QList<NotificationRule> > (Rules_));
+		settings.setValue ("RulesList", QVariant::fromValue<QList<NotificationRule>> (Rules_));
 		settings.endGroup ();
 	}
 

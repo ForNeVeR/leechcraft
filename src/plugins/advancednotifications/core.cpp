@@ -46,8 +46,8 @@ namespace AdvancedNotifications
 
 		qRegisterMetaType<NotificationRule> ("LeechCraft::AdvancedNotifications::NotificationRule");
 		qRegisterMetaTypeStreamOperators<NotificationRule> ("LeechCraft::AdvancedNotifications::NotificationRule");
-		qRegisterMetaType<QList<NotificationRule> > ("QList<LeechCraft::AdvancedNotifications::NotificationRule>");
-		qRegisterMetaTypeStreamOperators<QList<NotificationRule> > ("QList<LeechCraft::AdvancedNotifications::NotificationRule>");
+		qRegisterMetaType<QList<NotificationRule>> ("QList<LeechCraft::AdvancedNotifications::NotificationRule>");
+		qRegisterMetaTypeStreamOperators<QList<NotificationRule>> ("QList<LeechCraft::AdvancedNotifications::NotificationRule>");
 	}
 
 	Core& Core::Instance ()
@@ -78,7 +78,7 @@ namespace AdvancedNotifications
 		return NRW_;
 	}
 
-	boost::shared_ptr<Util::ResourceLoader> Core::GetAudioThemeLoader () const
+	std::shared_ptr<Util::ResourceLoader> Core::GetAudioThemeLoader () const
 	{
 		return AudioThemeLoader_;
 	}

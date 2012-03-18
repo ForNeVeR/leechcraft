@@ -69,7 +69,7 @@
 		<tab>
 			<label value="Contact list" />
 			<item type="checkbox" property="ShowMenuBar" default="true">
-				<label value="Show Azoth menu under the contact list" />
+				<label value="Show toolbar on top of the contact list" />
 			</item>
 			<item type="checkbox" property="ShowStatuses" default="true">
 				<label value="Show statuses" />
@@ -95,25 +95,67 @@
 		</tab>
 		<tab>
 			<label value="Chat windows" />
-			<item type="lineedit" property="PreNickText" default="">
-				<label value="Pre-nick text:" />
-			</item>
-			<item type="lineedit" property="PostNickText" default=":">
-				<label value="Post-nick text:" />
-			</item>
-			<item type="lineedit" property="PostAddressText" default=":">
-				<label value="Post-address text:" />
-			</item>
-			<item type="checkbox" property="ShowRichTextMessageBody" default="true">
-				<label value="Show rich text message body (if available)" />
-				<tooltip>Whether rich text body of the messages should be used, if available. This is a default value, and the behavior could be changed for each opened chat window.</tooltip>
-			</item>
-			<item type="color" property="HighlightColor" default="#FF0000">
-				<label value="Highlight color:" />
-			</item>
-			<item type="spinbox" property="FontSize" default="12">
-				<label value="Font size:" />
-			</item>
+			<groupbox>
+				<label value="Chat view formatting"/>
+				<item type="lineedit" property="PreNickText" default="">
+					<label value="Pre-nick text:" />
+				</item>
+				<item type="lineedit" property="PostNickText" default=":">
+					<label value="Post-nick text:" />
+				</item>
+				<item type="lineedit" property="PostAddressText" default=":">
+					<label value="Post-address text:" />
+				</item>
+				<item type="checkbox" property="ShowRichTextMessageBody" default="true">
+					<label value="Show rich text message body (if available)" />
+					<tooltip>Whether rich text body of the messages should be used, if available. This is a default value, and the behavior could be changed for each opened chat window.</tooltip>
+				</item>
+				<item type="color" property="HighlightColor" default="#FF0000">
+					<label value="Highlight color:" />
+				</item>
+				<item type="spinbox" property="FontSize" default="12">
+					<label value="Font size:" />
+				</item>
+			</groupbox>
+			<groupbox>
+				<label value="Chat tab" />
+				<item type="combobox" property="RichFormatterPosition">
+					<label value="Rich text format toolbar position:" />
+					<option name="aboveEdit" default="true">
+						<label value="Above message editor" />
+					</option>
+					<option name="belowEdit">
+						<label value="Below message editor" />
+					</option>
+				</item>
+				<item type="checkbox" property="SendButtonVisible" default="true">
+					<label value="Display send button" />
+				</item>
+			</groupbox>
+		</tab>
+		<tab>
+			<label value="Fonts" />
+			<groupbox>
+				<label value="Fonts" />
+				<item type="font" property="StandardFont">
+					<label value="Standard font:" />
+				</item>
+				<item type="font" property="FixedFont">
+					<label value="Fixed font:" />
+				</item>
+				<item type="font" property="SerifFont">
+					<label value="Serif font:" />
+				</item>
+				<item type="font" property="SansSerifFont">
+					<label value="SansSerif font:" />
+				</item>
+				<item type="font" property="CursiveFont">
+					<label value="Cursive font:" />
+				</item>
+				<item type="font" property="FantasyFont">
+					<label value="Fantasy font:" />
+				</item>
+			</groupbox>
 		</tab>
 	</page>
 	<page>
@@ -123,8 +165,14 @@
 			<item type="checkbox" property="JumpToNewTabOnOpen" default="true">
 				<label value="Jump to new tab on open" />
 			</item>
+			<item type="checkbox" property="OpenTabOnNewMsg" default="false">
+				<label value="Open chat tab on new message" />
+			</item>
 			<item type="checkbox" property="CloseConfOnLeave" default="false">
 				<label value="Close conferences tabs when leaving" />
+			</item>
+			<item type="checkbox" property="LeaveConfOnClose" default="false">
+				<label value="Leave conferences when closing their tabs" />
 			</item>
 			<item type="checkbox" property="AutoMUCMode" default="false">
 				<label value="Automatically switch roster to conference mode when needed" />

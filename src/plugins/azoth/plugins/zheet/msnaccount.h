@@ -111,7 +111,6 @@ namespace Zheet
 		void OpenConfigurationDialog ();
 		EntryStatus GetState () const;
 		void ChangeState (const EntryStatus&);
-		void Synchronize ();
 		void Authorize (QObject*);
 		void DenyAuth (QObject*);
 		void RequestAuth (const QString&, const QString&, const QString&, const QStringList&);
@@ -120,6 +119,7 @@ namespace Zheet
 
 		// IExtSelfInfoAccount
 		QObject* GetSelfContact () const;
+		QImage GetSelfAvatar () const;
 		QIcon GetAccountIcon () const;
 	private slots:
 		void handleConnected ();
@@ -139,6 +139,7 @@ namespace Zheet
 	signals:
 		void gotCLItems (const QList<QObject*>&);
 		void removedCLItems (const QList<QObject*>&);
+		void accountRenamed (const QString&);
 		void authorizationRequested (QObject*, const QString&);
 		void itemSubscribed (QObject*, const QString&);
 		void itemUnsubscribed (QObject*, const QString&);

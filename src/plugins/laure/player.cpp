@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
+ * Copyright (C) 2011-2012  Minh Ngo
  * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -34,7 +34,6 @@ namespace Laure
 	Player::Player (QWidget *parent)
 	: QFrame (parent)
 	, Poller_ (new QTimer (this))
-	, VLCWrapper_ (NULL)
 	{
 		connect (Poller_,
 				SIGNAL (timeout ()),
@@ -43,7 +42,7 @@ namespace Laure
 		Poller_->start (300);
 	}
 	
-	void Player::SetVLCWrapper (VLCWrapper *core)
+	void Player::SetVLCWrapper (std::shared_ptr<VLCWrapper> core)
 	{
 		VLCWrapper_ = core;
 		VLCWrapper_->setWindow (winId ());

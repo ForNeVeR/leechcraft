@@ -19,13 +19,19 @@
 #include "mrimbuddy.h"
 #include <functional>
 #include <QImage>
+#include <QAction>
+#include <util/util.h>
 #include <interfaces/azothutil.h>
 #include "proto/headers.h"
+#include "proto/connection.h"
 #include "mrimaccount.h"
 #include "mrimmessage.h"
 #include "vaderutil.h"
 #include "groupmanager.h"
-#include "proto/connection.h"
+#include "smsdialog.h"
+#include "core.h"
+#include "selfavatarfetcher.h"
+#include "vcarddialog.h"
 
 namespace LeechCraft
 {
@@ -38,8 +44,24 @@ namespace Vader
 	, A_ (acc)
 	, Info_ (info)
 	, IsAuthorized_ (true)
+	, SendSMS_ (new QAction (tr ("Send SMS..."), this))
+	, AvatarFetcher_ (new SelfAvatarFetcher (this))
 	{
 		Status_.State_ = VaderUtil::StatusID2State (info.StatusID_);
+
+		SendSMS_->setProperty ("ActionIcon", "phone");
+		connect (SendSMS_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleSendSMS ()));
+
+		connect (AvatarFetcher_,
+				SIGNAL (gotImage (QImage)),
+				this,
+				SLOT (updateAvatar (QImage)));
+		AvatarFetcher_->Restart (info.Email_);
+
+		UpdateClientVersion ();
 	}
 
 	void MRIMBuddy::HandleMessage (MRIMMessage *msg)
@@ -122,7 +144,11 @@ namespace Vader
 				[this] (QString name) { emit nameChanged (name); });
 		CmpXchg (Info_, info,
 				GetMem<QString> (&Proto::ContactInfo::UA_),
-				[this] (QString) { emit entryGenerallyChanged (); });
+				[this] (QString)
+				{
+					UpdateClientVersion ();
+					emit entryGenerallyChanged ();
+				});
 
 		bool stChanged = false;
 		const int oldVars = Variants ().size ();
@@ -147,6 +173,15 @@ namespace Vader
 		}
 
 		Info_.GroupNumber_ = info.GroupNumber_;
+	}
+
+	void MRIMBuddy::HandleWPInfo (const QMap<QString, QString>& values)
+	{
+		VCardDialog *dia = new VCardDialog ();
+		dia->setAttribute (Qt::WA_DeleteOnClose);
+		dia->SetInfo (values);
+		dia->SetAvatar (GetAvatar ());
+		dia->show ();
 	}
 
 	qint64 MRIMBuddy::GetID () const
@@ -253,7 +288,7 @@ namespace Vader
 
 	QImage MRIMBuddy::GetAvatar () const
 	{
-		return QImage ();
+		return Avatar_;
 	}
 
 	QString MRIMBuddy::GetRawInfo () const
@@ -263,11 +298,12 @@ namespace Vader
 
 	void MRIMBuddy::ShowInfo ()
 	{
+		A_->RequestInfo (GetHumanReadableID ());
 	}
 
 	QList<QAction*> MRIMBuddy::GetActions () const
 	{
-		return QList<QAction*> ();
+		return QList<QAction*> () << SendSMS_;
 	}
 
 	QMap<QString, QVariant> MRIMBuddy::GetClientInfo (const QString&) const
@@ -287,6 +323,100 @@ namespace Vader
 	void MRIMBuddy::DrawAttention (const QString& text, const QString&)
 	{
 		A_->GetConnection ()->SendAttention (GetHumanReadableID (), text);
+	}
+
+	void MRIMBuddy::UpdateClientVersion ()
+	{
+		auto defClient = [this] ()
+		{
+			ClientInfo_ ["client_type"] = "mailruagent";
+			ClientInfo_ ["client_name"] = tr ("Mail.Ru Agent");
+			ClientInfo_.remove ("client_version");
+		};
+
+		if (Info_.UA_.contains ("leechcraft azoth", Qt::CaseInsensitive))
+		{
+			ClientInfo_ ["client_type"] = "leechcraft-azoth";
+			ClientInfo_ ["client_name"] = "LeechCraft Azoth";
+
+			QString ver = Info_.UA_;
+			ver.remove ("leechcraft azoth", Qt::CaseInsensitive);
+			ClientInfo_ ["client_version"] = ver.trimmed ();
+		}
+		else if (Info_.UA_.isEmpty ())
+			defClient ();
+		else
+		{
+			qWarning () << Q_FUNC_INFO << "unknown client" << Info_.UA_;
+
+			defClient ();
+		}
+	}
+
+	void MRIMBuddy::updateAvatar (const QImage& image)
+	{
+		Avatar_ = image;
+		emit avatarChanged (Avatar_);
+	}
+
+	void MRIMBuddy::handleSendSMS ()
+	{
+		SMSDialog dia;
+		if (dia.exec () != QDialog::Accepted)
+			return;
+
+		auto conn = A_->GetConnection ();
+		const QString& phone = dia.GetPhone ();
+		SentSMS_ [conn->SendSMS2Number (phone, dia.GetText ())] = phone;
+
+		connect (conn,
+				SIGNAL (smsDelivered (quint32)),
+				this,
+				SLOT (handleSMSDelivered (quint32)),
+				Qt::UniqueConnection);
+		connect (conn,
+				SIGNAL (smsBadParms (quint32)),
+				this,
+				SLOT (handleSMSBadParms (quint32)),
+				Qt::UniqueConnection);
+		connect (conn,
+				SIGNAL (smsServiceUnavailable (quint32)),
+				this,
+				SLOT (handleSMSServUnavail (quint32)),
+				Qt::UniqueConnection);
+	}
+
+	void MRIMBuddy::handleSMSDelivered (quint32 seq)
+	{
+		if (!SentSMS_.contains (seq))
+			return;
+
+		Core::Instance ().SendEntity (LeechCraft::Util::MakeNotification ("Azoth",
+					tr ("SMS has been sent to %1.")
+						.arg (SentSMS_.take (seq)),
+				PInfo_));
+	}
+
+	void MRIMBuddy::handleSMSBadParms (quint32 seq)
+	{
+		if (!SentSMS_.contains (seq))
+			return;
+
+		Core::Instance ().SendEntity (LeechCraft::Util::MakeNotification ("Azoth",
+					tr ("Failed to send SMS to %1: bad parameters.")
+						.arg (SentSMS_.take (seq)),
+				PCritical_));
+	}
+
+	void MRIMBuddy::handleSMSServUnavail (quint32 seq)
+	{
+		if (!SentSMS_.contains (seq))
+			return;
+
+		Core::Instance ().SendEntity (LeechCraft::Util::MakeNotification ("Azoth",
+					tr ("Failed to send SMS to %1: service unavailable.")
+						.arg (SentSMS_.take (seq)),
+				PCritical_));
 	}
 }
 }

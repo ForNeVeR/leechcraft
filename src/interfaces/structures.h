@@ -18,7 +18,7 @@
 
 #ifndef INTERFACES_STRUCTURES_H
 #define INTERFACES_STRUCTURES_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QPointer>
 #include <QMetaType>
 #include <QVariant>
@@ -234,29 +234,40 @@ namespace LeechCraft
 		/** The role for the string list with tags. So, QStringList is
 		 * expected to be returned.
 		 */
-		RoleTags = 100,    //!< RoleTags
-		/* The role for the additional controls for a given item.
+		RoleTags = Qt::UserRole + 100,
+
+		/** The role for the additional controls for a given item.
 		 * QToolBar* is expected to be returned.
 		 */
-		RoleControls,      //!< RoleControls
+		RoleControls,
+
 		/** The role for the widget appearing on the right part of the
 		 * screen when the user selects an item. QWidget* is expected to
 		 * be returned.
 		 */
-		RoleAdditionalInfo,//!< RoleAdditionalInfo
+		RoleAdditionalInfo,
+
 		/** The role for the hash of the item, used to compare two
 		 * different results, possibly from two different models.
 		 * QByteArray is expected to be returned.
 		 */
-		RoleHash,          //!< RoleHash
+		RoleHash,
+
 		/** This should return MIME of an item if it's available,
 		 * otherwise an empty string should be returned.
 		 */
-		RoleMime,          //!< RoleMime
+		RoleMime,
+
 		/** This role returns the QMenu* that should be used as the
 		 * context menu.
 		 */
-		RoleContextMenu    //!< RoleContextMenu
+		RoleContextMenu,
+
+		/** This role is for the LeechCraft::JobHolderRow enum.
+		 */
+		RoleJobHolderRow,
+
+		RoleMAX
 	};
 
 	enum Priority
@@ -268,7 +279,7 @@ namespace LeechCraft
 	};
 };
 
-typedef boost::shared_ptr<QObject> QObject_ptr;
+typedef std::shared_ptr<QObject> QObject_ptr;
 
 Q_DECLARE_METATYPE (LeechCraft::Entity);
 Q_DECLARE_METATYPE (QNetworkReply*);

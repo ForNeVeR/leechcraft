@@ -36,9 +36,9 @@ namespace Depester
 {
 	void Plugin::Init (ICoreProxy_ptr)
 	{
-		Translator_.reset (Util::InstallTranslator ("azoth_depester"));
-		qRegisterMetaType<QSet<QString> > ("QSet<QString>");
-		qRegisterMetaTypeStreamOperators<QSet<QString> > ("QSet<QString>");
+		Util::InstallTranslator ("azoth_depester");
+		qRegisterMetaType<QSet<QString>> ("QSet<QString>");
+		qRegisterMetaTypeStreamOperators<QSet<QString>> ("QSet<QString>");
 
 		LoadIgnores ();
 	}
@@ -106,7 +106,7 @@ namespace Depester
 	{
 		QSettings settings (QCoreApplication::organizationName (),
 				QCoreApplication::applicationName () + "_Azoth_Depester");
-		IgnoredNicks_ = settings.value ("IgnoredNicks").value<QSet<QString> > ();
+		IgnoredNicks_ = settings.value ("IgnoredNicks").value<QSet<QString>> ();
 	}
 
 	void Plugin::hookEntryActionAreasRequested (IHookProxy_ptr proxy,
@@ -219,4 +219,4 @@ namespace Depester
 }
 }
 
-Q_EXPORT_PLUGIN2 (leechcraft_azoth_depester, LeechCraft::Azoth::Depester::Plugin);
+LC_EXPORT_PLUGIN (leechcraft_azoth_depester, LeechCraft::Azoth::Depester::Plugin);

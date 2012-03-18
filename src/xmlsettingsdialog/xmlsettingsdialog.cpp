@@ -34,15 +34,15 @@
 #include <QtScript>
 #include <util/util.h>
 #include "itemhandlerfactory.h"
+#include "basesettingsmanager.h"
 
 using namespace LeechCraft;
 using namespace LeechCraft::Util;
 
 XmlSettingsDialog::XmlSettingsDialog ()
 : Document_ (new QDomDocument)
-, HandlersManager_ (new ItemHandlerFactory ())
+, HandlersManager_ (new ItemHandlerFactory (this))
 {
-	ItemHandlerBase::SetXmlSettingsDialog (this);
 	Pages_ = new QStackedWidget (this);
 
 	QHBoxLayout *mainLay = new QHBoxLayout (this);
@@ -57,7 +57,7 @@ XmlSettingsDialog::~XmlSettingsDialog ()
 {
 }
 
-void XmlSettingsDialog::RegisterObject (QObject* obj, const QString& basename)
+void XmlSettingsDialog::RegisterObject (BaseSettingsManager *obj, const QString& basename)
 {
 	Basename_ = QFileInfo (basename).baseName ();
 	WorkingObject_ = obj;
@@ -66,10 +66,10 @@ void XmlSettingsDialog::RegisterObject (QObject* obj, const QString& basename)
 		filename = basename;
 	else if (QFile::exists (QString (":/") + basename))
 		filename = QString (":/") + basename;
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN32
 	else if (QFile::exists (QString ("settings/") + basename))
 		filename = QString ("settings/") + basename;
-#elif defined (Q_WS_MAC)
+#elif defined (Q_OS_MAC)
 	else if (QFile::exists (QApplication::applicationDirPath () +
 			"/../Resources/settings/" + basename))
 		filename = QApplication::applicationDirPath () +
@@ -130,6 +130,11 @@ void XmlSettingsDialog::RegisterObject (QObject* obj, const QString& basename)
 	obj->installEventFilter (this);
 
 	UpdateXml (true);
+}
+
+BaseSettingsManager* XmlSettingsDialog::GetManagerObject () const
+{
+	return WorkingObject_;
 }
 
 QString XmlSettingsDialog::GetXml () const
@@ -344,7 +349,7 @@ void XmlSettingsDialog::ParseItem (const QDomElement& item, QWidget *baseWidget)
 	WorkingObject_->setProperty (property.toLatin1 ().constData (), GetValue (item));
 }
 
-#if defined (Q_WS_WIN) || defined (Q_WS_MAC)
+#if defined (Q_OS_WIN32) || defined (Q_OS_MAC)
 #include <QCoreApplication>
 #include <QLocale>
 

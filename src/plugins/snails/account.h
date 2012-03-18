@@ -16,14 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_ACCOUNT_H
-#define PLUGINS_SNAILS_ACCOUNT_H
+#pragma once
+
 #include <memory>
 #include <QObject>
+#include <QHash>
 #include "message.h"
 #include "progresslistener.h"
 
 class QMutex;
+class QAbstractItemModel;
+class QStandardItemModel;
+class QStandardItem;
+class QModelIndex;
 
 namespace LeechCraft
 {
@@ -32,6 +37,7 @@ namespace Snails
 	class AccountThread;
 	class AccountThreadWorker;
 	class AccountFolderManager;
+	class MailModelManager;
 
 	class Account : public QObject
 	{
@@ -50,8 +56,21 @@ namespace Snails
 		QString Login_;
 		bool UseSASL_;
 		bool SASLRequired_;
+
+	public:
+		enum class SecurityType
+		{
+			TLS,
+			SSL,
+			No
+		};
+	private:
 		bool UseTLS_;
-		bool TLSRequired_;
+		bool UseSSL_;
+		bool InSecurityRequired_;
+
+		SecurityType OutSecurity_;
+		bool OutSecurityRequired_;
 
 		bool SMTPNeedsAuth_;
 		bool APOP_;
@@ -96,6 +115,14 @@ namespace Snails
 		OutType OutType_;
 
 		AccountFolderManager *FolderManager_;
+		QStandardItemModel *FoldersModel_;
+
+		MailModelManager *MailModelMgr_;
+
+		enum FoldersRole
+		{
+			Path = Qt::UserRole + 1
+		};
 	public:
 		Account (QObject* = 0);
 
@@ -105,13 +132,19 @@ namespace Snails
 		QString GetType () const;
 
 		AccountFolderManager* GetFolderManager () const;
+		QAbstractItemModel* GetMailModel () const;
+		QAbstractItemModel* GetFoldersModel () const;
 
+		void ShowFolder (const QModelIndex&);
 		void Synchronize (FetchFlags);
+		void Synchronize (const QStringList&);
+
 		void FetchWholeMessage (Message_ptr);
 		void SendMessage (Message_ptr);
-
 		void FetchAttachment (Message_ptr,
 				const QString&, const QString&);
+
+		void UpdateReadStatus (const QByteArray&, bool);
 
 		QByteArray Serialize () const;
 		void Deserialize (const QByteArray&);
@@ -135,11 +168,11 @@ namespace Snails
 		void getPassword (QString*, Direction = Direction::In);
 		void handleMsgHeaders (QList<Message_ptr>);
 		void handleGotUpdatedMessages (QList<Message_ptr>);
+		void handleGotOtherMessages (QList<QByteArray>, QStringList);
 		void handleGotFolders (QList<QStringList>);
 		void handleMessageBodyFetched (Message_ptr);
 	signals:
 		void mailChanged ();
-		void gotNewMessages (QList<Message_ptr>);
 		void gotProgressListener (ProgressListener_g_ptr);
 		void accountChanged ();
 		void messageBodyFetched (Message_ptr);
@@ -151,5 +184,3 @@ namespace Snails
 
 Q_DECLARE_METATYPE (LeechCraft::Snails::Account::FetchFlags);
 Q_DECLARE_METATYPE (LeechCraft::Snails::Account_ptr);
-
-#endif

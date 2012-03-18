@@ -1,19 +1,6 @@
-IF (NOT QT_USE_FILE)
-	CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
-	IF (COMMAND cmake_policy)
-		cmake_policy (SET CMP0003 NEW)
-	ENDIF (COMMAND cmake_policy)
-
-	PROJECT (leechcraft_liznoo)
-
-	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
-	ENDIF (NOT CMAKE_MODULE_PATH)
-
-	FIND_PACKAGE (Boost REQUIRED)
-	FIND_PACKAGE (Qt4 REQUIRED)
-	FIND_PACKAGE (LeechCraft REQUIRED)
-ENDIF (NOT QT_USE_FILE)
+CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
+PROJECT (leechcraft_liznoo)
+INCLUDE (InitLCPlugin OPTIONAL)
 
 
 
@@ -36,6 +23,7 @@ SET (SRCS
 	batteryhistory.cpp
 	batteryhistorydialog.cpp
 	platformlayer.cpp
+	xmlsettingsmanager.cpp
 	)
 SET (HEADERS
 	liznoo.h
@@ -43,10 +31,11 @@ SET (HEADERS
 	batteryhistory.h
 	batteryhistorydialog.h
 	platformlayer.h
+	xmlsettingsmanager.h
 	)
 # Default implementation using UPower
 IF (NOT WIN32)
-	SET (SRCS 
+	SET (SRCS
 		${SRCS}
 		platformupower.cpp
 		dbusthread.cpp
@@ -75,16 +64,26 @@ ENDIF (NOT WIN32)
 SET (FORMS
 	batteryhistorydialog.ui
 	)
+SET (RESOURCES liznooresources.qrc)
+CreateTrVars ("liznoo" "en;ru_RU" TRANSLATIONS COMPILED_TRANSLATIONS)
 IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 ENDIF (NOT LC_NO_MOC)
 QT4_WRAP_UI (UIS_H ${FORMS})
+QT4_ADD_RESOURCES (RCCS ${RESOURCES})
 
+ADD_CUSTOM_COMMAND (OUTPUT
+	${COMPILED_TRANSLATIONS}
+	COMMAND "${QT_LRELEASE_EXECUTABLE}" ${TRANSLATIONS}
+	DEPENDS ${TRANSLATIONS}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	)
 ADD_LIBRARY (leechcraft_liznoo SHARED
 	${COMPILED_TRANSLATIONS}
 	${SRCS}
 	${MOC_SRCS}
 	${UIS_H}
+	${RCCS}
 	)
 MESSAGE (STATUS "${Qwt6_Qt4_LIBRARY}")
 TARGET_LINK_LIBRARIES (leechcraft_liznoo
@@ -93,3 +92,5 @@ TARGET_LINK_LIBRARIES (leechcraft_liznoo
 	"d:/X-Files/Projects/_Lib/qwt/lib/libqwt.a"
 	)
 INSTALL (TARGETS leechcraft_liznoo DESTINATION ${LC_PLUGINS_DEST})
+INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
+INSTALL (FILES liznoosettings.xml DESTINATION ${LC_SETTINGS_DEST})

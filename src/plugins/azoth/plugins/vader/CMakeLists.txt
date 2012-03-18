@@ -21,6 +21,10 @@ SET (VADER_SRCS
 	mrimmessage.cpp
 	vaderutil.cpp
 	groupmanager.cpp
+	smsdialog.cpp
+	selfavatarfetcher.cpp
+	xmlsettingsmanager.cpp
+	vcarddialog.cpp
 	proto/headers.cpp
 	proto/conversions.cpp
 	proto/connection.cpp
@@ -42,6 +46,10 @@ SET (VADER_HEADERS
 	mrimmessage.h
 	vaderutil.h
 	groupmanager.h
+	smsdialog.h
+	selfavatarfetcher.h
+	xmlsettingsmanager.h
+	vcarddialog.h
 	proto/headers.h
 	proto/conversions.h
 	proto/connection.h
@@ -55,6 +63,8 @@ SET (VADER_HEADERS
 	)
 SET (VADER_FORMS
 	mrimaccountconfigwidget.ui
+	smsdialog.ui
+	vcarddialog.ui
 	)
 SET (VADER_RESOURCES azothvaderresources.qrc)
 CreateTrVars ("azoth_vader" "en;ru_RU" VADER_TRANSLATIONS VADER_COMPILED_TRANSLATIONS)
@@ -85,4 +95,4 @@ TARGET_LINK_LIBRARIES (leechcraft_azoth_vader
 
 INSTALL (TARGETS leechcraft_azoth_vader DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES ${VADER_COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
-#INSTALL (FILES azothvadersettings.xml DESTINATION ${LC_SETTINGS_DEST})
+INSTALL (FILES azothvadersettings.xml DESTINATION ${LC_SETTINGS_DEST})

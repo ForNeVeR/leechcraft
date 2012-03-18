@@ -42,9 +42,11 @@ namespace Acetamide
 	class IrcServerCLEntry;
 	class IrcServerSocket;
 	class UserCommandManager;
-	class ServerResponceManager;
+	class ServerResponseManager;
 	class RplISupportParser;
 	class ChannelsManager;
+
+	const int AnswersOnWhoCommand = 2;
 
 	class IrcServerHandler : public QObject
 	{
@@ -56,7 +58,7 @@ namespace Acetamide
 		IrcServerCLEntry *ServerCLEntry_;
 		IrcServerSocket *Socket_;
 		UserCommandManager *CmdManager_;
-		ServerResponceManager *ServerResponceManager_;
+		ServerResponseManager *ServerResponseManager_;
 		RplISupportParser *RplISupportParser_;
 		ChannelsManager *ChannelsManager_;
 
@@ -71,10 +73,13 @@ namespace Acetamide
 		std::unique_ptr<InviteChannelsDialog> InviteChannelsDialog_;
 		QHash<QString, ServerParticipantEntry_ptr> Nick2Entry_;
 		QMap<QString, QString> ISupport_;
+
+		QHash<QString, int> SpyWho_;
+		QHash<QString, WhoIsMessage> SpyNick2WhoIsMessage_;
+		QTimer *AutoWhoTimer_;
 	public:
 		IrcServerHandler (const ServerOptions&,
 				IrcAccount*);
-
 		IrcServerCLEntry* GetCLEntry () const;
 		IrcAccount* GetAccount () const;
 		IrcParser* GetParser () const;
@@ -85,7 +90,7 @@ namespace Acetamide
 		QObjectList GetCLEntries () const;
 
 		ChannelHandler* GetChannelHandler (const QString& channel);
-		QList<ChannelHandler*> GetChannelHandlers () const;
+		QList<std::shared_ptr<ChannelHandler>> GetChannelHandlers () const;
 
 		IrcMessage* CreateMessage (IMessage::MessageType type,
 				const QString& variant, const QString& body);
@@ -104,11 +109,13 @@ namespace Acetamide
 		void LeaveParticipant (const QString& nick,
 				const QString& channel, const QString& msg);
 
-		void QuitServer ();
+		void SendQuit ();
 		void QuitParticipant (const QString& nick, const QString& msg);
 
 		void SendMessage (const QStringList&);
-		void IncomingMessage (const QString&, const QString&, const QString&);
+		void IncomingMessage (const QString& nick,
+				const QString& target, const QString& msg,
+				IMessage::MessageType type = IMessage::MTChatMessage);
 		void IncomingNoticeMessage (const QString&, const QString&);
 
 		void ChangeNickname (const QString&, const QString&);
@@ -128,6 +135,8 @@ namespace Acetamide
 		void SetNewChannelMode (const QString&, const QString&, const QString&);
 
 		void PongMessage (const QString&);
+
+		void SetTopic (const QString& channel, const QString& topic);
 		void GotTopic (const QString&, const QString&);
 		void GotKickCommand (const QString&, const QString&,
 				const QString&, const QString&);
@@ -135,7 +144,8 @@ namespace Acetamide
 				const QString&);
 		void GotInvitation (const QString&, const QString&);
 		void ShowAnswer (const QString& cmd,
-                const QString& answer, bool isEndOf = false);
+				const QString& answer, bool isEndOf = false,
+				IMessage::MessageType type = IMessage::MTEventMessage);
 
 		void CTCPReply (const QString&, const QString&, const QString&);
 		void CTCPRequestResult (const QString&);
@@ -147,9 +157,9 @@ namespace Acetamide
 		void ShowUserHost (const QString&, const QString&);
 		void ShowIsUserOnServer (const QString&);
 
-		void ShowWhoIsReply (const QString&, bool isEndOf = false);
+		void ShowWhoIsReply (const WhoIsMessage& msg, bool isEndOf = false);
 		void ShowWhoWasReply (const QString&, bool isEndOf = false);
-		void ShowWhoReply (const QString&, bool isEndOf = false);
+		void ShowWhoReply (const WhoMessage& msg, bool isEndOf = false);
 		void ShowLinksReply (const QString&, bool isEndOf = false);
 		void ShowInfoReply (const QString&, bool isEndOf = false);
 		void ShowMotdReply (const QString&, bool isEndOf = false);
@@ -202,14 +212,23 @@ namespace Acetamide
 		void ClosePrivateChat (const QString& nick);
 
 		void CreateServerParticipantEntry (QString nick);
+
+		void VCardRequest (const QString& nick);
+
+		void SetAway (const QString& message);
+		void ChangeAway (bool away, const QString& message = QString ());
 	private:
 		void SendToConsole (IMessage::Direction, const QString&);
 		void NickCmdError ();
 		ServerParticipantEntry_ptr CreateParticipantEntry (const QString&);
+	public slots:
+		void autoWhoRequest ();
 	private slots:
 		void connectionEstablished ();
 		void connectionClosed ();
 		void joinAfterInvite ();
+		void handleSetAutoWho ();
+		void handleUpdateWhoPeriod ();
 	signals:
 		void connected (const QString&);
 		void disconnected (const QString&);

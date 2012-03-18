@@ -16,9 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_VADER_MRIMBUDDY_H
-#define PLUGINS_AZOTH_PLUGINS_VADER_MRIMBUDDY_H
+#pragma once
+
 #include <QObject>
+#include <QSet>
+#include <QImage>
 #include <interfaces/iclentry.h>
 #include <interfaces/iadvancedclentry.h>
 #include "proto/contactinfo.h"
@@ -31,6 +33,7 @@ namespace Vader
 {
 	class MRIMAccount;
 	class MRIMMessage;
+	class SelfAvatarFetcher;
 
 	class MRIMBuddy : public QObject
 					, public ICLEntry
@@ -45,12 +48,17 @@ namespace Vader
 		QString Group_;
 
 		EntryStatus Status_;
-
 		QList<MRIMMessage*> AllMessages_;
-
 		bool IsAuthorized_;
 
 		QVariantMap ClientInfo_;
+
+		QHash<quint32, QString> SentSMS_;
+
+		QAction *SendSMS_;
+
+		SelfAvatarFetcher *AvatarFetcher_;
+		QImage Avatar_;
 	public:
 		MRIMBuddy (const Proto::ContactInfo&, MRIMAccount*);
 
@@ -65,6 +73,8 @@ namespace Vader
 
 		Proto::ContactInfo GetInfo () const;
 		void UpdateInfo (const Proto::ContactInfo&);
+
+		void HandleWPInfo (const QMap<QString, QString>&);
 
 		qint64 GetID () const;
 
@@ -95,6 +105,16 @@ namespace Vader
 		// IAdvancedCLEntry
 		AdvancedFeatures GetAdvancedFeatures () const;
 		void DrawAttention (const QString&, const QString&);
+	private:
+		void UpdateClientVersion ();
+	private slots:
+		void updateAvatar (const QImage&);
+
+		void handleSendSMS ();
+
+		void handleSMSDelivered (quint32);
+		void handleSMSServUnavail (quint32);
+		void handleSMSBadParms (quint32);
 	signals:
 		void gotMessage (QObject*);
 		void statusChanged (const EntryStatus&, const QString&);
@@ -116,5 +136,3 @@ namespace Vader
 }
 }
 }
-
-#endif

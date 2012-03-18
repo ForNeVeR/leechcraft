@@ -20,6 +20,7 @@
 #include <boost/bind.hpp>
 #include "ircserverhandler.h"
 #include "ircparser.h"
+#include "ircaccount.h"
 
 namespace LeechCraft
 {
@@ -58,8 +59,8 @@ namespace Acetamide
 
 		if (cmd == "me")
 		{
-			messageList.insert (1, channelName);
-			messageList.insert (2, "ACTION");
+			messageList.insert (0, channelName);
+			messageList.insert (1, "ACTION");
 		}
 		else if (cmd == "part" && message.isEmpty ())
 			messageList << channelName; //TODO message for part
@@ -83,6 +84,11 @@ namespace Acetamide
 			messageList.clear ();
 			messageList << channelList.join (",")
 					<< passwords;
+		}
+		else if (cmd == "away")
+		{
+			ISH_->SetAway (messageList.join (" "));
+			return cmd;
 		}
 // 		else if (cmd == "kick" && !message.isEmpty ())
 // 		{

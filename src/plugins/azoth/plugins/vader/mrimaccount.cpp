@@ -29,7 +29,9 @@
 #include "mrimmessage.h"
 #include "core.h"
 #include "groupmanager.h"
+#include "selfavatarfetcher.h"
 #include "vaderutil.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -43,6 +45,7 @@ namespace Vader
 	, Name_ (name)
 	, Conn_ (new Proto::Connection (this))
 	, GM_ (new GroupManager (this))
+	, AvatarFetcher_ (new SelfAvatarFetcher (this))
 	{
 		connect (Conn_,
 				SIGNAL (gotContacts (QList<Proto::ContactInfo>)),
@@ -52,6 +55,14 @@ namespace Vader
 				SIGNAL (userStatusChanged (Proto::ContactInfo)),
 				this,
 				SLOT (handleUserStatusChanged (Proto::ContactInfo)));
+		connect (Conn_,
+				SIGNAL (gotUserInfoError (QString, Proto::AnketaInfoStatus)),
+				this,
+				SLOT (handleGotUserInfoError (QString, Proto::AnketaInfoStatus)));
+		connect (Conn_,
+				SIGNAL (gotUserInfoResult (QString, QMap<QString, QString>)),
+				this,
+				SLOT (handleGotUserInfo (QString, QMap<QString, QString>)));
 		connect (Conn_,
 				SIGNAL (gotAuthRequest (QString, QString)),
 				this,
@@ -112,11 +123,21 @@ namespace Vader
 		const QString& ua = "LeechCraft Azoth " + Core::Instance ()
 				.GetCoreProxy ()->GetVersion ();
 		Conn_->SetUA (ua);
+
+		connect (AvatarFetcher_,
+				SIGNAL (gotImage (QImage)),
+				this,
+				SLOT (updateSelfAvatar (QImage)));
+
+		XmlSettingsManager::Instance ().RegisterObject ("ShowSupportContact",
+				this, "handleShowTechSupport");
 	}
 
 	void MRIMAccount::FillConfig (MRIMAccountConfigWidget *w)
 	{
 		Login_ = w->GetLogin ();
+
+		AvatarFetcher_->Restart (Login_);
 
 		const QString& pass = w->GetPassword ();
 		if (!pass.isEmpty ())
@@ -136,6 +157,11 @@ namespace Vader
 	void MRIMAccount::SetTypingState (const QString& to, ChatPartState state)
 	{
 		Conn_->SetTypingState (to, state == CPSComposing);
+	}
+
+	void MRIMAccount::RequestInfo (const QString& email)
+	{
+		Conn_->RequestInfo (email);
 	}
 
 	QObject* MRIMAccount::GetObject ()
@@ -174,6 +200,8 @@ namespace Vader
 	void MRIMAccount::RenameAccount (const QString& name)
 	{
 		Name_ = name;
+		emit accountRenamed (Name_);
+		emit accountSettingsChanged ();
 	}
 
 	QByteArray MRIMAccount::GetAccountID () const
@@ -208,10 +236,6 @@ namespace Vader
 		}
 
 		Conn_->SetState (status);
-	}
-
-	void MRIMAccount::Synchronize ()
-	{
 	}
 
 	void MRIMAccount::Authorize (QObject *obj)
@@ -321,6 +345,21 @@ namespace Vader
 		Conn_->PublishTune (string);
 	}
 
+	QObject* MRIMAccount::GetSelfContact () const
+	{
+		return 0;
+	}
+
+	QImage MRIMAccount::GetSelfAvatar () const
+	{
+		return SelfAvatar_;
+	}
+
+	QIcon MRIMAccount::GetAccountIcon () const
+	{
+		return QIcon ();
+	}
+
 	QByteArray MRIMAccount::Serialize () const
 	{
 		QByteArray result;
@@ -349,6 +388,9 @@ namespace Vader
 		str >> name;
 		MRIMAccount *result = new MRIMAccount (name, proto);
 		str >> result->Login_;
+
+		result->AvatarFetcher_->Restart (result->Login_);
+
 		return result;
 	}
 
@@ -359,23 +401,29 @@ namespace Vader
 
 		MRIMBuddy *buddy = new MRIMBuddy (info, this);
 		Buddies_ [info.Email_] = buddy;
-		emit gotCLItems (QList<QObject*> () << buddy);
+
+		if (info.Email_ != "support@corp.mail.ru" ||
+				XmlSettingsManager::Instance ()
+					.property ("ShowSupportContact").toBool ())
+			emit gotCLItems (QList<QObject*> () << buddy);
+
 		return buddy;
+	}
+
+	void MRIMAccount::updateSelfAvatar (const QImage& avatar)
+	{
+		SelfAvatar_ = avatar;
 	}
 
 	void MRIMAccount::handleGotContacts (const QList<Proto::ContactInfo>& contacts)
 	{
-		QList<QObject*> objs;
 		Q_FOREACH (const Proto::ContactInfo& contact, contacts)
 		{
 			qDebug () << Q_FUNC_INFO << GetAccountName () << contact.Email_ << contact.Alias_ << contact.ContactID_ << contact.UA_ << contact.Features_;
-			MRIMBuddy *buddy = new MRIMBuddy (contact, this);
+			MRIMBuddy *buddy = GetBuddy (contact);
 			buddy->SetGroup (GM_->GetGroup (contact.GroupNumber_));
-			objs << buddy;
 			Buddies_ [contact.Email_] = buddy;
 		}
-
-		emit gotCLItems (objs);
 	}
 
 	void MRIMAccount::handleUserStatusChanged (const Proto::ContactInfo& status)
@@ -411,6 +459,48 @@ namespace Vader
 		info.ContactID_ = id;
 
 		handleGotContacts (QList<Proto::ContactInfo> () << info);
+	}
+
+	void MRIMAccount::handleGotUserInfoError (const QString& id,
+			Proto::AnketaInfoStatus status)
+	{
+		QString error;
+		switch (status)
+		{
+		case Proto::AnketaInfoStatus::DBErr:
+			error = tr ("database error");
+			break;
+		case Proto::AnketaInfoStatus::NoUser:
+			error = tr ("no such user");
+			break;
+		case Proto::AnketaInfoStatus::RateLimit:
+			error = tr ("rate limit exceeded");
+			break;
+		default:
+			error = tr ("unknown error");
+			break;
+		}
+
+		const Entity& e = Util::MakeNotification ("Azoth",
+				tr ("Error fetching user info for %1: %2.")
+					.arg (id)
+					.arg (error),
+				PCritical_);
+		Core::Instance ().SendEntity (e);
+	}
+
+	void MRIMAccount::handleGotUserInfo (const QString& from,
+			const QMap<QString, QString>& values)
+	{
+		if (!Buddies_.contains (from))
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unknown buddy"
+					<< from;
+			return;
+		}
+
+		Buddies_ [from]->HandleWPInfo (values);
 	}
 
 	void MRIMAccount::handleGotAuthRequest (const QString& from, const QString& msg)
@@ -450,7 +540,9 @@ namespace Vader
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "incoming message from unknown buddy"
-					<< msg.From_;
+					<< msg.From_
+					<< msg.Text_
+					<< msg.DT_;
 			return;
 		}
 
@@ -558,6 +650,20 @@ namespace Vader
 				QString (),
 				static_cast<LeechCraft::TaskParameters> (OnlyHandle | FromUserInitiated));
 		Core::Instance ().SendEntity (e);
+	}
+
+	void MRIMAccount::handleShowTechSupport ()
+	{
+		if (!Buddies_.contains ("support@corp.mail.ru"))
+			return;
+
+		const bool show = XmlSettingsManager::Instance ()
+				.property ("ShowSupportContact").toBool ();
+		QList<QObject*> list;
+		list << Buddies_ ["support@corp.mail.ru"];
+		emit show ?
+				gotCLItems (list) :
+				removedCLItems (list);
 	}
 }
 }

@@ -16,14 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SNAILS_STORAGE_H
-#define PLUGINS_SNAILS_STORAGE_H
+#pragma once
+
 #include <QObject>
 #include <QDir>
 #include <QSettings>
 #include <QHash>
 #include <QSet>
 #include "message.h"
+
+class QSqlDatabase;
+typedef std::shared_ptr<QSqlDatabase> QSqlDatabase_ptr;
 
 namespace LeechCraft
 {
@@ -38,23 +41,31 @@ namespace Snails
 		QDir SDir_;
 		QSettings Settings_;
 		QHash<QByteArray, bool> IsMessageRead_;
+
+		QHash<Account*, QSqlDatabase_ptr> AccountBases_;
+		QHash<Account*, QHash<QByteArray, Message_ptr>> PendingSaveMessages_;
+
+		QHash<QObject*, Account*> FutureWatcher2Account_;
 	public:
 		Storage (QObject* = 0);
 
 		void SaveMessages (Account*, const QList<Message_ptr>&);
-		QList<Message_ptr> LoadMessages (Account*);
+		MessageSet LoadMessages (Account*);
 		Message_ptr LoadMessage (Account*, const QByteArray&);
 		QSet<QByteArray> LoadIDs (Account*);
+		QSet<QByteArray> LoadIDs (Account*, const QStringList&);
 		int GetNumMessages (Account*) const;
 		bool HasMessagesIn (Account*) const;
 
 		bool IsMessageRead (Account*, const QByteArray&);
 	private:
 		QDir DirForAccount (Account*) const;
+		QSqlDatabase_ptr BaseForAccount (Account*);
 
+		void AddMsgToFolders (Message_ptr, Account*);
 		void UpdateCaches (Message_ptr);
+	private slots:
+		void handleMessagesSaved ();
 	};
 }
 }
-
-#endif

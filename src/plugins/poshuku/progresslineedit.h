@@ -18,7 +18,6 @@
 
 #ifndef PLUGINS_POSHUKU_PROGRESSLINEEDIT_H
 #define PLUGINS_POSHUKU_PROGRESSLINEEDIT_H
-#include <boost/shared_ptr.hpp>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include "interfaces/iaddressbar.h"
@@ -47,9 +46,10 @@ namespace Poshuku
 		QHash<QAction*, QToolButton*> Action2Button_;
 	public:
 		ProgressLineEdit (QWidget* = 0);
-		virtual ~ProgressLineEdit ();
+
 		bool IsCompleting () const;
 		QObject* GetObject ();
+
 		int ButtonsCount () const;
 		QToolButton* AddAction (QAction*, bool = false);
 		QToolButton* InsertAction (QAction*, int pos = -1, bool = false);
@@ -59,11 +59,13 @@ namespace Poshuku
 	protected:
 		void keyPressEvent (QKeyEvent*);
 		void resizeEvent (QResizeEvent*);
+		void contextMenuEvent (QContextMenuEvent*);
 	private slots:
 		void handleCompleterActivated ();
 		void textChanged (const QString& text);
 		void RepaintButtons ();
 		void handleTriggeredButton (QAction*);
+		void pasteGo ();
 	signals:
 		void actionTriggered (QAction*, const QString&);
 	};

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011  Minh Ngo
+ * Copyright (C) 2011-2012  Minh Ngo
  * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,11 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_LAURE_PLAYLISTADDMENU_H
-#define PLUGINS_LAURE_PLAYLISTADDMENU_H
+#pragma once
+#include <memory>
 #include <QMenu>
 #include <QFileInfoList>
-#include <boost/shared_ptr.hpp>
 
 #ifdef HAVE_MAGIC
 	#include <magic.h>
@@ -32,16 +31,16 @@ namespace LeechCraft
 namespace Laure
 {
 	class PlayListView;
-	
+
 	/** @brief Provides menu for choosing add item options.
-	 * 
+	 *
 	 * @author Minh Ngo <nlminhtl@gmail.com>
 	 */
 	class PlayListAddMenu : public QMenu
 	{
 		Q_OBJECT
 #ifdef HAVE_MAGIC
-		boost::shared_ptr<magic_set> Magic_;
+		std::shared_ptr<magic_set> Magic_;
 #else
 		QStringList Formats_;
 #endif
@@ -61,11 +60,10 @@ namespace Laure
 		void LoadM3U (const QString&);
 	signals:
 		/** @brief Is emitted when the media file is chosen.
-		 * 
+		 *
 		 * @param[out] location Media file location.
 		 */
 		void addItem (const QString& location);
 	};
 }
 }
-#endif // PLUGINS_LAURE_PLAYLISTADDMENU_H

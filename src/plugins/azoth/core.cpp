@@ -35,6 +35,7 @@
 #include <util/defaulthookproxy.h>
 #include <util/categoryselector.h>
 #include <util/notificationactionhandler.h>
+#include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/iplugin2.h>
 #include <interfaces/core/icoreproxy.h>
 #include "interfaces/iprotocolplugin.h"
@@ -71,6 +72,7 @@
 #include "actionsmanager.h"
 #include "servicediscoverywidget.h"
 #include "importmanager.h"
+#include "unreadqueuemanager.h"
 
 namespace LeechCraft
 {
@@ -161,6 +163,7 @@ namespace Azoth
 	, CallManager_ (new CallManager)
 	, EventsNotifier_ (new EventsNotifier)
 	, ImportManager_ (new ImportManager)
+	, UnreadQueueManager_ (new UnreadQueueManager)
 	{
 		FillANFields ();
 
@@ -192,7 +195,7 @@ namespace Azoth
 		ResourceLoaders_ [RLTActivityIconLoader].reset (new Util::ResourceLoader ("azoth/iconsets/activities/", this));
 		ResourceLoaders_ [RLTMoodIconLoader].reset (new Util::ResourceLoader ("azoth/iconsets/moods/", this));
 
-		Q_FOREACH (boost::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
+		Q_FOREACH (std::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
 		{
 			rl->AddLocalPrefix ();
 			rl->AddGlobalPrefix ();
@@ -204,6 +207,10 @@ namespace Azoth
 				SIGNAL (clearUnreadMsgCount (QObject*)),
 				this,
 				SLOT (handleClearUnreadMsgCount (QObject*)));
+		connect (this,
+				SIGNAL (hookAddingCLEntryEnd (LeechCraft::IHookProxy_ptr, QObject*)),
+				ChatTabsManager_,
+				SLOT (handleAddingCLEntryEnd (LeechCraft::IHookProxy_ptr, QObject*)));
 		connect (XferJobManager_.get (),
 				SIGNAL (jobNoLongerOffered (QObject*)),
 				this,
@@ -216,6 +223,10 @@ namespace Azoth
 				SIGNAL (entryMadeCurrent (QObject*)),
 				EventsNotifier_.get (),
 				SLOT (handleEntryMadeCurrent (QObject*)));
+		connect (ChatTabsManager_,
+				SIGNAL (entryMadeCurrent (QObject*)),
+				UnreadQueueManager_.get (),
+				SLOT (clearMessagesForEntry (QObject*)));
 
 		PluginManager_->RegisterHookable (this);
 		PluginManager_->RegisterHookable (CLModel_);
@@ -242,6 +253,8 @@ namespace Azoth
 	{
 		ResourceLoaders_.clear ();
 
+		ShortcutManager_.reset ();
+
 #ifdef ENABLE_CRYPT
 		QCAEventHandler_.reset ();
 		KeyStoreMgr_.reset ();
@@ -252,6 +265,7 @@ namespace Azoth
 	void Core::SetProxy (ICoreProxy_ptr proxy)
 	{
 		Proxy_ = proxy;
+		ShortcutManager_.reset (new Util::ShortcutManager (proxy));
 	}
 
 	ICoreProxy_ptr Core::GetProxy () const
@@ -281,9 +295,14 @@ namespace Azoth
 		return SmilesOptionsModel_->GetSourceForOption (pack);
 	}
 
-	QAbstractItemModel* Core::GetChatStylesOptionsModel()
+	QAbstractItemModel* Core::GetChatStylesOptionsModel () const
 	{
 		return ChatStylesOptionsModel_.get ();
+	}
+
+	Util::ShortcutManager* Core::GetShortcutManager () const
+	{
+		return ShortcutManager_.get ();
 	}
 
 	QSet<QByteArray> Core::GetExpectedPluginClasses () const
@@ -699,20 +718,17 @@ namespace Azoth
 		src->FrameFocused (frame);
 	}
 
-	namespace
+	QList<QColor> Core::GenerateColors (const QString& coloring) const
 	{
-		qreal Fix (qreal h)
+		auto fix = [] (qreal h)
 		{
 			while (h < 0)
 				h += 1;
 			while (h >= 1)
 				h -= 1;
 			return h;
-		}
-	}
+		};
 
-	QList<QColor> Core::GenerateColors (const QString& coloring) const
-	{
 		QList<QColor> result;
 		if (coloring == "hash" ||
 				coloring.isEmpty ())
@@ -730,13 +746,13 @@ namespace Azoth
 			QColor color;
 			for (qreal d = lower; d <= higher; d += delta)
 			{
-				color.setHsvF (Fix (h + d), 1, 0.6, alpha);
+				color.setHsvF (fix (h + d), 1, 0.6, alpha);
 				result << color;
-				color.setHsvF (Fix (h - d), 1, 0.6, alpha);
+				color.setHsvF (fix (h - d), 1, 0.6, alpha);
 				result << color;
-				color.setHsvF (Fix (h + d), 1, 0.9, alpha);
+				color.setHsvF (fix (h + d), 1, 0.9, alpha);
 				result << color;
-				color.setHsvF (Fix (h - d), 1, 0.9, alpha);
+				color.setHsvF (fix (h - d), 1, 0.9, alpha);
 				result << color;
 			}
 		}
@@ -929,7 +945,7 @@ namespace Azoth
 				groups << Core::tr ("Contacts");
 			return groups;
 		}
-	};
+	}
 
 	void Core::AddCLEntry (ICLEntry *clEntry,
 			QStandardItem *accItem)
@@ -1094,7 +1110,7 @@ namespace Azoth
 
 	namespace
 	{
-		QString Status2Str (const EntryStatus& status, boost::shared_ptr<IProxyObject> obj)
+		QString Status2Str (const EntryStatus& status, std::shared_ptr<IProxyObject> obj)
 		{
 			QString result = obj->StateToString (status.State_);
 			const QString& statusString = Qt::escape (status.StatusString_);
@@ -1102,10 +1118,7 @@ namespace Azoth
 				result += " (" + statusString + ")";
 			return result;
 		}
-	}
 
-	namespace
-	{
 		void FormatMood (QString& tip, const QMap<QString, QVariant>& moodInfo)
 		{
 			tip += "<br />" + Core::tr ("Mood:") + ' ';
@@ -1177,7 +1190,7 @@ namespace Azoth
 		if (mucPerms)
 		{
 			tip += "<hr />";
-			const QMap<QByteArray, QList<QByteArray> >& perms =
+			const QMap<QByteArray, QList<QByteArray>>& perms =
 					mucPerms->GetPerms (entry->GetObject ());
 			Q_FOREACH (const QByteArray& permClass, perms.keys ())
 			{
@@ -1448,16 +1461,26 @@ namespace Azoth
 
 		QImage avatar = entry ? entry->GetAvatar () : QImage ();
 		if (avatar.isNull () || !avatar.width ())
-		{
-			const QString& name = XmlSettingsManager::Instance ()
-					.property ("SystemIcons").toString () + "/default_avatar";
-			avatar = ResourceLoaders_ [RLTSystemIconLoader]->LoadPixmap (name).toImage ();
-		}
+			avatar = GetDefaultAvatar (size);
 
-		const QImage& scaled = avatar.scaled (size, size,
-				Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		const QImage& scaled = avatar.isNull () ?
+				QImage () :
+				avatar.scaled (size, size,
+						Qt::KeepAspectRatio, Qt::SmoothTransformation);
 		Entry2SmoothAvatarCache_ [entry] = scaled;
 		return scaled;
+	}
+
+	QImage Core::GetDefaultAvatar (int size)
+	{
+		const QString& name = XmlSettingsManager::Instance ()
+				.property ("SystemIcons").toString () + "/default_avatar";
+		const QImage& image = ResourceLoaders_ [RLTSystemIconLoader]->
+				LoadPixmap (name).toImage ();
+		return image.isNull () ?
+				QImage () :
+				image.scaled (size, size,
+						Qt::KeepAspectRatio, Qt::SmoothTransformation);
 	}
 
 	ActionsManager* Core::GetActionsManager () const
@@ -1650,8 +1673,17 @@ namespace Azoth
 
 	void Core::UpdateInitState (State state)
 	{
+		if (state == SConnecting)
+			return;
+
 		const State prevTop = FindTop (StateCounter_);
-		++StateCounter_ [state];
+
+		StateCounter_.clear ();
+		Q_FOREACH (IAccount *acc, GetAccounts ())
+			++StateCounter_ [acc->GetState ().State_];
+
+		StateCounter_.remove (SOffline);
+
 		const State newTop = FindTop (StateCounter_);
 
 		if (newTop != prevTop)
@@ -1715,6 +1747,11 @@ namespace Azoth
 
 		JoinConferenceDialog *dia = new JoinConferenceDialog (accounts, Proxy_->GetMainWindow ());
 		dia->show ();
+	}
+
+	void Core::handleShowNextUnread ()
+	{
+		UnreadQueueManager_->ShowNext ();
 	}
 
 	void Core::handleNewProtocols (const QList<QObject*>& protocols)
@@ -1828,6 +1865,11 @@ namespace Azoth
 				this,
 				SLOT (handleAccountStatusChanged (const EntryStatus&)));
 
+		connect (accObject,
+				SIGNAL (accountRenamed (const QString&)),
+				this,
+				SLOT (handleAccountRenamed (const QString&)));
+
 		if (qobject_cast<IHaveServiceDiscovery*> (accObject))
 			connect (accObject,
 					SIGNAL (gotSDSession (QObject*)),
@@ -1845,9 +1887,9 @@ namespace Azoth
 				QDataStream stream (var.toByteArray ());
 				stream >> s;
 				account->ChangeState (s);
-
-				UpdateInitState (s.State_);
 			}
+			else
+				UpdateInitState (account->GetState ().State_);
 		}
 		else
 			qWarning () << Q_FUNC_INFO
@@ -2011,6 +2053,8 @@ namespace Azoth
 			return;
 		}
 
+		UpdateInitState (status.State_);
+
 		if (status.State_ == SOffline)
 			LastAccountStatusChange_.remove (acc);
 		else if (!LastAccountStatusChange_.contains (acc))
@@ -2040,6 +2084,19 @@ namespace Azoth
 				<< "item for account"
 				<< sender ()
 				<< "not found";
+	}
+
+	void Core::handleAccountRenamed (const QString& name)
+	{
+		for (int i = 0, size = CLModel_->rowCount (); i < size; ++i)
+		{
+			QStandardItem *item = CLModel_->item (i);
+			if (item->data (CLRAccountObject).value<QObject*> () != sender ())
+				continue;
+
+			item->setText (name);
+			return;
+		}
 	}
 
 	void Core::handleStatusChanged (const EntryStatus& status, const QString& variant)
@@ -2207,11 +2264,16 @@ namespace Azoth
 		ICLEntry *parentCL = qobject_cast<ICLEntry*> (msg->ParentCLEntry ());
 
 		if (ShouldCountUnread (parentCL, msg))
+		{
 			IncreaseUnreadCount (parentCL);
+			UnreadQueueManager_->AddMessage (msgObj);
+		}
 
 		if (msg->GetDirection () != IMessage::DIn ||
 				ChatTabsManager_->IsActiveChat (parentCL))
 			return;
+
+		ChatTabsManager_->HandleInMessage (msg);
 
 		bool showMsg = XmlSettingsManager::Instance ()
 				.property ("ShowMsgInNotifications").toBool ();
@@ -2315,7 +2377,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[parentCL, ChatTabsManager_] () { ChatTabsManager_->OpenChat (parentCL); });
+				[parentCL, this] () { ChatTabsManager_->OpenChat (parentCL); });
 		nh->AddDependentObject (parentCL->GetObject ());
 
 		emit gotEntity (e);
@@ -2395,7 +2457,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[entry, ChatTabsManager_] () { ChatTabsManager_->OpenChat (entry); });
+				[entry, this] () { ChatTabsManager_->OpenChat (entry); });
 		nh->AddDependentObject (entry->GetObject ());
 
 		emit gotEntity (e);
@@ -2636,8 +2698,14 @@ namespace Azoth
 		e.Additional_ ["org.LC.AdvNotifications.Count"] = 1;
 		e.Additional_ ["org.LC.Plugins.Azoth.Msg"] = reason;
 
+		const auto cancel = Util::MakeANCancel (e);
+
 		Util::NotificationActionHandler *nh = new Util::NotificationActionHandler (e);
-		nh->AddFunction (tr ("Join"), [this, acc, ident] () { SuggestJoiningMUC (acc, ident); });
+		nh->AddFunction (tr ("Join"), [this, acc, ident, cancel] ()
+				{
+					SuggestJoiningMUC (acc, ident);
+					emit gotEntity (cancel);
+				});
 		nh->AddDependentObject (acc->GetObject ());
 
 		emit gotEntity (e);
@@ -2987,7 +3055,7 @@ namespace Azoth
 
 	void Core::flushIconCaches ()
 	{
-		Q_FOREACH (boost::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
+		Q_FOREACH (std::shared_ptr<Util::ResourceLoader> rl, ResourceLoaders_.values ())
 			rl->FlushCache ();
 	}
 

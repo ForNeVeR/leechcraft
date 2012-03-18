@@ -70,13 +70,17 @@
 #include "storagebackend.h"
 #include "coreinstanceobject.h"
 #include "coreplugin2manager.h"
+#include "dockmanager.h"
 
 using namespace LeechCraft::Util;
 
 namespace LeechCraft
 {
 	Core::Core ()
-	: NetworkAccessManager_ (new NetworkAccessManager)
+	: PluginManager_ (0)
+	, ReallyMainWindow_ (0)
+	, DM_ (0)
+	, NetworkAccessManager_ (new NetworkAccessManager)
 	, StorageBackend_ (new SQLStorageBackend)
 	, DirectoryWatcher_ (new DirectoryWatcher)
 	, ClipboardWatcher_ (new ClipboardWatcher)
@@ -116,7 +120,7 @@ namespace LeechCraft
 		boost::program_options::variables_map map = qobject_cast<Application*> (qApp)->GetVarMap ();
 		if (map.count ("plugin"))
 		{
-			const std::vector<std::string>& plugins = map ["plugin"].as<std::vector<std::string> > ();
+			const std::vector<std::string>& plugins = map ["plugin"].as<std::vector<std::string>> ();
 			Q_FOREACH (const std::string& plugin, plugins)
 				paths << QDir (QString::fromUtf8 (plugin.c_str ())).absolutePath ();
 		}
@@ -175,11 +179,18 @@ namespace LeechCraft
 		ReallyMainWindow_->installEventFilter (this);
 
 		LocalSocketHandler_->SetMainWindow (win);
+
+		DM_ = new DockManager (win, this);
 	}
 
 	MainWindow* Core::GetReallyMainWindow ()
 	{
 		return ReallyMainWindow_;
+	}
+
+	DockManager* Core::GetDockManager () const
+	{
+		return DM_;
 	}
 
 	IShortcutProxy* Core::GetShortcutProxy () const
@@ -197,11 +208,11 @@ namespace LeechCraft
 		return PluginManager_->GetAllCastableRoots<IHaveShortcuts*> ();
 	}
 
-	QList<QList<QAction*> > Core::GetActions2Embed () const
+	QList<QList<QAction*>> Core::GetActions2Embed () const
 	{
 		const QList<IActionsExporter*>& plugins =
 				PluginManager_->GetAllCastableTo<IActionsExporter*> ();
-		QList<QList<QAction*> > actions;
+		QList<QList<QAction*>> actions;
 		Q_FOREACH (const IActionsExporter *plugin, plugins)
 		{
 			const QList<QAction*>& list = plugin->GetActions (AEPCommonContextMenu);

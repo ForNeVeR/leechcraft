@@ -18,7 +18,7 @@
 
 #ifndef PLUGINS_POSHUKU_BROWSERWIDGET_H
 #define PLUGINS_POSHUKU_BROWSERWIDGET_H
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <QWidget>
 #include <QTime>
 #include <qwebpage.h>
@@ -79,13 +79,11 @@ namespace Poshuku
 		QAction *ReloadStop_;
 		QAction *ReloadPeriodically_;
 		QAction *NotifyWhenFinished_;
-		QAction *RecentlyClosedAction_;
 		QAction *HistoryAction_;
 		QAction *BookmarksAction_;
 		QAction *ExternalLinksAction_;
 		QPoint OnLoadPos_;
 		QMenu *ChangeEncoding_;
-		QMenu *RecentlyClosed_;
 		QMenu *ExternalLinks_;
 		FindDialog *FindDialog_;
 		PasswordRemember *RememberDialog_;
@@ -93,10 +91,10 @@ namespace Poshuku
 		QString PreviousFindText_;
 		bool HtmlMode_;
 		bool Own_;
-		QMap<QString, QList<QAction*> > WindowMenus_;
+		QMap<QString, QList<QAction*>> WindowMenus_;
 
 		CustomWebView *WebView_;
-		boost::shared_ptr<QGraphicsTextItem> LinkTextItem_;
+		std::shared_ptr<QGraphicsTextItem> LinkTextItem_;
 
 		static QObject* S_MultiTabsParent_;
 
@@ -108,8 +106,6 @@ namespace Poshuku
 
 		void Deown ();
 		void InitShortcuts ();
-
-		void SetUnclosers (const QList<QAction*>&);
 
 		QGraphicsView* GetGraphicsView () const;
 		CustomWebView* GetView () const;
@@ -131,7 +127,7 @@ namespace Poshuku
 		void Remove ();
 		QToolBar* GetToolBar () const;
 		QList<QAction*> GetTabBarContextMenuActions () const;
-		QMap<QString, QList<QAction*> > GetWindowMenus () const;
+		QMap<QString, QList<QAction*>> GetWindowMenus () const;
 		QObject* ParentMultiTabs ();
 		TabClassInfo GetTabClassInfo () const;
 
@@ -168,8 +164,6 @@ namespace Poshuku
 		void handleScreenSave ();
 		void handleViewSources ();
 		void handleSavePage ();
-		void handleNewUnclose (QAction*);
-		void handleUncloseDestroyed ();
 		void updateTooltip ();
 		void enableActions ();
 		void handleEntityAction ();

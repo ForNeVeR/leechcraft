@@ -243,6 +243,8 @@ namespace Zheet
 	void MSNAccount::RenameAccount (const QString& name)
 	{
 		Name_ = name;
+		emit accountRenamed (name);
+		emit accountSettingsChanged ();
 	}
 
 	QByteArray MSNAccount::GetAccountID () const
@@ -314,10 +316,6 @@ namespace Zheet
 		}
 	}
 
-	void MSNAccount::Synchronize ()
-	{
-	}
-
 	void MSNAccount::Authorize (QObject*)
 	{
 	}
@@ -356,6 +354,11 @@ namespace Zheet
 	QObject* MSNAccount::GetSelfContact () const
 	{
 		return 0;
+	}
+
+	QImage MSNAccount::GetSelfAvatar () const
+	{
+		return QImage ();
 	}
 
 	QIcon MSNAccount::GetAccountIcon () const

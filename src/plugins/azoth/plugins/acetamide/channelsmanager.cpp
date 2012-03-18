@@ -58,7 +58,7 @@ namespace Acetamide
 	QObjectList ChannelsManager::GetCLEntries () const
 	{
 		QObjectList result;
-		Q_FOREACH (ChannelHandler *ich, ChannelHandlers_.values ())
+		Q_FOREACH (auto ich, ChannelHandlers_.values ())
 		{
 			result << ich->GetParticipants ();
 			result << ich->GetCLEntry ();
@@ -67,17 +67,12 @@ namespace Acetamide
 		return result;
 	}
 
-	bool ChannelsManager::IsCmdQueueEmpty () const
-	{
-		return CmdQueue_.isEmpty ();
-	}
-
 	ChannelHandler* ChannelsManager::GetChannelHandler (const QString& channel)
 	{
-		return ChannelHandlers_.value (channel.toLower ());
+		return ChannelHandlers_.value (channel.toLower ()).get ();
 	}
 
-	QList<ChannelHandler*> ChannelsManager::GetChannels () const
+	QList<std::shared_ptr<ChannelHandler>> ChannelsManager::GetChannels () const
 	{
 		return ChannelHandlers_.values ();
 	}
@@ -109,14 +104,12 @@ namespace Acetamide
 
 	bool ChannelsManager::AddChannel (const ChannelOptions& options)
 	{
-		ChannelHandler *ch = new ChannelHandler (options, this);
+		std::shared_ptr<ChannelHandler> ch (new ChannelHandler (options, this));
 		ChannelHandlers_ [options.ChannelName_.toLower ()] = ch;
 
 		ChannelCLEntry *ichEntry = ch->GetCLEntry ();
 		if (!ichEntry)
 			return false;
-
-		ISH_->GetAccount ()->handleGotRosterItems (QObjectList () << ichEntry);
 
 		return true;
 	}
@@ -135,7 +128,7 @@ namespace Acetamide
 
 	void ChannelsManager::CloseAllChannels ()
 	{
-		Q_FOREACH (ChannelHandler *ich, ChannelHandlers_.values ())
+		Q_FOREACH (auto ich, ChannelHandlers_.values ())
 			ich->CloseChannel ();
 	}
 
@@ -152,7 +145,7 @@ namespace Acetamide
 	QHash<QString, QObject*> ChannelsManager::GetParticipantsByNick (const QString& nick) const
 	{
 		QHash<QString, QObject*> result;
-		Q_FOREACH (ChannelHandler *ich, ChannelHandlers_.values ())
+		Q_FOREACH (auto ich, ChannelHandlers_.values ())
 			if (ich->IsUserExists (nick))
 				result [ich->GetChannelOptions ().ChannelName_] = ich->GetParticipantEntry (nick).get ();
 		return result;
@@ -176,7 +169,7 @@ namespace Acetamide
 
 	void ChannelsManager::QuitParticipant (const QString& nick, const QString& msg)
 	{
-		Q_FOREACH (ChannelHandler *ch, ChannelHandlers_)
+		Q_FOREACH (auto ch, ChannelHandlers_)
 			if (ch->IsUserExists (nick))
 				ch->LeaveParticipant (nick, msg);
 	}
@@ -197,19 +190,24 @@ namespace Acetamide
 
 	void ChannelsManager::ChangeNickname (const QString& oldNick, const QString& newNick)
 	{
-		Q_FOREACH (ChannelHandler *ich, ChannelHandlers_.values ())
-			ich->ChangeNickname (oldNick, newNick);
+		Q_FOREACH (auto ich, ChannelHandlers_.values ())
+			if (ich->IsUserExists (oldNick))
+				ich->ChangeNickname (oldNick, newNick);
 	}
 
 	void ChannelsManager::GotNames (const QString& channel, const QStringList& participants)
 	{
 		if (IsChannelExists (channel) &&
 				!ChannelHandlers_ [channel]->IsRosterReceived ())
+		{
 			Q_FOREACH (const QString& nick, participants)
 			{
 				if (!nick.isEmpty ())
 					ChannelHandlers_ [channel]->SetChannelUser (nick);
 			}
+
+			ISH_->autoWhoRequest ();
+		}
 		else
 			ReceiveCmdAnswerMessage ("names", participants.join (" "), false);
 	}
@@ -218,22 +216,33 @@ namespace Acetamide
 	{
 		if (ChannelHandlers_.contains (channel) &&
 				!ChannelHandlers_ [channel]->IsRosterReceived ())
+		{
 			ChannelHandlers_ [channel]->SetRosterReceived (true);
+			ISH_->GetAccount ()->handleGotRosterItems (QObjectList () << ChannelHandlers_ [channel]->GetCLEntry ());
+		}
 		else
 			ReceiveCmdAnswerMessage ("names", "End of /NAMES", true);
 	}
 
 	void ChannelsManager::SendPublicMessage (const QString& channel, const QString& msg)
 	{
+		LastActiveChannel_ = channel.toLower ();
 		const QString& chnnl = channel.toLower ();
 		if (msg.startsWith ('/'))
 		{
 			if (ChannelHandlers_.contains (chnnl))
 			{
-				AddCommand2Queue (chnnl, ISH_->ParseMessageForCommand (msg, chnnl));
-				ChannelHandlers_ [chnnl]->HandleServiceMessage (msg,
-						IMessage::MTEventMessage,
-						IMessage::MSTOther);
+				const QString& cmd = ISH_->ParseMessageForCommand (msg, chnnl);
+				if (cmd == "say")
+					ChannelHandlers_ [chnnl]->HandleIncomingMessage (ISH_->GetNickName (),
+							msg.mid (4));
+				else if (cmd == "me")
+					ChannelHandlers_ [chnnl]->HandleIncomingMessage (ISH_->GetNickName (),
+							msg);
+				else
+					ChannelHandlers_ [chnnl]->HandleServiceMessage (msg,
+							IMessage::MTEventMessage,
+							IMessage::MSTOther);
 			}
 		}
 		else
@@ -253,23 +262,18 @@ namespace Acetamide
 			ChannelHandlers_ [chnnl]->HandleIncomingMessage (nick, msg);
 	}
 
-	void ChannelsManager::ReceiveCmdAnswerMessage (const QString& cmd,
+	bool ChannelsManager::ReceiveCmdAnswerMessage (const QString& cmd,
 			const QString& answer, bool endOfCmd)
 	{
-		if (CmdQueue_.isEmpty ())
-			return;
+		if (LastActiveChannel_.isEmpty () ||
+				!ChannelHandlers_.contains (LastActiveChannel_))
+			return false;
 
-		const CommandMessage& msg = CmdQueue_.head ();
-		if (msg.Cmd_ == cmd &&
-				ChannelHandlers_.contains (msg.Channel_))
-		{
-			ChannelHandlers_ [msg.Channel_]->HandleServiceMessage (answer,
-					IMessage::MTEventMessage,
-					IMessage::MSTOther);
-			if (!msg.IsLongAnwser_ ||
-					endOfCmd)
-				CmdQueue_.dequeue ();
-		}
+		ChannelHandlers_ [LastActiveChannel_]->HandleServiceMessage (answer,
+				IMessage::MTEventMessage,
+				IMessage::MSTOther);
+
+		return true;
 	}
 
 	void ChannelsManager::SetMUCSubject (const QString& channel, const QString& topic)
@@ -281,31 +285,26 @@ namespace Acetamide
 		ReceiveCmdAnswerMessage ("topic", topic, ISH_->IsCmdHasLongAnswer ("topic"));
 	}
 
+	void ChannelsManager::SetTopic (const QString& channel, const QString& topic)
+	{
+		ISH_->SetTopic (channel, topic);
+	}
+
 	void ChannelsManager::CTCPReply (const QString& msg)
 	{
-		Q_FOREACH (ChannelHandler *ich, ChannelHandlers_.values ())
+		Q_FOREACH (auto ich, ChannelHandlers_.values ())
 			ich->HandleServiceMessage (msg,
 					IMessage::MTServiceMessage,
 					IMessage::MSTOther);
-
-		const CommandMessage& cmdMsg = CmdQueue_.head ();
-		if (cmdMsg.Cmd_ == "ctcp")
-			CmdQueue_.dequeue ();
 	}
 
 	void ChannelsManager::CTCPRequestResult (const QString& msg)
 	{
-		Q_FOREACH (ChannelHandler *ich, ChannelHandlers_.values ())
+		Q_FOREACH (auto ich, ChannelHandlers_.values ())
 		{
 			ich->HandleServiceMessage (msg,
 					IMessage::MTServiceMessage,
 					IMessage::MSTOther);
-
-			if (CmdQueue_.isEmpty ())
-				continue;
-			const CommandMessage& msg = CmdQueue_.head ();
-			if (msg.Cmd_ == "ctcp")
-				CmdQueue_.dequeue ();
 		}
 	}
 
@@ -492,24 +491,25 @@ namespace Acetamide
 
 	void ChannelsManager::RequestWhoIs (const QString& channel, const QString& nick)
 	{
-		AddCommand2Queue (channel, "whois");
+		LastActiveChannel_ = channel;
 		ISH_->RequestWhoIs (nick);
 	}
 
 	void ChannelsManager::RequestWhoWas (const QString& channel, const QString& nick)
 	{
-		AddCommand2Queue (channel, "whowas");
+		LastActiveChannel_ = channel;
 		ISH_->RequestWhoWas (nick);
 	}
 
 	void ChannelsManager::RequestWho (const QString& channel, const QString& nick)
 	{
-		AddCommand2Queue (channel, "who");
+		LastActiveChannel_ = channel;
 		ISH_->RequestWho (nick);
 	}
 
-	void ChannelsManager::CTCPRequest (const QStringList& cmd)
+	void ChannelsManager::CTCPRequest (const QStringList& cmd, const QString& channel)
 	{
+		LastActiveChannel_ = channel;
 		ISH_->CTCPRequst (cmd);
 	}
 
@@ -535,14 +535,25 @@ namespace Acetamide
 		ISH_->CreateServerParticipantEntry (nick);
 	}
 
-	void ChannelsManager::AddCommand2Queue (const QString& channel, const QString& cmd)
+	void ChannelsManager::UpdateEntry (const WhoMessage& message)
 	{
-		CommandMessage msg;
-		msg.Channel_ = channel.toLower ();
-		msg.Cmd_ = cmd;
-		msg.IsLongAnwser_ = ISH_->IsCmdHasLongAnswer (cmd.toLower ());
+		if (!ChannelHandlers_.contains (message.Channel_.toLower ()))
+			return;
 
-		CmdQueue_.enqueue (msg);
+		ChannelHandlers_ [message.Channel_.toLower ()]->UpdateEntry (message);
+	}
+
+	int ChannelsManager::GetChannelUsersCount (const QString& channel)
+	{
+		if (!ChannelHandlers_.contains (channel.toLower ()))
+			return 0;
+
+		return ChannelHandlers_ [channel.toLower ()]->GetParticipants ().count ();
+	}
+
+	void ChannelsManager::ClosePrivateChat (const QString& nick)
+	{
+		ISH_->ClosePrivateChat (nick);
 	}
 
 	uint qHash (const ChannelOptions& opts)

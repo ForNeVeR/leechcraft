@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
+ * Copyright (C) 2011-2012  Minh Ngo
  * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,8 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_LAURE_PLAYLISTWIDGET_H
-#define PLUGINS_LAURE_PLAYLISTWIDGET_H
+#pragma once
 #include <QWidget>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/structures.h>
@@ -47,11 +46,14 @@ namespace Laure
 		QStandardItemModel *PlayListModel_;
 		PlayListView *PlayListView_;
 		QToolBar *ActionBar_;
+		std::shared_ptr<VLCWrapper> VLCWrapper_;
 	public:
 		/** @brief Constructs a new PlayListWidget class
 		 * with the given parent.
 		 */
 		PlayListWidget (QWidget* = 0);
+
+		void Init (std::shared_ptr<VLCWrapper> wrapper);
 	public slots:
 		/** @brief Is called when the media file has added to
 		 * VLCWrapper.
@@ -93,19 +95,6 @@ namespace Laure
 		 */
 		void metaChangedRequest (libvlc_meta_t type, const QString& value,
 				int index);
-		
-		/** @brief Is emitted when the item index is removed.
-		 * 
-		 * @param[out] index Item index.
-		 */
-		void itemRemoved (int index);
-		
-		/** @brief Notifies that the given item needs to be played.
-		 * 
-		 * @param[out] index The index of the item to play.
-		 */
-		void playItem (int index);
-		
 
 		void gotEntity (const Entity&);
 		void delegateEntity (const Entity&, int*, QObject**);
@@ -120,5 +109,3 @@ namespace Laure
 	};
 }
 }
-
-#endif // PLUGINS_LAURE_PLAYLISTWIDGET_H

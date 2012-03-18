@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_POSHUKU_PLUGINS_CLEANWEB_CLEANWEB_H
-#define PLUGINS_POSHUKU_PLUGINS_CLEANWEB_CLEANWEB_H
+#pragma once
+
 #include <memory>
 #include <QObject>
 #include <QMap>
@@ -53,7 +53,7 @@ namespace CleanWeb
 		Q_OBJECT
 		Q_INTERFACES (IInfo IHaveSettings IEntityHandler IStartupWizard IPlugin2)
 
-		boost::shared_ptr<Util::XmlSettingsDialog> SettingsDialog_;
+		std::shared_ptr<Util::XmlSettingsDialog> SettingsDialog_;
 		std::auto_ptr<QTranslator> Translator_;
 	public:
 		void Init (ICoreProxy_ptr);
@@ -101,5 +101,3 @@ namespace CleanWeb
 }
 }
 }
-
-#endif

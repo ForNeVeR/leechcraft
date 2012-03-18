@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011 Minh Ngo
+ * Copyright (C) 2011-2012  Minh Ngo
  * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -43,18 +43,6 @@ namespace Laure
 		setLayout (GridLayout_);
 		setVisible (false);
 		
-		QStringList headers;
-		
-		headers << tr ("Artist")
-				<< tr ("Title")
-				<< tr ("Album")
-				<< tr ("Genre")
-				<< tr ("Date");
-		for (int i = 1, count = PlayListModel_->columnCount ();
-				i < count; ++i)
-			PlayListModel_->setHeaderData (i, Qt::Horizontal,
-					headers [i - 1]);
-		
 		connect (PlayListModel_,
 				SIGNAL (itemChanged (QStandardItem*)),
 				this,
@@ -74,9 +62,10 @@ namespace Laure
 		auto menuAdd = new PlayListAddMenu (this);
 		auto menuMode = new PlaybackModeMenu (this);
 		
-		actionAdd->setProperty ("ActionIcon", "add");
-		actionRemove->setProperty ("ActionIcon", "remove");
-		actionExport->setProperty ("ActionIcon", "documentsaveas");
+		actionAdd->setProperty ("ActionIcon", "list-add");
+		actionRemove->setProperty ("ActionIcon", "list-remove");
+		actionExport->setProperty ("ActionIcon", "document-save-as");
+		actionPlayback->setProperty ("ActionIcon", "flag-black");
 		
 		actionAdd->setMenu (menuAdd);
 		actionAdd->setMenuRole (QAction::ApplicationSpecificRole);
@@ -107,14 +96,35 @@ namespace Laure
 				SIGNAL (playbackModeChanged (PlaybackMode)),
 				this,
 				SIGNAL (playbackModeChanged (PlaybackMode)));
-		connect (PlayListView_,
-				SIGNAL (itemRemoved (int)),
+	}
+	
+	void PlayListWidget::Init (std::shared_ptr<VLCWrapper> wrapper)
+	{
+		PlayListView_->Init (wrapper);
+		VLCWrapper_ = wrapper;
+		
+		VLCWrapper *w = wrapper.get ();
+		connect (this,
+				SIGNAL (itemAddedRequest (QString)),
+				w,
+				SLOT (addRow (QString)));
+
+		connect (this,
+				SIGNAL (playbackModeChanged (PlaybackMode)),
+				w,
+				SLOT (setPlaybackMode (PlaybackMode)));
+		connect (w,
+				SIGNAL (itemAdded (MediaMeta, QString)),
 				this,
-				SIGNAL (itemRemoved (int)));
-		connect (PlayListView_,
-				SIGNAL (playItem (int)),
+				SLOT (handleItemAdded (MediaMeta, QString)));
+		connect (w,
+				SIGNAL (itemPlayed (int)),
 				this,
-				SIGNAL (playItem (int)));
+				SLOT (handleItemPlayed (int)));
+		connect (this,
+				SIGNAL (metaChangedRequest (libvlc_meta_t, QString, int)),
+				w,
+				SLOT (setMeta (libvlc_meta_t, QString, int)));
 	}
 	
 	namespace
@@ -146,8 +156,7 @@ namespace Laure
 			return;
 		
 		emit metaChangedRequest (static_cast<libvlc_meta_t> (type),
-				item->data (Qt::DisplayRole).toString ()
-						.toAscii (),
+				item->data (Qt::DisplayRole).toString ().toUtf8 (),
 				item->row ());
 	}
 	

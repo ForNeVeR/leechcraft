@@ -105,6 +105,9 @@ SET (SRCS
 	groupsenddialog.cpp
 	actionsmanager.cpp
 	importmanager.cpp
+	accountactionsmanager.cpp
+	unreadqueuemanager.cpp
+	chatstyleoptionmanager.cpp
 	)
 SET (HEADERS
 	azoth.h
@@ -149,6 +152,9 @@ SET (HEADERS
 	groupsenddialog.h
 	actionsmanager.h
 	importmanager.h
+	accountactionsmanager.h
+	unreadqueuemanager.h
+	chatstyleoptionmanager.h
 	animatediconmanager.h
 	sourcetrackingmodel.h
 	interfaces/iprotocolplugin.h

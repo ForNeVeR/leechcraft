@@ -1,19 +1,6 @@
-IF (NOT QT_USE_FILE)
-	CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
-	IF (COMMAND cmake_policy)
-		cmake_policy (SET CMP0003 NEW)
-	ENDIF (COMMAND cmake_policy)
-
-	PROJECT (leechcraft_laure)
-
-	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
-	ENDIF (NOT CMAKE_MODULE_PATH)
-
-	FIND_PACKAGE (Boost REQUIRED)
-	FIND_PACKAGE (Qt4 REQUIRED)
-	FIND_PACKAGE (LeechCraft REQUIRED)
-ENDIF (NOT QT_USE_FILE)
+CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
+PROJECT (leechcraft_laure)
+INCLUDE (InitLCPlugin OPTIONAL)
 
 IF (NOT MSVC)
 	SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
@@ -22,7 +9,6 @@ ENDIF (NOT MSVC)
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 OPTION (TESTS_LAURE "Enable Laure tests" OFF)
-OPTION (ENABLE_LASTFM "Enable Last.fm submitter" ON)
 
 SET (QT_USE_QTGUI TRUE)
 SET (QT_USE_QTNETWORK TRUE)
@@ -34,13 +20,6 @@ ENDIF (TESTS_LAURE)
 
 FIND_PACKAGE (VLC REQUIRED)
 
-IF (ENABLE_LASTFM)
-	FIND_PACKAGE (LastFM REQUIRED)
-	IF (LastFM_FOUND)
-		ADD_DEFINITIONS (-DHAVE_LASTFM)
-	ENDIF (LastFM_FOUND)	
-ENDIF (ENABLE_LASTFM)
-
 IF (NOT MSVC)
 	FIND_PACKAGE (MAGIC REQUIRED)
 	IF (MAGIC_FOUND)
@@ -48,26 +27,19 @@ IF (NOT MSVC)
 	ENDIF (MAGIC_FOUND)
 ENDIF (NOT MSVC)
 
-IF (LastFM_FOUND)
-	ADD_DEFINITIONS (-DHAVE_LASTFM)
-ENDIF (LastFM_FOUND)
-
-IF (MAGIC_FOUND)
-	ADD_DEFINITIONS (-DHAVE_MAGIC)
-ENDIF (MAGIC_FOUND)
-
 INCLUDE (${QT_USE_FILE})
 INCLUDE_DIRECTORIES (
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}
 	${Boost_INCLUDE_DIR}
 	${LEECHCRAFT_INCLUDE_DIR}
-	${VLC_INCLUDE_DIR}
-	${LastFM_INCLUDE_DIR}
+	${VLC_INCLUDE_DIRS}
 	${MAGIC_INCLUDE_DIR}
 	)
 
 SET (SRCS
+	core.cpp
+	playliststatusdelegate.cpp
 	separateplayer.cpp
 	playbackmodemenu.cpp
 	nowplayingdelegate.cpp
@@ -84,6 +56,8 @@ SET (SRCS
 	laure.cpp
 	)
 SET (HEADERS
+	core.h
+	playliststatusdelegate.h
 	separateplayer.h
 	playbackmodemenu.h
 	nowplayingdelegate.h
@@ -103,11 +77,6 @@ SET (FORMS
 	laurewidget.ui
 	chooseurldialog.ui
 )
-
-IF (ENABLE_LASTFM)
-	SET (SRCS ${SRCS} lastfmsubmitter.cpp)
-	SET (HEADERS ${HEADERS} lastfmsubmitter.h)
-ENDIF (ENABLE_LASTFM)
 
 SET (RESOURCES laureresources.qrc)
 
@@ -136,7 +105,6 @@ TARGET_LINK_LIBRARIES (leechcraft_laure
 	${QT_LIBRARIES}
 	${LEECHCRAFT_LIBRARIES}
 	${VLC_LIBRARIES}
-	${LastFM_LIBRARIES}
 	${MAGIC_LIBRARIES}
 	)
 

@@ -45,6 +45,7 @@ SET (ACETAMIDE_SRCS
 	sortfilterproxymodel.cpp
 	usercommandmanager.cpp
 	xmlsettingsmanager.cpp
+	vcarddialog.cpp
 	)
 
 SET (ACETAMIDE_HEADERS
@@ -83,6 +84,7 @@ SET (ACETAMIDE_HEADERS
 	sortfilterproxymodel.h
 	usercommandmanager.h
 	xmlsettingsmanager.h
+	vcarddialog.h
 	)
 
 SET (ACETAMIDE_FORMS
@@ -95,10 +97,11 @@ SET (ACETAMIDE_FORMS
 	newnickservidentifydialog.ui
 	nickservidentifywidget.ui
 	serverinfowidget.ui
+	vcarddialog.ui
 	)
 SET (ACETAMIDE_RESOURCES azothacetamideresources.qrc)
 
-CreateTrVars ("azoth_acetamide" "de;en;fr;it;ru_RU;uk_UA" ACETAMIDE_TRANSLATIONS ACETAMIDE_COMPILED_TRANSLATIONS)
+CreateTrVars ("azoth_acetamide" "de;en;es;fr;it;ru_RU;uk_UA" ACETAMIDE_TRANSLATIONS ACETAMIDE_COMPILED_TRANSLATIONS)
 
 IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (ACETAMIDE_MOC_SRCS ${ACETAMIDE_HEADERS})

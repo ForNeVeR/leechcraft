@@ -35,9 +35,9 @@ namespace Azoth
 {
 namespace Xoox
 {
-	VCardDialog::VCardDialog (QWidget *parent)
+	VCardDialog::VCardDialog (GlooxAccount *acc, QWidget *parent)
 	: QDialog (parent)
-	, Account_ (0)
+	, Account_ (acc)
 	{
 		Ui_.setupUi (this);
 		connect (this,
@@ -78,8 +78,10 @@ namespace Xoox
 	{
 		VCard_ = vcard;
 
-		setWindowTitle (tr ("VCard for %1")
-					.arg (vcard.nickName ()));
+		const QString& forString = vcard.nickName ().isEmpty () ?
+				vcard.from () :
+				vcard.nickName ();
+		setWindowTitle (tr ("VCard for %1").arg (forString));
 
 		Ui_.EditJID_->setText (vcard.from ());
 		Ui_.EditRealName_->setText (vcard.fullName ());
@@ -92,6 +94,9 @@ namespace Xoox
 		QStringList phones;
 		Q_FOREACH (const QXmppVCardPhone& phone, vcard.phones ())
 		{
+			if (phone.number.isEmpty ())
+				continue;
+
 			QStringList attrs;
 			if (phone.isPref)
 				attrs << tr ("preferred");
@@ -111,6 +116,9 @@ namespace Xoox
 		QStringList emails;
 		Q_FOREACH (const QXmppVCardEmail& email, vcard.emails ())
 		{
+			if (email.address.isEmpty ())
+				continue;
+
 			QStringList attrs;
 			if (email.isPref)
 				attrs << tr ("preferred");
@@ -187,8 +195,8 @@ namespace Xoox
 			gapp (tr ("Version"), version.version ());
 			gapp (tr ("OS"), version.os ());
 
-			const QStringList& caps =
-					mgr->GetCaps (entry->GetVariantVerString (variant));
+			QStringList caps = mgr->GetCaps (entry->GetVariantVerString (variant));
+			caps.sort ();
 			if (caps.size ())
 				html += "<strong>" + tr ("Capabilities") +
 						"</strong>:<ul><li>" + caps.join ("</li><li>") + "</li></ul>";

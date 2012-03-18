@@ -304,9 +304,9 @@ namespace Azoth
 		return result;
 	}
 
-	QMap<QString, QList<QAction*> > Plugin::GetMenuActions () const
+	QMap<QString, QList<QAction*>> Plugin::GetMenuActions () const
 	{
-		QMap<QString, QList<QAction*> > result;
+		QMap<QString, QList<QAction*>> result;
 		result ["Azoth"] << MW_->GetMenuActions ();
 		return result;
 	}
@@ -343,6 +343,34 @@ namespace Azoth
 					SIGNAL (removeTab (QWidget*)));
 			emit addNewTab (tr ("Search"), search);
 			emit raiseTab (search);
+		}
+	}
+
+	void Plugin::RecoverTabs (const QList<TabRecoverInfo>& infos)
+	{
+		Q_FOREACH (const TabRecoverInfo& recInfo, infos)
+		{
+			QDataStream str (recInfo.Data_);
+			QByteArray context;
+			str >> context;
+
+			qDebug () << Q_FUNC_INFO << context;
+
+			if (context == "chattab")
+			{
+				ChatTabsManager::RestoreChatInfo info;
+				info.Props_ = recInfo.DynProperties_;
+				str >> info.EntryID_
+					>> info.Variant_;
+
+				QList<ChatTabsManager::RestoreChatInfo> infos;
+				infos << info;
+				Core::Instance ().GetChatTabsManager ()->EnqueueRestoreInfos (infos);
+			}
+			else
+				qWarning () << Q_FUNC_INFO
+						<< "unknown context"
+						<< context;
 		}
 	}
 

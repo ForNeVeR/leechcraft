@@ -68,11 +68,6 @@ namespace Poshuku
 		QNetworkAccessManager *NetworkAccessManager_;
 		WebPluginFactory *WebPluginFactory_;
 
-		bool IsShuttingDown_;
-		QList<int> RestoredURLs_;
-
-		QMap<QString, QString> SavedSession_;
-		QList<QAction*> Unclosers_;
 		IShortcutProxy *ShortcutProxy_;
 
 		ICoreProxy_ptr Proxy_;
@@ -116,7 +111,8 @@ namespace Poshuku
 		void AddPlugin (QObject*);
 
 		QUrl MakeURL (QString);
-		BrowserWidget* NewURL (const QUrl&, bool = false);
+		BrowserWidget* NewURL (const QUrl&, bool = false,
+				const QList<QPair<QByteArray, QVariant>>& = QList<QPair<QByteArray, QVariant>> ());
 		BrowserWidget* NewURL (const QString&, bool = false);
 		IWebWidget* GetWidget ();
 		CustomWebView* MakeWebView (bool = false);
@@ -157,7 +153,6 @@ namespace Poshuku
 		void importXbel ();
 		void exportXbel ();
 	private slots:
-		void handleUnclose ();
 		void handleTitleChanged (const QString&);
 		void handleURLChanged (const QString&);
 		void handleIconChanged (const QIcon&);
@@ -178,7 +173,6 @@ namespace Poshuku
 		void gotEntity (const LeechCraft::Entity&);
 		void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
 		void couldHandle (const LeechCraft::Entity&, bool*);
-		void newUnclose (QAction*);
 		void bookmarkAdded (const QString&);
 		void bookmarkRemoved (const QString&);
 

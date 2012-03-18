@@ -141,6 +141,7 @@ OPTION (ENABLE_LASTFMSCROBBLE "Build Last.fm scrobbler" OFF)
 OPTION (ENABLE_LHTR "Build LeechCraft HTML Text editoR" ${WITH_PLUGINS})
 OPTION (ENABLE_GACTS "Build Global Actions provider plugin" OFF)
 OPTION (ENABLE_CEMENTO "Build Cemento, LeechCraft common persistent storage" OFF)
+OPTION (ENABLE_PINTAB "Build Pintab for pinning important tabs" ${WITH_PLUGINS})
 
 # Defunct
 OPTION (ENABLE_TABPP "Build Tab++, the enhanced tab manager" OFF)
@@ -353,6 +354,10 @@ ENDIF (ENABLE_CEMENTO)
 IF (ENABLE_GACTS)
 	ADD_SUBDIRECTORY (plugins/gacts)
 ENDIF (ENABLE_GACTS)
+
+IF (ENABLE_PINTAB)
+	ADD_SUBDIRECTORY (plugins/pintab)
+ENDIF (ENABLE_PINTAB)
 
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
@@ -579,7 +584,7 @@ INSTALL (FILES xmlsettingsdialog/datasourceroles.h DESTINATION include/leechcraf
 INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/leechcraft/)
 
 INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/FindLeechCraft.cmake DESTINATION share/leechcraft/cmake/)
-INSTALL (FILES InitLCPlugin.cmake DESTINATION /usr/share/cmake/Modules)
+INSTALL (FILES InitLCPlugin.cmake DESTINATION share/cmake/Modules)
 
 INSTALL (DIRECTORY freedesktop/icons/ DESTINATION share/icons/hicolor
 	PATTERN ".svn" EXCLUDE)

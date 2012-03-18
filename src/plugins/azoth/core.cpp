@@ -207,6 +207,10 @@ namespace Azoth
 				SIGNAL (clearUnreadMsgCount (QObject*)),
 				this,
 				SLOT (handleClearUnreadMsgCount (QObject*)));
+		connect (this,
+				SIGNAL (hookAddingCLEntryEnd (LeechCraft::IHookProxy_ptr, QObject*)),
+				ChatTabsManager_,
+				SLOT (handleAddingCLEntryEnd (LeechCraft::IHookProxy_ptr, QObject*)));
 		connect (XferJobManager_.get (),
 				SIGNAL (jobNoLongerOffered (QObject*)),
 				this,
@@ -1186,7 +1190,7 @@ namespace Azoth
 		if (mucPerms)
 		{
 			tip += "<hr />";
-			const QMap<QByteArray, QList<QByteArray> >& perms =
+			const QMap<QByteArray, QList<QByteArray>>& perms =
 					mucPerms->GetPerms (entry->GetObject ());
 			Q_FOREACH (const QByteArray& permClass, perms.keys ())
 			{
@@ -1459,8 +1463,10 @@ namespace Azoth
 		if (avatar.isNull () || !avatar.width ())
 			avatar = GetDefaultAvatar (size);
 
-		const QImage& scaled = avatar.scaled (size, size,
-				Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		const QImage& scaled = avatar.isNull () ?
+				QImage () :
+				avatar.scaled (size, size,
+						Qt::KeepAspectRatio, Qt::SmoothTransformation);
 		Entry2SmoothAvatarCache_ [entry] = scaled;
 		return scaled;
 	}
@@ -1471,8 +1477,10 @@ namespace Azoth
 				.property ("SystemIcons").toString () + "/default_avatar";
 		const QImage& image = ResourceLoaders_ [RLTSystemIconLoader]->
 				LoadPixmap (name).toImage ();
-		return image.scaled (size, size,
-				Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		return image.isNull () ?
+				QImage () :
+				image.scaled (size, size,
+						Qt::KeepAspectRatio, Qt::SmoothTransformation);
 	}
 
 	ActionsManager* Core::GetActionsManager () const
@@ -1665,8 +1673,17 @@ namespace Azoth
 
 	void Core::UpdateInitState (State state)
 	{
+		if (state == SConnecting)
+			return;
+
 		const State prevTop = FindTop (StateCounter_);
-		++StateCounter_ [state];
+
+		StateCounter_.clear ();
+		Q_FOREACH (IAccount *acc, GetAccounts ())
+			++StateCounter_ [acc->GetState ().State_];
+
+		StateCounter_.remove (SOffline);
+
 		const State newTop = FindTop (StateCounter_);
 
 		if (newTop != prevTop)
@@ -1870,9 +1887,9 @@ namespace Azoth
 				QDataStream stream (var.toByteArray ());
 				stream >> s;
 				account->ChangeState (s);
-
-				UpdateInitState (s.State_);
 			}
+			else
+				UpdateInitState (account->GetState ().State_);
 		}
 		else
 			qWarning () << Q_FUNC_INFO
@@ -2035,6 +2052,8 @@ namespace Azoth
 					<< acc->GetParentProtocol ();
 			return;
 		}
+
+		UpdateInitState (status.State_);
 
 		if (status.State_ == SOffline)
 			LastAccountStatusChange_.remove (acc);
@@ -2358,7 +2377,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[parentCL, ChatTabsManager_] () { ChatTabsManager_->OpenChat (parentCL); });
+				[parentCL, this] () { ChatTabsManager_->OpenChat (parentCL); });
 		nh->AddDependentObject (parentCL->GetObject ());
 
 		emit gotEntity (e);
@@ -2438,7 +2457,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[entry, ChatTabsManager_] () { ChatTabsManager_->OpenChat (entry); });
+				[entry, this] () { ChatTabsManager_->OpenChat (entry); });
 		nh->AddDependentObject (entry->GetObject ());
 
 		emit gotEntity (e);
@@ -2679,8 +2698,14 @@ namespace Azoth
 		e.Additional_ ["org.LC.AdvNotifications.Count"] = 1;
 		e.Additional_ ["org.LC.Plugins.Azoth.Msg"] = reason;
 
+		const auto cancel = Util::MakeANCancel (e);
+
 		Util::NotificationActionHandler *nh = new Util::NotificationActionHandler (e);
-		nh->AddFunction (tr ("Join"), [this, acc, ident] () { SuggestJoiningMUC (acc, ident); });
+		nh->AddFunction (tr ("Join"), [this, acc, ident, cancel] ()
+				{
+					SuggestJoiningMUC (acc, ident);
+					emit gotEntity (cancel);
+				});
 		nh->AddDependentObject (acc->GetObject ());
 
 		emit gotEntity (e);

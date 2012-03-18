@@ -103,6 +103,9 @@ namespace Azoth
 	, MainMenu_ (new QMenu (tr ("Azoth menu"), this))
 	, MenuButton_ (new QToolButton (this))
 	, ProxyModel_ (new SortFilterProxyModel (this))
+	, FastStatusButton_ (new QToolButton (this))
+	, ActionCLMode_ (new QAction (tr ("CL mode"), this))
+	, ActionShowOffline_ (0)
 	, BottomBar_ (new QToolBar (tr ("Azoth bar"), this))
 	, AccountActsMgr_ (new AccountActionsManager (this, this))
 	{
@@ -119,11 +122,11 @@ namespace Azoth
 
 		MainMenu_->setIcon (QIcon (":/plugins/azoth/resources/images/azoth.svg"));
 
-		BottomBar_->setSizePolicy (QSizePolicy::Fixed, QSizePolicy::Preferred);
 		BottomBar_->addWidget (MenuButton_);
+		BottomBar_->addWidget (FastStatusButton_);
+		FastStatusButton_->setPopupMode (QToolButton::MenuButtonPopup);
 
 		Ui_.setupUi (this);
-		qobject_cast<QVBoxLayout*> (layout ())->insertWidget (0, BottomBar_);
 		Ui_.FilterLine_->setPlaceholderText (tr ("Search..."));
 		Ui_.CLTree_->setFocusProxy (Ui_.FilterLine_);
 
@@ -194,10 +197,10 @@ namespace Azoth
 
 		MenuChangeStatus_->menuAction ()->setProperty ("ActionIcon", "im-status-message-edit");
 
-		Ui_.FastStatusButton_->setMenu (CreateStatusChangeMenu (SLOT (fastStateChangeRequested ()), true));
-		Ui_.FastStatusButton_->setDefaultAction (new QAction (tr ("Set status"), this));
+		FastStatusButton_->setMenu (CreateStatusChangeMenu (SLOT (fastStateChangeRequested ()), true));
+		FastStatusButton_->setDefaultAction (new QAction (tr ("Set status"), this));
 		updateFastStatusButton (SOffline);
-		connect (Ui_.FastStatusButton_->defaultAction (),
+		connect (FastStatusButton_->defaultAction (),
 				SIGNAL (triggered ()),
 				this,
 				SLOT (applyFastStatus ()));
@@ -206,15 +209,16 @@ namespace Azoth
 				this, "menuBarVisibilityToggled");
 		menuBarVisibilityToggled ();
 
+		XmlSettingsManager::Instance ().RegisterObject ("StatusIcons",
+				this, "handleStatusIconsChanged");
+		handleStatusIconsChanged ();
+
 		connect (&Core::Instance (),
 				SIGNAL (topStatusChanged (LeechCraft::Azoth::State)),
 				this,
 				SLOT (updateFastStatusButton (LeechCraft::Azoth::State)));
 
-		adjustSize ();
-		layout ()->update ();
-		qDebug () << "BottomBar" << BottomBar_->width () << BottomBar_->sizeHint ()
-				<< BottomBar_->sizePolicy ().horizontalPolicy () << BottomBar_->sizePolicy ().horizontalStretch ();
+		qobject_cast<QVBoxLayout*> (layout ())->insertWidget (0, BottomBar_);
 	}
 
 	QList<QAction*> MainWidget::GetMenuActions()
@@ -242,39 +246,44 @@ namespace Azoth
 		joinConf->setProperty ("ActionIcon", "irc-join-channel");
 
 		MainMenu_->addSeparator ();
-
 		MainMenu_->addAction (tr ("Manage bookmarks..."),
 				this,
 				SLOT (handleManageBookmarks ()));
-
 		MainMenu_->addSeparator ();
-
 		MainMenu_->addAction (tr ("Add account..."),
 				this,
 				SLOT (handleAddAccountRequested ()));
-
 		MainMenu_->addSeparator ();
 
-		QAction *showOffline = MainMenu_->addAction (tr ("Show offline contacts"));
-		showOffline->setProperty ("ActionIcon", "view-user-offline-kopete");
-		showOffline->setCheckable (true);
+		ActionShowOffline_ = MainMenu_->addAction (tr ("Show offline contacts"));
+		ActionShowOffline_->setCheckable (true);
 		bool show = XmlSettingsManager::Instance ()
 				.Property ("ShowOfflineContacts", true).toBool ();
 		ProxyModel_->showOfflineContacts (show);
-		showOffline->setChecked (show);
-		connect (showOffline,
+		ActionShowOffline_->setChecked (show);
+		connect (ActionShowOffline_,
 				SIGNAL (toggled (bool)),
 				this,
 				SLOT (handleShowOffline (bool)));
 
+		ActionCLMode_->setCheckable (true);
+		ActionCLMode_->setProperty ("ActionIcon", "meeting-attending");
+		connect (ActionCLMode_,
+				SIGNAL (toggled (bool)),
+				this,
+				SLOT (handleCLMode (bool)));
+
+		BottomBar_->setToolButtonStyle (Qt::ToolButtonIconOnly);
+
 		auto addBottomAct = [this] (QAction *act)
 		{
+			const QString& icon = act->property ("ActionIcon").toString ();
+			act->setIcon (Core::Instance ().GetProxy ()->GetIcon (icon));
 			BottomBar_->addAction (act);
-			const int count = BottomBar_->actions ().count ();
-			BottomBar_->setMaximumWidth ((32 + 2) * count + 10);
 		};
 		addBottomAct (addContact);
-		addBottomAct (showOffline);
+		addBottomAct (ActionShowOffline_);
+		addBottomAct (ActionCLMode_);
 	}
 
 	QMenu* MainWidget::CreateStatusChangeMenu (const char *slot, bool withCustom)
@@ -317,8 +326,8 @@ namespace Azoth
 
 	void MainWidget::updateFastStatusButton (State state)
 	{
-		Ui_.FastStatusButton_->defaultAction ()->setIcon (Core::Instance ().GetIconForState (state));
-		Ui_.FastStatusButton_->setProperty ("Azoth/TargetState",
+		FastStatusButton_->defaultAction ()->setIcon (Core::Instance ().GetIconForState (state));
+		FastStatusButton_->setProperty ("Azoth/TargetState",
 				QVariant::fromValue<State> (state));
 	}
 
@@ -476,7 +485,7 @@ namespace Azoth
 
 	void MainWidget::applyFastStatus ()
 	{
-		State state = Ui_.FastStatusButton_->
+		State state = FastStatusButton_->
 				property ("Azoth/TargetState").value<State> ();
 
 		EntryStatus status (state, QString ());
@@ -626,7 +635,7 @@ namespace Azoth
 		const bool isMUC = qobject_cast<IMUCEntry*> (obj);
 
 		if (XmlSettingsManager::Instance ().property ("AutoMUCMode").toBool ())
-			Ui_.RosterMode_->setCurrentIndex (isMUC ? 1 : 0);
+			ActionCLMode_->setChecked (isMUC);
 
 		if (isMUC)
 			ProxyModel_->SetMUC (obj);
@@ -634,13 +643,11 @@ namespace Azoth
 
 	void MainWidget::resetToWholeMode ()
 	{
-		Ui_.RosterMode_->setCurrentIndex (0);
+		ActionCLMode_->setChecked (false);
 	}
 
-	void MainWidget::on_RosterMode__currentIndexChanged (int index)
+	void MainWidget::handleCLMode (bool mucMode)
 	{
-		const bool mucMode = index == 1;
-
 		if (mucMode)
 		{
 			FstLevelExpands_.clear ();
@@ -695,6 +702,11 @@ namespace Azoth
 		BottomBar_->setVisible (XmlSettingsManager::Instance ().property ("ShowMenuBar").toBool ());
 	}
 
+	void MainWidget::handleStatusIconsChanged ()
+	{
+		ActionShowOffline_->setIcon (Core::Instance ().GetIconForState (SOffline));
+	}
+
 	namespace
 	{
 		QString BuildPath (const QModelIndex& index)
@@ -725,7 +737,8 @@ namespace Azoth
 			{
 				const QString& path = BuildPath (index);
 
-				const bool expanded = XmlSettingsManager::Instance ().Property (path, true).toBool ();
+				const bool expanded = ProxyModel_->IsMUCMode () ||
+						XmlSettingsManager::Instance ().Property (path, true).toBool ();
 				if (expanded)
 					QMetaObject::invokeMethod (this,
 							"expandIndex",
@@ -736,18 +749,22 @@ namespace Azoth
 					handleRowsInserted (index, 0, ProxyModel_->rowCount (index) - 1);
 			}
 			else if (type == Core::CLETAccount)
+			{
 				QMetaObject::invokeMethod (this,
 						"expandIndex",
 						Qt::QueuedConnection,
 						Q_ARG (QPersistentModelIndex, QPersistentModelIndex (index)));
+
+				if (clModel->rowCount (index))
+					handleRowsInserted (index, 0, ProxyModel_->rowCount (index) - 1);
+			}
 		}
 	}
 
 	void MainWidget::rebuildTreeExpansions ()
 	{
-		if (Core::Instance ().GetCLModel ()->rowCount ())
-			handleRowsInserted (QModelIndex (),
-					0, Core::Instance ().GetCLModel ()->rowCount () - 1);
+		if (ProxyModel_->rowCount ())
+			handleRowsInserted (QModelIndex (), 0, ProxyModel_->rowCount () - 1);
 	}
 
 	void MainWidget::expandIndex (const QPersistentModelIndex& pIdx)

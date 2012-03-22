@@ -287,6 +287,7 @@ OPTION (ENABLE_LHTR "Build LeechCraft HTML Text editoR" ${WITH_PLUGINS})
 OPTION (ENABLE_GACTS "Build Global Actions provider plugin" OFF)
 OPTION (ENABLE_CEMENTO "Build Cemento, LeechCraft common persistent storage" OFF)
 OPTION (ENABLE_PINTAB "Build Pintab for pinning important tabs" ${WITH_PLUGINS})
+OPTION (ENABLE_OTLOZHU "Build Otlozhu, a GTD-inspired ToDo manager" OFF)
 
 # Defunct
 OPTION (ENABLE_TABPP "Build Tab++, the enhanced tab manager" OFF)
@@ -504,6 +505,10 @@ ENDIF (ENABLE_GACTS)
 IF (ENABLE_PINTAB)
 	ADD_SUBDIRECTORY (plugins/pintab)
 ENDIF (ENABLE_PINTAB)
+
+IF (ENABLE_OTLOZHU)
+	ADD_SUBDIRECTORY (plugins/otlozhu)
+ENDIF (ENABLE_OTLOZHU)
 
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)

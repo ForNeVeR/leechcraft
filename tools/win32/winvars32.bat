@@ -7,32 +7,35 @@ rem == Build variables ==
 
 call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\vcvars32.bat" x86
 
-set QTDIR=C:\Qt\4.8.0
+set QTDIR=C:\Project\QtSDK\Desktop\Qt\4.8.0\msvc2010
 
-set BOOST_ROOT=C:\boost
-set TORRENT_DIR=C:\DEVLIBS\libtorrent-rasterbar-0.15.9
-set QXMPP_LOCAL=C:\DEVLIBS\qxmpp-dev
-set QJSON_DIR=C:\DEVLIBS\qjson-0.7.1
-set SPEEX_DIR=C:\DEVLIBS\speex-1.2rc1
+set BOOST_ROOT=C:\Project\boost_1_48_0
+set TORRENT_DIR=C:\Project\libtorrent
+set QXMPP_LOCAL=C:\Project\qxmpp-dev
+set QJSON_DIR=C:\Project\qjson
+set SPEEX_DIR=C:\Project\speex-1.2rc1
 rem Go to http://wiki.videolan.org/GenerateLibFromDll first!
 rem Generate libs into this folder
-set VLC_DIR=C:\DEVLIBS\vlc-1.1.11-win32\vlc-1.1.11
-set QWT_DIR=C:\DEVLIBS\qwt-6.0.1
+set VLC_DIR=C:\Project\vlc-2.1.0-git-20120204-0003\
+set QWT_DIR=C:\Project\qwt-6.0
+set OXYGENICONS_DIR=C:\Project\oxygen-icons-4.8.0
 
 set BUILD_RELEASE_AND_DEBUG=1
 
 rem == Collect variables ==
 
-set BUILD_TYPE=Release
+set BUILD_TYPE=Debug
+set CMAKE_GENERATOR="Visual Studio 10"
 
 rem Set these variables to proper paths of your system:
 
 set BOOST_BIN_DIR="%BOOST_ROOT%\stage\lib"
 set BOOST_VERSION="1_48"
 set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\Release\boost-link-shared\boost-source\threading-multi"
-set OPENSSL_BIN_DIR="C:\DEVLIBS\OpenSSL-Win32"
+set OPENSSL_BIN_DIR="C:\Project\OpenSSL-Win32\"
 set QT_BIN_DIR="%QTDIR%\bin"
 set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\MinSizeRel\"
+set QWT_INCLUDE_DIR="%QWT_DIR%\src\"
 
 set LEECHCRAFT_ROOT_DIR="..\.."
 set LEECHCRAFT_BUILD_DIR="build32"

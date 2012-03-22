@@ -2,17 +2,162 @@ cmake_minimum_required(VERSION 2.6)
 IF (COMMAND cmake_policy)
 	cmake_policy (SET CMP0003 NEW)
 ENDIF (COMMAND cmake_policy)
+
+#
+# inherit_value - if the symbol is undefined then set it to the given value.
+# Set flag to indicate this symbol was defined here.
+#
+MACRO (inherit_value theSymbol theValue)
+    if (NOT DEFINED ${theSymbol})
+        set (${theSymbol} ${theValue})
+        # message ("Set symbol '${theSymbol}' to value '${theValue}'")
+        set (${theSymbol}_inherited = "true")
+    endif (NOT DEFINED ${theSymbol})
+ENDMACRO (inherit_value)
+
+#
+# If compiler is Visual Studio then create a "version resource" for the project.
+# Use this call to override CPACK and file global settings but not file per-project settings.
+# Two groups of four version numbers specify "file" and "product" versions separately.
+#
+# Sample: add_msvc_version_full (lcutil library dll 1 0 0 1 1 0 0 1)
+#
+MACRO (add_msvc_version_full verProject verProjectType verProjectFileExt verFN1 verFN2 verFN3 verFN4 verPN1 verPN2 verPN3 verPN4)
+    if (MSVC)
+        # Create project-specific version strings
+        inherit_value ("winver_${verProject}_FileVersionBinary"    "${verFN1},${verFN2},${verFN3},${verFN4}")
+        inherit_value ("winver_${verProject}_ProductVersionBinary" "${verPN1},${verPN2},${verPN3},${verPN4}")
+        inherit_value ("winver_${verProject}_FileVersionString"    "${verFN1}, ${verFN2}, ${verFN3}, ${verFN4}")
+        inherit_value ("winver_${verProject}_ProductVersionString" "${verPN1}, ${verPN2}, ${verPN3}, ${verPN4}")
+        inherit_value ("winver_${verProject}_FileDescription"      "${winver_PACKAGE_NAME}-${verProject} ${verProjectType}")
+        inherit_value ("winver_${verProject}_LegalCopyright"       "${winver_LEGAL_COPYRIGHT}")
+		inherit_value ("winver_${verProject}_CompanyName"          "${winver_COMPANY_NAME}")
+        inherit_value ("winver_${verProject}_InternalName"         "${verProject}")
+        inherit_value ("winver_${verProject}_OriginalFilename"     "${verProject}.${verProjectFileExt}")
+        inherit_value ("winver_${verProject}_ProductName"          "${winver_DESCRIPTION_SUMMARY}")
+        
+        # Create strings to be substituted into the template file
+        set ("winverFileVersionBinary"     "${winver_${verProject}_FileVersionBinary}")
+        set ("winverProductVersionBinary"  "${winver_${verProject}_ProductVersionBinary}")
+        set ("winverFileVersionString"     "${winver_${verProject}_FileVersionString}")
+        set ("winverProductVersionString"  "${winver_${verProject}_ProductVersionString}")
+        set ("winverFileDescription"       "${winver_${verProject}_FileDescription}")
+        set ("winverLegalCopyright"        "${winver_${verProject}_LegalCopyright}")
+		set ("winverCompanyName"           "${winver_${verProject}_CompanyName}")
+        set ("winverInternalName"          "${winver_${verProject}_InternalName}")
+        set ("winverOriginalFilename"      "${winver_${verProject}_OriginalFilename}")
+        set ("winverProductName"           "${winver_${verProject}_ProductName}")
+		if (${verProjectType} STREQUAL "application")
+			configure_file(${PROJECT_SOURCE_DIR}/resources/template-resource-app.rc
+                         resources/${verProject}-resource.rc)
+		elseif (${verProjectType} STREQUAL "library")
+			configure_file(${PROJECT_SOURCE_DIR}/resources/template-resource-dll.rc
+                         resources/${verProject}-resource.rc)
+		endif (${verProjectType} STREQUAL "application")
+
+        set (${verProject}_SRCS
+            ${${verProject}_SRCS}
+            resources/${verProject}-resource.rc
+        )
+    endif (MSVC)
+ENDMACRO (add_msvc_version_full)
+
+#
+# If compiler is Visual Studio then create a "version resource" for the project.
+# Use this call to accept file override version settings or
+#  inherited CPACK_PACKAGE_VERSION version settings.
+#
+# Sample: add_msvc_version (qpidcommon library dll)
+#
+MACRO (add_msvc_version verProject verProjectType verProjectFileExt)
+    if (MSVC)
+        add_msvc_version_full (${verProject} 
+                               ${verProjectType}
+                               ${verProjectFileExt}
+                               ${winver_FILE_VERSION_N1}
+                               ${winver_FILE_VERSION_N2}
+                               ${winver_FILE_VERSION_N3}
+                               ${winver_FILE_VERSION_N4}
+                               ${winver_PRODUCT_VERSION_N1}
+                               ${winver_PRODUCT_VERSION_N2}
+                               ${winver_PRODUCT_VERSION_N3}
+                               ${winver_PRODUCT_VERSION_N4})
+    endif (MSVC)
+ENDMACRO (add_msvc_version)
+
+
+#
+# Install optional windows version settings. Override variables are specified in a file.
+#
+INCLUDE (./CMakeWinVersions.cmake OPTIONAL)
+
 PROJECT (leechcraft)
 #IF (NOT DISABLE_RPATH_TRICKS)
 #	SET (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 #	SET (CMAKE_BUILD_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 #	SET (CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 #ENDIF (NOT DISABLE_RPATH_TRICKS)
+
+IF (NOT DEFINED LEECHCRAFT_VERSION)
+	IF (WIN32)
+		FIND_PROGRAM (GIT_CMD
+			NAMES git git.cmd
+			PATH_SUFFIXES Git/cmd Git/bin
+			)
+	ELSE (WIN32)
+		FIND_PROGRAM (GIT_CMD git)
+	ENDIF (WIN32)
+	MESSAGE (STATUS "Git cmd: ${GIT_CMD}")
+		EXECUTE_PROCESS (COMMAND "${GIT_CMD}" "--git-dir=${CMAKE_CURRENT_SOURCE_DIR}/../.git" describe
+			OUTPUT_VARIABLE LEECHCRAFT_VERSION
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			)
+	IF (NOT DEFINED LEECHCRAFT_VERSION)
+		IF (WIN32)
+			EXECUTE_PROCESS(COMMAND "date" "/T" OUTPUT_VARIABLE
+				${LEECHCRAFT_VERSION})
+			STRING(REGEX REPLACE "(..)\.(..)\...(..).*" "\\3\\2\\1"
+				${LEECHCRAFT_VERSION} ${${LEECHCRAFT_VERSION}})
+		ELSEIF(UNIX)
+			EXECUTE_PROCESS(COMMAND "date" "+%d/%m/%Y" OUTPUT_VARIABLE
+				${LEECHCRAFT_VERSION})
+			STRING(REGEX REPLACE "(..)/(..)/..(..).*" "\\3\\2\\1"
+				${LEECHCRAFT_VERSION} ${${LEECHCRAFT_VERSION}})
+		ELSE (WIN32)
+			MESSAGE(SEND_ERROR "date not implemented")
+			SET(${RESULT} 000000)
+		ENDIF (WIN32)
+	ENDIF (NOT DEFINED LEECHCRAFT_VERSION)
+	MESSAGE (STATUS "Configuring LeechCraft version: ${LEECHCRAFT_VERSION}")
+	IF (MSVC)
+		STRING(REGEX REPLACE "[.-]" ";" LEECHCRAFT_VERSION_LIST ${LEECHCRAFT_VERSION})
+		list(GET LEECHCRAFT_VERSION_LIST 0 winver_FILE_VERSION_N1)
+		list(GET LEECHCRAFT_VERSION_LIST 1 winver_FILE_VERSION_N2)
+		list(GET LEECHCRAFT_VERSION_LIST 2 winver_FILE_VERSION_N3)
+		list(GET LEECHCRAFT_VERSION_LIST 3 winver_FILE_VERSION_N4)
+		list(GET LEECHCRAFT_VERSION_LIST 0 winver_PRODUCT_VERSION_N1)
+		list(GET LEECHCRAFT_VERSION_LIST 1 winver_PRODUCT_VERSION_N2)
+		list(GET LEECHCRAFT_VERSION_LIST 2 winver_PRODUCT_VERSION_N3)
+		list(GET LEECHCRAFT_VERSION_LIST 3 winver_PRODUCT_VERSION_N4)
+		IF(NOT winver_FILE_VERSION_N4)
+			set ("winver_FILE_VERSION_N4"      "0")
+			set ("winver_PRODUCT_VERSION_N4"   "0")	
+		ENDIF (NOT winver_FILE_VERSION_N4)
+	ENDIF (MSVC)
+ENDIF (NOT DEFINED LEECHCRAFT_VERSION)
+
 IF (MSVC)
 	SET (CMAKE_CXX_FLAGS "/EHa /W3")
-	SET (CMAKE_CXX_FLAGS_RELEASE "/Ob2 /O2 /Ot /Oi /Oy /GT /GL /MD /D NDEBUG")
-	SET (CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /GT /MDd")
+	SET (CMAKE_CXX_FLAGS_RELEASE "/Ob2 /O2 /Ot /Oi /Oy /GT /GL /MD /MP /D NDEBUG")
+	SET (CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /GT /MDd /Gm")
 
+	# Change warning C4996 from level 1 to level 4. These are real and shouldn't
+	# be completely ignored, but they're pretty well checked out and will throw
+	# a run-time error if violated.
+	# "warning C4996: 'std::equal': Function call with parameters that may
+	# be unsafe..."
+	add_definitions(/w44996)
+	
 	SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 	INCLUDE (LibHelperWin32Macros)
 ENDIF (MSVC)
@@ -247,6 +392,7 @@ ENDIF (ENABLE_TABPP)
 IF (ENABLE_EISKALTDCPP)
 	ADD_SUBDIRECTORY (plugins/eiskaltdcpp)
 ENDIF (ENABLE_EISKALTDCPP)
+
 IF (ENABLE_AZOTH)
 	ADD_SUBDIRECTORY (plugins/azoth)
 ENDIF (ENABLE_AZOTH)
@@ -369,7 +515,7 @@ INCLUDE_DIRECTORIES (${CMAKE_CURRENT_BINARY_DIR}
 	${Boost_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR})
 
-SET (SRCS
+SET (leechcraft_SRCS
 	mainwindow.cpp
 	commonjobadder.cpp
 	core.cpp
@@ -416,7 +562,7 @@ SET (SRCS
 	coreplugin2manager.cpp
 	dockmanager.cpp
 	)
-SET (HEADERS
+SET (leechcraft_HEADERS
 	mainwindow.h
 	commonjobadder.h
 	core.h
@@ -464,7 +610,7 @@ SET (HEADERS
 	3dparty/qxttooltip_p.h
 	interfaces/structures.h
 	)
-SET (FORMS
+SET (leechcraft_FORMS
 	commonjobadder.ui
 	leechcraft.ui
 	pluginmanagerdialog.ui
@@ -479,12 +625,12 @@ SET (FORMS
 	wizardtypechoicepage.ui
 	settingstab.ui
 	)
-SET (RESOURCES mainresources.qrc)
+SET (leechcraft_RESOURCES mainresources.qrc)
 
-SOURCE_GROUP ("core\\headers" FILES ${HEADERS})
-SOURCE_GROUP ("core\\sources" FILES ${SRCS})
-SOURCE_GROUP ("core\\forms" FILES ${FORMS})
-SOURCE_GROUP ("core\\resources" FILES ${RESOURCES})
+SOURCE_GROUP ("core\\headers" FILES ${leechcraft_HEADERS})
+SOURCE_GROUP ("core\\sources" FILES ${leechcraft_SRCS})
+SOURCE_GROUP ("core\\forms" FILES ${leechcraft_FORMS})
+SOURCE_GROUP ("core\\resources" FILES ${leechcraft_RESOURCES})
 
 CreateTrVars ("" "ru_RU;de;uk_UA;it;ar;eo;es;tr;en;be;fr;pl" TRANSLATIONS COMPILED_TRANSLATIONS)
 
@@ -492,10 +638,10 @@ ADD_DEFINITIONS (-DBOOST_PROGRAM_OPTIONS_DYN_LINK)
 ADD_DEFINITIONS (${QT_DEFINITIONS})
 
 IF (NOT LC_NO_MOC)
-	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
+	QT4_WRAP_CPP (MOC_SRCS ${leechcraft_HEADERS})
 ENDIF (NOT LC_NO_MOC)
-QT4_WRAP_UI (UIS_H ${FORMS})
-QT4_ADD_RESOURCES (RCC ${RESOURCES})
+QT4_WRAP_UI (UIS_H ${leechcraft_FORMS})
+QT4_ADD_RESOURCES (RCC ${leechcraft_RESOURCES})
 
 SOURCE_GROUP ("core\\generated_qt" FILES ${MOC_SRCS} ${UIS_H} ${RCC})
 
@@ -507,31 +653,6 @@ ADD_CUSTOM_COMMAND (OUTPUT
 	)
 
 SOURCE_GROUP("core\\translations" FILES ${COMPILED_TRANSLATIONS})
-
-IF (NOT DEFINED LEECHCRAFT_VERSION)
-	FIND_PROGRAM (GIT_CMD git)
-	EXECUTE_PROCESS (COMMAND "${GIT_CMD}" "--git-dir=${CMAKE_CURRENT_SOURCE_DIR}/../.git" describe
-		OUTPUT_VARIABLE LEECHCRAFT_VERSION
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-		)
-	IF (NOT DEFINED LEECHCRAFT_VERSION)
-		IF (WIN32)
-			EXECUTE_PROCESS(COMMAND "date" "/T" OUTPUT_VARIABLE
-				${LEECHCRAFT_VERSION})
-			STRING(REGEX REPLACE "(..)/(..)/..(..).*" "\\3\\2\\1"
-				${LEECHCRAFT_VERSION} ${${LEECHCRAFT_VERSION}})
-		ELSEIF(UNIX)
-			EXECUTE_PROCESS(COMMAND "date" "+%d/%m/%Y" OUTPUT_VARIABLE
-				${LEECHCRAFT_VERSION})
-			STRING(REGEX REPLACE "(..)/(..)/..(..).*" "\\3\\2\\1"
-				${LEECHCRAFT_VERSION} ${${LEECHCRAFT_VERSION}})
-		ELSE (WIN32)
-			MESSAGE(SEND_ERROR "date not implemented")
-			SET(${RESULT} 000000)
-		ENDIF (WIN32)
-	ENDIF (NOT DEFINED LEECHCRAFT_VERSION)
-	MESSAGE (STATUS "Detected LeechCraft version: ${LEECHCRAFT_VERSION}")
-ENDIF (NOT DEFINED LEECHCRAFT_VERSION)
 
 CONFIGURE_FILE (config.h.in config.h)
 CONFIGURE_FILE (FindLeechCraft.cmake.in FindLeechCraft.cmake @ONLY)
@@ -546,17 +667,18 @@ IF (UNIX)
 	ADD_EXECUTABLE (leechcraft WIN32
 		config.h
 		${COMPILED_TRANSLATIONS}
-		${SRCS}
+		${leechcraft_SRCS}
 		${MOC_SRCS}
 		${UIS_H}
 		${RCC}
 		data/leechcraft.1.gz
 		)
 ELSE (UNIX)
+	add_msvc_version (leechcraft application exe)
 	ADD_EXECUTABLE (leechcraft WIN32
 		config.h
 		${COMPILED_TRANSLATIONS}
-		${SRCS}
+		${leechcraft_SRCS}
 		${MOC_SRCS}
 		${UIS_H}
 		${RCC}

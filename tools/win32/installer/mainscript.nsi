@@ -1,11 +1,11 @@
 !include "MUI.nsh"
 
-OutFile ../leechcraft-installer.exe
-Name "LeechCraft"
+OutFile ../leechcraft-installer-0.5.60.exe
+Name "LeechCraft-0.5.60"
 SetCompressor /SOLID lzma
 InstallDir "$PROGRAMFILES\Deviant\LeechCraft"
 !define MUI_ABORTWARNING
-!define MUI_ICON icon64.ico
+!define MUI_ICON leechcraft.ico
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall-colorful.ico"
 #!define MUI_COMPONENTSPAGE_SMALLDESC
 
@@ -41,7 +41,7 @@ InstType "Minimal"
 SectionGroup "Core"
 	Section "LeechCraft" MAINFILES
 		SetOutPath $INSTDIR
-		File icon64.ico
+		File leechcraft.ico
 		File lcutil.dll
 		File xmlsettingsdialog.dll
 		File leechcraft.exe
@@ -57,7 +57,7 @@ SectionGroup "Core"
 	
 		!insertmacro MUI_STARTMENU_WRITE_BEGIN LeechCraft
 			CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
-			CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Leechcraft.lnk" "$INSTDIR\leechcraft.exe" "" "$INSTDIR\icon64.ico"
+			CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Leechcraft.lnk" "$INSTDIR\leechcraft.exe"
 			CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 		!insertmacro MUI_STARTMENU_WRITE_END
 
@@ -110,6 +110,7 @@ SectionGroup "Plugins"
 	Section "Aggregator" AGGREGATORPLUGIN
 		SetOutPath $INSTDIR\plugins\bin
 		File plugins\bin\leechcraft_aggregator.dll
+		File plugins\bin\leechcraft_aggregator_*.dll
 		SetOutPath $INSTDIR\settings
 		File settings\aggregatorsettings.xml
 		SectionIn 1
@@ -249,6 +250,7 @@ SectionGroup "Plugins"
 		File settings\poshukuonlinebookmarkssettings.xml
 		SetOutPath $INSTDIR\plugins\bin
 		File plugins\bin\leechcraft_poshuku_onlinebookmarks.dll
+		File plugins\bin\leechcraft_poshuku_onlinebookmarks_*.dll
 		SectionIn 1
 	SectionEnd
 	Section "Poshuku WYFV" POSHUKUWYFVPLUGIN
@@ -279,13 +281,6 @@ SectionGroup "Plugins"
 	Section "Summary" SUMMARYPLUGIN
 		SetOutPath $INSTDIR\plugins\bin
 		File plugins\bin\leechcraft_summary.dll
-		SectionIn 1
-	SectionEnd
-	Section "Tab++" TABPPPLUGIN
-		SetOutPath $INSTDIR\settings
-		File settings\tabppsettings.xml
-		SetOutPath $INSTDIR\plugins\bin
-		File plugins\bin\leechcraft_tabpp.dll
 		SectionIn 1
 	SectionEnd
 	Section "TabsList" TABSLISTPLUGIN
@@ -368,6 +363,60 @@ SectionGroup "Unsupported plugins"
 	SectionEnd
 SectionGroupEnd
 
+SectionGroup "New plugins"
+	Section "LHTR" LHTRPLUGIN
+        SetOutPath $INSTDIR\plugins\bin
+        File plugins\bin\leechcraft_lhtr.dll
+        SectionIn 1
+    SectionEnd
+	Section "NetStoreManager" NETSTOREMANAGERPLUGIN
+        SetOutPath $INSTDIR\settings
+        File settings\netstoremanagersettings.xml
+
+        SetOutPath $INSTDIR\plugins\bin
+        File plugins\bin\leechcraft_netstoremanager.dll
+        File plugins\bin\leechcraft_netstoremanager_*.dll
+        SectionIn 1
+    SectionEnd
+	Section "KnowHow" KNOWHOWPLUGIN
+        SetOutPath $INSTDIR\settings
+        File settings\knowhowsettings.xml
+
+        SetOutPath $INSTDIR\plugins\bin
+        File plugins\bin\leechcraft_knowhow.dll
+        SectionIn 1
+    SectionEnd
+	Section "PinTab" PINTABPLUGIN
+        SetOutPath $INSTDIR\plugins\bin
+        File plugins\bin\leechcraft_pintab.dll
+        SectionIn 1
+    SectionEnd
+	Section "Poshuku Keywords" POSHUKUKEYWORDSPLUGIN
+		SetOutPath $INSTDIR\settings
+		File settings\poshukukeywordssettings.xml
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_poshuku_keywords.dll
+		SectionIn 1
+	SectionEnd
+	Section "Sidebar" SIDEBARPLUGIN
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_sidebar.dll
+		SectionIn 1
+	SectionEnd
+	Section "Syncer" SYNCERPLUGIN
+		SetOutPath $INSTDIR\settings
+		File settings\syncersettings.xml
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_syncer.dll
+		SectionIn 1
+	SectionEnd
+	Section "TabSessManager" TABSESSMANAGERPLUGIN
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_tabsessmanager.dll
+		SectionIn 1
+	SectionEnd
+SectionGroupEnd
+
 Var MUI_TEMP
 
 Section "Uninstall"
@@ -402,6 +451,7 @@ LangString DESC_AGGREGATORPLUGIN ${LANG_ENGLISH} "Sophisticated RSS/Atom news fe
 LangString DESC_HISTORYHOLDERPLUGIN ${LANG_ENGLISH} "Keeps history of downloaded files."
 LangString DESC_LCFTPPLUGIN ${LANG_ENGLISH} "FTP client."
 LangString DESC_LMPPLUGIN ${LANG_ENGLISH} "LeechCraft Media Player."
+LangString DESC_PLUGIN ${LANG_ENGLISH} "LeechCraft Media Player."
 LangString DESC_NETWORKMONITORPLUGIN ${LANG_ENGLISH} "Monitors HTTP network requests."
 LangString DESC_NEWLIFEPLUGIN ${LANG_ENGLISH} "Imports settings from other programs."
 LangString DESC_POSHUKUPLUGIN ${LANG_ENGLISH} "Full-featured web browser."
@@ -415,7 +465,6 @@ LangString DESC_SUMMARYPLUGIN ${LANG_ENGLISH} "Summary tab with current download
 LangString DESC_VGRABBERPLUGIN ${LANG_ENGLISH} "VKontakte.ru audio/video grabber."
 LangString DESC_AUSCRIEPLUGIN ${LANG_ENGLISH} "Auto Screenshooter."
 LangString DESC_KINOTIFYPLUGIN ${LANG_ENGLISH} "Provides fancy notifications instead of plain default ones."
-LangString DESC_TABPPPLUGIN ${LANG_ENGLISH} "Enhances tabbed navigation experience."
 LangString DESC_LACKMANPLUGIN ${LANG_ENGLISH} "LeechCraft Package Manager allows one to install additional plugins, extensions, icons and various other data."
 LangString DESC_SECMANPLUGIN ${LANG_ENGLISH} "Security Manager stores passwords and various other data."
 LangString DESC_SHELLOPENPLUGIN ${LANG_ENGLISH} "Allows one to open unhandled entities via other applications."
@@ -423,9 +472,17 @@ LangString DESC_ANPLUGIN ${LANG_ENGLISH} "A highly flexible, powerful and config
 LangString DESC_GLANCEPLUGIN ${LANG_ENGLISH} "Provides thumbnailed grid overview of tabs."
 LangString DESC_GMAILNOTIFIERPLUGIN ${LANG_ENGLISH} "Notifies about new mail in your GMail inbox."
 LangString DESC_POSHUKUFATAPEPLUGIN ${LANG_ENGLISH} "Adds support for GreaseMonkey userscripts."
-LangString DESC_POSHUKUONLINEBOOKMARKSPLUGIN ${LANG_ENGLISH} "Allows one to synchronize bookmarks with services like Read It Later."
 LangString DESC_TABSLISTPLUGIN ${LANG_ENGLISH} "Shows the list of currently opened tabs and allows one to quickly navigate between them."
 LangString DESC_AZOTHPLUGIN ${LANG_ENGLISH} "Full-featured Jabber client based on patched QXMPP library"
+LangString DESC_NETSTOREMANAGERPLUGIN ${LANG_ENGLISH} "Plugin for management of remote network data storages like Yandex.Disk."
+LangString DESC_LHTRPLUGIN ${LANG_ENGLISH} "LeechCraft HTML Text editor."
+LangString DESC_KNOWHOWPLUGIN ${LANG_ENGLISH} "A simple plugin providing various tips of the day regarding LeechCraft."
+LangString DESC_PINTABPLUGIN ${LANG_ENGLISH} "Support tabs pinning."
+LangString DESC_POSHUKUKEYWORDSPLUGIN ${LANG_ENGLISH} "URL keywords support for the Poshuku browser."
+LangString DESC_SIDEBARPLUGIN ${LANG_ENGLISH} "A nice sidebar with quick launch area, tabs and tray-like area."
+LangString DESC_SYNCERPLUGIN ${LANG_ENGLISH} "Synchronization plugin for LeechCraft."
+LangString DESC_TABSESSMANAGERPLUGIN ${LANG_ENGLISH} "Manages sessions of tabs in LeechCraft."
+
 
 LangString DESC_MAINFILES ${LANG_RUSSIAN} "Ядро LeechCraft."
 LangString DESC_QT ${LANG_RUSSIAN} "Библиотеки Qt."
@@ -451,7 +508,6 @@ LangString DESC_SUMMARYPLUGIN ${LANG_RUSSIAN} "Сводка с текущими закачками, собы
 LangString DESC_VGRABBERPLUGIN ${LANG_RUSSIAN} "Плагин для скачивания и проигрывания музыки и видео из социальной сети В Контакте."
 LangString DESC_AUSCRIEPLUGIN ${LANG_RUSSIAN} "Плагин для создания и загрузки снимков окна LeechCraft в один клик."
 LangString DESC_KINOTIFYPLUGIN ${LANG_RUSSIAN} "Kinotify предоставляет красивые уведомления вместо обычных уведомлений по умолчанию."
-LangString DESC_TABPPPLUGIN ${LANG_RUSSIAN} "Tab++ улучшает работу с вкладками."
 LangString DESC_LACKMANPLUGIN ${LANG_RUSSIAN} "LeechCraft Package Manager позволяет устанавливать дополнительные плагины, расширения, иконки и прочие данные."
 LangString DESC_SECMANPLUGIN ${LANG_RUSSIAN} "Security Manager сохраняет пароли и прочую информацию."
 LangString DESC_SHELLOPENPLUGIN ${LANG_RUSSIAN} "Позволяет открывать необработанные сущности другими приложениями."
@@ -459,9 +515,17 @@ LangString DESC_ANPLUGIN ${LANG_RUSSIAN} "Мощная и гибкая система уведомлений."
 LangString DESC_GLANCEPLUGIN ${LANG_RUSSIAN} "Обеспечивает переключение между вкладками с предпросмотром их содержимого."
 LangString DESC_GMAILNOTIFIERPLUGIN ${LANG_RUSSIAN} "Уведомляет о новой почте в вашей учетной записи GMail."
 LangString DESC_POSHUKUFATAPEPLUGIN ${LANG_RUSSIAN} "Добавляет поддержку пользовательских скриптов GreaseMonkey."
-LangString DESC_POSHUKUONLINEBOOKMARKSPLUGIN ${LANG_RUSSIAN} "Позволяет синхронизировать закладки с сервисами типа Read It Later."
 LangString DESC_TABSLISTPLUGIN ${LANG_RUSSIAN} "Показывает список открытых вкладок и позволяет легко перемещаться между ними."
 LangString DESC_AZOTHPLUGIN ${LANG_RUSSIAN} "Полнофункциональный Jabber клиент"
+LangString DESC_NETSTOREMANAGERPLUGIN ${LANG_RUSSIAN} "Плагин, для управления удаленными хранилищами файлов, таких как Яндекс.Диск"
+LangString DESC_LHTRPLUGIN ${LANG_RUSSIAN} "HTML-редактор LeechCraft."
+LangString DESC_KNOWHOWPLUGIN ${LANG_RUSSIAN} "Простой плагин, отображающий полезные советы дня для LeechCraft."
+LangString DESC_PINTABPLUGIN ${LANG_RUSSIAN} "Поддерживает закрепление вкладок."
+LangString DESC_POSHUKUKEYWORDSPLUGIN ${LANG_RUSSIAN} "Поддержка ключевых слов в браузере Poshuku."
+LangString DESC_SIDEBARPLUGIN ${LANG_RUSSIAN} "Симпатичный сайдбар с панелью быстрого запуска, вкладками и трееподобной областью."
+LangString DESC_SYNCERPLUGIN ${LANG_RUSSIAN} "Модуль синхронизации для LeechCraft."
+LangString DESC_TABSESSMANAGERPLUGIN ${LANG_RUSSIAN} "Управляет сессиями вкладок в LeechCraft."
+
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
 	!insertmacro MUI_DESCRIPTION_TEXT ${MAINFILES} $(DESC_MAINFILES)
@@ -489,7 +553,6 @@ LangString DESC_AZOTHPLUGIN ${LANG_RUSSIAN} "Полнофункциональный Jabber клиент"
 	!insertmacro MUI_DESCRIPTION_TEXT ${SUMMARYPLUGIN} $(DESC_SUMMARYPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${AUSCRIEPLUGIN} $(DESC_AUSCRIEPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${KINOTIFYPLUGIN} $(DESC_KINOTIFYPLUGIN)
-	!insertmacro MUI_DESCRIPTION_TEXT ${TABPPPLUGIN} $(DESC_TABPPPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${LACKMANPLUGIN} $(DESC_LACKMANPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SECMANPLUGIN} $(DESC_SECMANPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SHELLOPENPLUGIN} $(DESC_SHELLOPENPLUGIN)
@@ -497,8 +560,15 @@ LangString DESC_AZOTHPLUGIN ${LANG_RUSSIAN} "Полнофункциональный Jabber клиент"
 	!insertmacro MUI_DESCRIPTION_TEXT ${GLANCEPLUGIN} $(DESC_GLANCEPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${GMAILNOTIFIERPLUGIN} $(DESC_GMAILNOTIFIERPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUFATAPEPLUGIN} $(DESC_POSHUKUFATAPEPLUGIN)
-	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUONLINEBOOKMARKSPLUGIN} $(DESC_POSHUKUONLINEBOOKMARKSPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${TABSLISTPLUGIN} $(DESC_TABSLISTPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${NETSTOREMANAGERPLUGIN} $(DESC_NETSTOREMANAGERPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${LHTRPLUGIN} $(DESC_LHTRPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${KNOWHOWPLUGIN} $(DESC_KNOWHOWPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${PINTABPLUGIN} $(DESC_PINTABPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUKEYWORDSPLUGIN} $(DESC_POSHUKUKEYWORDSPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${SIDEBARPLUGIN} $(DESC_SIDEBARPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${SYNCERPLUGIN} $(DESC_SYNCERPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${TABSESSMANAGERPLUGIN} $(DESC_TABSESSMANAGERPLUGIN)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Function .onInit

@@ -22,3 +22,7 @@ dummyfile.cpp
 *.kdev4
 *.kate-swp
 *.opml
+
+/tools/win32/build32
+/tools/win32/LeechCraft_debug
+/tools/win32/LeechCraft_release

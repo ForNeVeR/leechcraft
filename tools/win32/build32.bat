@@ -25,6 +25,7 @@ if exist build32 rmdir /s /q build32
 if not exist build32 mkdir build32
 cd build32
 cmake ../../../src  ^
+	-G %CMAKE_GENERATOR% ^
 	-DENABLE_FTP=False %BTYPE% -DENABLE_DBUSMANAGER=False -DENABLE_ANHERO=False ^
 	-DENABLE_LACKMAN=True -DENABLE_SECMAN=True -DENABLE_AZOTH=True ^
 	-DENABLE_SHELLOPEN=True -DENABLE_GLANCE=True -DENABLE_TABSLIST=True ^
@@ -34,11 +35,16 @@ cmake ../../../src  ^
 	-DENABLE_LAURE=True ^
 	-DENABLE_LIZNOO=True ^
 	-DENABLE_SIDEBAR=True ^
-	-DENABLE_LASTFM=False ^
+	-DENABLE_AZOTH_VADER=False ^
 	-DRBTorrent_DIR=%TORRENT_DIR% ^
 	-DQXMPP_LOCAL=%QXMPP_LOCAL% ^
 	-DQJSON_DIR=%QJSON_DIR% ^
 	-DSPEEX_DIR=%SPEEX_DIR% ^
 	-DVLC_DIR=%VLC_DIR% ^
-	-DQWT_DIR=%QWT_DIR% 
+	-DQwt6_INCLUDE_DIR=%QWT_DIR%\src\
+	
+	rem -DENABLE_LIZNOO=False ^
+	rem -DENABLE_LAURE=False ^
+	rem ^
+	rem -DQWT_DIR=%QWT_DIR% 
 pause

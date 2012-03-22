@@ -6,7 +6,7 @@ INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS}
 	..
 	)
 
-SET (SRCS
+SET (xmlsettingsdialog_SRCS
     xmlsettingsdialog.cpp
 	rangewidget.cpp
 	filepicker.cpp
@@ -94,8 +94,15 @@ IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 ENDIF (NOT LC_NO_MOC)
 QT4_WRAP_UI (UIS_H ${FORMS})
+IF (MSVC)
+    add_msvc_version_full (xmlsettingsdialog library dll 0 3 0 0
+                          ${winver_PRODUCT_VERSION_N1}
+                          ${winver_PRODUCT_VERSION_N2}
+                          ${winver_PRODUCT_VERSION_N3}
+                          ${winver_PRODUCT_VERSION_N4})
+ENDIF (MSVC)
 ADD_LIBRARY (xmlsettingsdialog SHARED
-	${SRCS}
+	${xmlsettingsdialog_SRCS}
 	${MOC_SRCS}
 	${UIS_H})
 TARGET_LINK_LIBRARIES (xmlsettingsdialog

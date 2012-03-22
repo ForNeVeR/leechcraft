@@ -7,7 +7,7 @@ INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}
 	..)
 
-SET (SRCS
+SET (lcutil_SRCS
 	tagscompleter.cpp
 	tagscompletionmodel.cpp
 	treeitem.cpp
@@ -83,8 +83,15 @@ ADD_DEFINITIONS(-DQT_GUI_LIB)
 IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 ENDIF (NOT LC_NO_MOC)
+IF (MSVC)
+    add_msvc_version_full (lcutil library dll 0 5 0 0
+                          ${winver_PRODUCT_VERSION_N1}
+                          ${winver_PRODUCT_VERSION_N2}
+                          ${winver_PRODUCT_VERSION_N3}
+                          ${winver_PRODUCT_VERSION_N4})
+ENDIF (MSVC)
 ADD_LIBRARY (lcutil SHARED
-	${SRCS}
+	${lcutil_SRCS}
 	${MOC_SRCS}
 	${UIS_H}
 	)
@@ -94,3 +101,4 @@ TARGET_LINK_LIBRARIES (lcutil
 	)
 SET_PROPERTY (TARGET lcutil PROPERTY SOVERSION 0.5.0)
 INSTALL (TARGETS lcutil DESTINATION ${LIBDIR})
+

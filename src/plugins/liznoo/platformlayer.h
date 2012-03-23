@@ -34,7 +34,7 @@ namespace Liznoo
 
 		virtual void Stop () = 0;
 
-		enum class PowerState
+		enum PowerState
 		{
 			Suspend,
 			Hibernate

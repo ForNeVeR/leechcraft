@@ -23,7 +23,7 @@ class QSTring;
 
 namespace LeechCraft
 {
-	enum class ContentType
+	enum ContentType
 	{
 		HTML,
 		PlainText

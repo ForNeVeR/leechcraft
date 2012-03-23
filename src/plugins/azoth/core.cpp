@@ -733,7 +733,7 @@ namespace Azoth
 
 	QList<QColor> Core::GenerateColors (const QString& coloring) const
 	{
-		auto fix = [] (qreal h)
+		auto fix = [] (qreal h) -> qreal
 		{
 			while (h < 0)
 				h += 1;
@@ -1538,7 +1538,8 @@ namespace Azoth
 					continue;
 
 				SavedStatus_ [acc] = state;
-				acc->ChangeState ({SOffline, tr ("Client went to sleep")});
+				EntryStatus status = { SOffline, tr ("Client went to sleep") };
+				acc->ChangeState (status);
 			}
 		else if (e.Entity_ == "WokeUp")
 		{

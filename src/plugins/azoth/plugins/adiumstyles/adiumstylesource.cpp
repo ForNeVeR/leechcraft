@@ -418,7 +418,7 @@ namespace AdiumStyles
 		const QImage& defAvatar = GetDefaultAvatar ();
 
 		auto safeIconReplace = [&result] (const QString& pattern,
-				QImage px, const QImage& def = QImage ())
+				QImage px, const QImage& def)
 		{
 			if (result.contains (pattern))
 				result.replace (pattern, Util::GetAsBase64Src (px.isNull () ? def : px));

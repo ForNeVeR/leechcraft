@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "richeditorwidget.h"
+#include <functional>
 #include <QWebFrame>
 #include <QWebPage>
 #include <QWebElement>
@@ -40,7 +41,7 @@ namespace LHTR
 	{
 		class Addable
 		{
-			enum class Type
+			enum Type
 			{
 				Menu,
 				Bar
@@ -95,7 +96,7 @@ namespace LHTR
 		auto fwdCmd = [bar, this] (const QString& name,
 				const QString& icon,
 				QWebPage::WebAction action,
-				Addable addable)
+				Addable addable) -> QAction*
 		{
 			QAction *act = addable.addAction (name,
 					Ui_.View_->pageAction (action), SLOT (trigger ()));
@@ -111,7 +112,7 @@ namespace LHTR
 				const QString& icon,
 				const QString& cmd,
 				Addable addable,
-				const QString& arg = QString ())
+				const QString& arg) -> QAction*
 		{
 			QAction *act = addable.addAction (name, this, SLOT (handleCmd ()));
 			act->setProperty ("ActionIcon", icon);
@@ -130,7 +131,7 @@ namespace LHTR
 		fwdCmd (tr ("Underline"), "format-text-underline",
 				QWebPage::ToggleUnderline, barAdd)->setCheckable (true);
 		addCmd (tr ("Strikethrough"), "format-text-strikethrough",
-				"strikeThrough", barAdd)->setCheckable (true);
+				"strikeThrough", barAdd,  QString ())->setCheckable (true);
 		fwdCmd (tr ("Subscript"), "format-text-subscript",
 				QWebPage::ToggleSubscript, barAdd)->setCheckable (true);
 		fwdCmd (tr ("Superscript"), "format-text-superscript",
@@ -187,13 +188,13 @@ namespace LHTR
 		font->setProperty ("ActionIcon", "list-add-font");
 		bar->addSeparator ();
 
-		addCmd (tr ("Indent more"), "format-indent-more", "indent", barAdd);
-		addCmd (tr ("Indent less"), "format-indent-less", "outdent", barAdd);
+		addCmd (tr ("Indent more"), "format-indent-more", "indent", barAdd, QString ());
+		addCmd (tr ("Indent less"), "format-indent-less", "outdent", barAdd, QString ());
 
 		bar->addSeparator ();
 
-		addCmd (tr ("Ordered list"), "format-list-ordered", "insertOrderedList", barAdd);
-		addCmd (tr ("Unordered list"), "format-list-unordered", "insertUnorderedList", barAdd);
+		addCmd (tr ("Ordered list"), "format-list-ordered", "insertOrderedList", barAdd, QString ());
+		addCmd (tr ("Unordered list"), "format-list-unordered", "insertUnorderedList", barAdd, QString ());
 
 		bar->addSeparator ();
 		QAction *link = bar->addAction (tr ("Insert link..."),
@@ -287,14 +288,14 @@ namespace LHTR
 
 	void RichEditorWidget::updateActions ()
 	{
-		auto upAct = [this] (const QString& cmd, const QString& arg = QString ())
+		auto upAct = [this] (const QString& cmd, const QString& arg)
 		{
 			Cmd2Action_ [cmd] [arg]->setChecked (QueryCommandState (cmd));
 		};
 
-		upAct ("strikeThrough");
-		upAct ("insertOrderedList");
-		upAct ("insertUnorderedList");
+		upAct ("strikeThrough", QString ());
+		upAct ("insertOrderedList", QString ());
+		upAct ("insertUnorderedList", QString ());
 
 		auto upWebAct = [this] (QWebPage::WebAction action)
 		{

@@ -285,8 +285,8 @@ namespace TabSessManager
 					qWarning () << "null plugin for" << pluginId;
 					continue;
 				}
-
-				tabs [plugin] << RecInfo { recData, props, name, icon };
+				RecInfo recInfo = { recData, props, name, icon };
+				tabs [plugin] << recInfo;
 
 				qDebug () << Q_FUNC_INFO << "got restore data for"
 						<< pluginId << name << plugin;
@@ -326,7 +326,9 @@ namespace TabSessManager
 				QList<TabRecoverInfo> datas;
 				const auto& infos = tabs [plugin];
 				std::transform (infos.begin (), infos.end (), std::back_inserter (datas),
-						[] (const RecInfo& rec) { return TabRecoverInfo { rec.Data_, rec.Props_ }; });
+						[] (const RecInfo& rec) -> TabRecoverInfo {
+								TabRecoverInfo tabRecoverInfo = { rec.Data_, rec.Props_ };
+								return tabRecoverInfo;  });
 				qDebug () << Q_FUNC_INFO << "recovering"
 						<< plugin << infos.size ();
 				ihrt->RecoverTabs (datas);

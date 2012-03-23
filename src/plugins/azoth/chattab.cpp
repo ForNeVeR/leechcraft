@@ -906,7 +906,7 @@ namespace Azoth
 			const QDateTime& dt = msg->GetDateTime ();
 
 			if (std::find_if (rMsgs.begin (), rMsgs.end (),
-					[msg] (QObject *msgObj)
+					[msg] (QObject *msgObj) -> bool
 					{
 						IMessage *tMsg = qobject_cast<IMessage*> (msgObj);
 						if (!tMsg)

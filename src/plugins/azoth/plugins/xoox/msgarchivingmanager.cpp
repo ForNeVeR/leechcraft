@@ -74,25 +74,25 @@ namespace Xoox
 		{
 		public:
 			OTRConverter (const QString& str)
-			: BaseConverter (str, "concede", MsgArchOTR::Concede)
+			: BaseConverter (str, "concede", MsgArchOTR::ConcedeOTR)
 			{
 				InitMap ();
 			}
 
 			OTRConverter (MsgArchOTR otr)
-			: BaseConverter (otr, "concede", MsgArchOTR::Concede)
+			: BaseConverter (otr, "concede", MsgArchOTR::ConcedeOTR)
 			{
 				InitMap ();
 			}
 		private:
 			void InitMap ()
 			{
-				Map_ ["approve"] = MsgArchOTR::Approve;
-				Map_ ["concede"] = MsgArchOTR::Concede;
-				Map_ ["forbid"] = MsgArchOTR::Forbid;
-				Map_ ["oppose"] = MsgArchOTR::Oppose;
-				Map_ ["prefer"] = MsgArchOTR::Prefer;
-				Map_ ["require"] = MsgArchOTR::Require;
+				Map_ ["approve"] = MsgArchOTR::ApproveOTR;
+				Map_ ["concede"] = MsgArchOTR::ConcedeOTR;
+				Map_ ["forbid"] = MsgArchOTR::ForbidOTR;
+				Map_ ["oppose"] = MsgArchOTR::OpposeOTR;
+				Map_ ["prefer"] = MsgArchOTR::PreferOTR;
+				Map_ ["require"] = MsgArchOTR::RequireOTR;
 			}
 		};
 
@@ -167,10 +167,6 @@ namespace Xoox
 		};
 	}
 
-	bool operator< (MsgArchMethod m1, MsgArchMethod m2)
-	{
-		return static_cast<int> (m1) < static_cast<int> (m2);
-	}
 
 	MsgArchPrefs::MsgArchPrefs ()
 	: Valid_ (false)
@@ -283,8 +279,13 @@ namespace Xoox
 
 		if (!Prefs_.Valid_)
 		{
-			std::vector<QDomElement> elems =
-					{ autoSave, defaultPref, autoMeth, localMeth, manualMeth };
+			std::vector<QDomElement> elems = std::vector<QDomElement>();
+			elems.push_back(autoSave);
+			elems.push_back(defaultPref);
+			elems.push_back(autoMeth);
+			elems.push_back(localMeth);
+			elems.push_back(manualMeth);
+
 			Prefs_.Valid_ = std::all_of (elems.begin (), elems.end (),
 					[] (const QDomElement& elem) { return !elem.isNull (); });
 		}
@@ -300,7 +301,7 @@ namespace Xoox
 		handleMeth (localMeth);
 		handleMeth (manualMeth);
 
-		auto handleSetting = [] (const QDomElement& elem)
+		auto handleSetting = [] (const QDomElement& elem) -> MsgArchSetting
 		{
 			MsgArchSetting setting =
 			{

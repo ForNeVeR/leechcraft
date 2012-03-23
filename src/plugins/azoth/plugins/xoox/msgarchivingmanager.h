@@ -28,17 +28,17 @@ namespace Xoox
 {
 	class ClientConnection;
 
-	enum class MsgArchOTR
+	enum MsgArchOTR
 	{
-		Approve,
-		Concede,
-		Forbid,
-		Oppose,
-		Prefer,
-		Require
+		ApproveOTR,
+		ConcedeOTR,
+		ForbidOTR,
+		OpposeOTR,
+		PreferOTR,
+		RequireOTR
 	};
 
-	enum class MsgArchSave
+	enum MsgArchSave
 	{
 		Body,
 		False,
@@ -46,16 +46,14 @@ namespace Xoox
 		Stream
 	};
 
-	enum class MsgArchMethod
+	enum MsgArchMethod
 	{
 		Auto,
 		Local,
 		Manual
 	};
 
-	bool operator< (MsgArchMethod, MsgArchMethod);
-
-	enum class MsgArchMethodPolicy
+	enum MsgArchMethodPolicy
 	{
 		Concede,
 		Forbid,

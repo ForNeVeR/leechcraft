@@ -35,7 +35,7 @@ namespace Importers
 		auto tfd = [] (const QDomElement& account, const QString& field)
 			{ return account.firstChildElement (field).text (); };
 
-		auto adapter = Common::XMLIMAccount::ConfigAdapter
+		Common::XMLIMAccount::ConfigAdapter adapter =
 		{
 			AccountsModel_,
 			QStringList (".vacuum") << "profiles",
@@ -43,7 +43,7 @@ namespace Importers
 			[] (const QDomElement&) { return "xmpp"; },
 			[tfd] (const QDomElement& acc) { return tfd (acc, "name"); },
 			[tfd] (const QDomElement& acc) { return tfd (acc, "active") == "true"; },
-			[tfd] (const QDomElement& acc)
+			[tfd] (const QDomElement& acc) -> QString
 			{
 				const auto& sjid = tfd (acc, "streamJid");
 				const int pos = sjid.indexOf ('/');

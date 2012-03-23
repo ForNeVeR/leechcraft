@@ -35,7 +35,6 @@ set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\Release\boost-link-shared\bo
 set OPENSSL_BIN_DIR="C:\Project\OpenSSL-Win32\"
 set QT_BIN_DIR="%QTDIR%\bin"
 set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\MinSizeRel\"
-set QWT_INCLUDE_DIR="%QWT_DIR%\src\"
 
 set LEECHCRAFT_ROOT_DIR="..\.."
 set LEECHCRAFT_BUILD_DIR="build32"

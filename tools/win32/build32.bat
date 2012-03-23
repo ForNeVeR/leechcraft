@@ -41,10 +41,5 @@ cmake ../../../src  ^
 	-DQJSON_DIR=%QJSON_DIR% ^
 	-DSPEEX_DIR=%SPEEX_DIR% ^
 	-DVLC_DIR=%VLC_DIR% ^
-	-DQwt6_INCLUDE_DIR=%QWT_DIR%\src\
-	
-	rem -DENABLE_LIZNOO=False ^
-	rem -DENABLE_LAURE=False ^
-	rem ^
-	rem -DQWT_DIR=%QWT_DIR% 
+	-DQWT_DIR=%QWT_DIR% 
 pause

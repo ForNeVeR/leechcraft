@@ -1,7 +1,7 @@
 !include "MUI.nsh"
 
-OutFile ../leechcraft-installer-0.5.60.exe
-Name "LeechCraft-0.5.60"
+OutFile ../leechcraft-installer.exe
+Name "LeechCraft"
 SetCompressor /SOLID lzma
 InstallDir "$PROGRAMFILES\Deviant\LeechCraft"
 !define MUI_ABORTWARNING
@@ -111,6 +111,8 @@ SectionGroup "Plugins"
 		SetOutPath $INSTDIR\plugins\bin
 		File plugins\bin\leechcraft_aggregator.dll
 		File plugins\bin\leechcraft_aggregator_*.dll
+		SetOutPath $INSTDIR\share\scripts
+        File /r share\scripts\*
 		SetOutPath $INSTDIR\settings
 		File settings\aggregatorsettings.xml
 		SectionIn 1
@@ -381,7 +383,8 @@ SectionGroup "New plugins"
 	Section "KnowHow" KNOWHOWPLUGIN
         SetOutPath $INSTDIR\settings
         File settings\knowhowsettings.xml
-
+		SetOutPath $INSTDIR\share\knowhow
+        File /r share\knowhow\*
         SetOutPath $INSTDIR\plugins\bin
         File plugins\bin\leechcraft_knowhow.dll
         SectionIn 1
@@ -413,6 +416,13 @@ SectionGroup "New plugins"
 	Section "TabSessManager" TABSESSMANAGERPLUGIN
 		SetOutPath $INSTDIR\plugins\bin
 		File plugins\bin\leechcraft_tabsessmanager.dll
+		SectionIn 1
+	SectionEnd
+	Section "Liznoo" LIZNOOPLUGIN
+		SetOutPath $INSTDIR\settings
+		File settings\liznoosettings.xml
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_liznoo.dll
 		SectionIn 1
 	SectionEnd
 SectionGroupEnd
@@ -482,6 +492,7 @@ LangString DESC_POSHUKUKEYWORDSPLUGIN ${LANG_ENGLISH} "URL keywords support for 
 LangString DESC_SIDEBARPLUGIN ${LANG_ENGLISH} "A nice sidebar with quick launch area, tabs and tray-like area."
 LangString DESC_SYNCERPLUGIN ${LANG_ENGLISH} "Synchronization plugin for LeechCraft."
 LangString DESC_TABSESSMANAGERPLUGIN ${LANG_ENGLISH} "Manages sessions of tabs in LeechCraft."
+LangString DESC_LIZNOOPLUGIN ${LANG_ENGLISH} "UPower/WinAPI-based power manager."
 
 
 LangString DESC_MAINFILES ${LANG_RUSSIAN} "Ядро LeechCraft."
@@ -525,6 +536,7 @@ LangString DESC_POSHUKUKEYWORDSPLUGIN ${LANG_RUSSIAN} "Поддержка ключевых слов в
 LangString DESC_SIDEBARPLUGIN ${LANG_RUSSIAN} "Симпатичный сайдбар с панелью быстрого запуска, вкладками и трееподобной областью."
 LangString DESC_SYNCERPLUGIN ${LANG_RUSSIAN} "Модуль синхронизации для LeechCraft."
 LangString DESC_TABSESSMANAGERPLUGIN ${LANG_RUSSIAN} "Управляет сессиями вкладок в LeechCraft."
+LangString DESC_LIZNOOPLUGIN ${LANG_RUSSIAN} "Управление энергией, основанное на UPower/WinAPI."
 
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
@@ -569,6 +581,7 @@ LangString DESC_TABSESSMANAGERPLUGIN ${LANG_RUSSIAN} "Управляет сессиями вкладок
 	!insertmacro MUI_DESCRIPTION_TEXT ${SIDEBARPLUGIN} $(DESC_SIDEBARPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SYNCERPLUGIN} $(DESC_SYNCERPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${TABSESSMANAGERPLUGIN} $(DESC_TABSESSMANAGERPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${LIZNOOPLUGIN} $(DESC_LIZNOOPLUGIN)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Function .onInit

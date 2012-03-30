@@ -99,8 +99,7 @@ rem - Translations -
 for /r %LEECHCRAFT_ROOT_DIR%\src %%f in (*.qm) do copy %%f %TARGET_DIR%\translations
 
 rem - Oxygen icon theme -
-copy %LEECHCRAFT_ROOT_DIR%\src\iconsets\oxygen\oxygen.mapping %TARGET_DIR%\icons
-xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\iconsets\oxygen\icons %TARGET_DIR%\icons\oxygen
+xcopy /e /i %OXYGENICONS_DIR% %TARGET_DIR%\icons\oxygen
 copy nul %TARGET_DIR%\leechcraft\themes\oxygen
 
 rem - Azoth resources -

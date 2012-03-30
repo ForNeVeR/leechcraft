@@ -3,6 +3,7 @@ rem == generate script for MSVS sln file ==
 @echo off
 
 call "%~dp0\winvars32.bat"
+set INSTALL_DIR="%~d0%~p0LeeechCraft"
 
 @echo on
 
@@ -26,6 +27,7 @@ if not exist build32 mkdir build32
 cd build32
 cmake ../../../src  ^
 	-G %CMAKE_GENERATOR% ^
+	-DCMAKE_INSTALL_PREFIX:PATH=%INSTALL_DIR% ^
 	-DENABLE_FTP=False %BTYPE% -DENABLE_DBUSMANAGER=False -DENABLE_ANHERO=False ^
 	-DENABLE_LACKMAN=True -DENABLE_SECMAN=True -DENABLE_AZOTH=True ^
 	-DENABLE_SHELLOPEN=True -DENABLE_GLANCE=True -DENABLE_TABSLIST=True ^

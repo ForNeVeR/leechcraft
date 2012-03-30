@@ -52,8 +52,10 @@ namespace Xoox
 	{
 		const QString& server = jid.split ('@', QString::SkipEmptyParts).value (1);
 		auto sdManager = Account_->GetClientConnection ()->GetSDManager ();
-		sdManager->RequestInfo ([this] (const QXmppDiscoveryIq& iq)
-					{ ServerDisco_ = iq; },
+
+		QPointer<RoomHandler> pThis (this);
+		sdManager->RequestInfo ([pThis] (const QXmppDiscoveryIq& iq)
+					{ if (pThis) pThis->ServerDisco_ = iq; },
 				server);
 
 		Room_->setNickName (ourNick);
@@ -629,14 +631,9 @@ namespace Xoox
 		RoomParticipantEntry_ptr entry = GetParticipantEntry (nick);
 		entry->SetAffiliation (pres.mucItem ().affiliation ());
 		entry->SetRole (pres.mucItem ().role ());
-		const QXmppPresence::Status& xmppSt = pres.status ();
-		entry->SetStatus (EntryStatus (static_cast<State> (xmppSt.type ()),
-					xmppSt.statusText ()),
-				QString ());
-		entry->SetClientInfo ("", pres);
 
-		if (!IsGateway ())
-			Account_->GetClientConnection ()->FetchVCard (jid);
+		entry->SetPhotoHash (pres.photoHash ());
+		entry->HandlePresence (pres, "");
 
 		MakeJoinMessage (pres, nick);
 	}
@@ -650,14 +647,9 @@ namespace Xoox
 
 		RoomParticipantEntry_ptr entry = GetParticipantEntry (nick);
 
-		const QXmppPresence::Status& xmppSt = pres.status ();
-		EntryStatus status (static_cast<State> (xmppSt.type ()),
-				xmppSt.statusText ());
-		if (status != entry->GetStatus (QString ()))
-		{
-			entry->SetStatus (status, QString ());
+		entry->HandlePresence (pres, QString ());
+		if (XooxUtil::PresenceToStatus (pres) != entry->GetStatus (QString ()))
 			MakeStatusChangedMessage (pres, nick);
-		}
 
 		const QXmppMucItem& item = pres.mucItem ();
 		if (item.affiliation () != entry->GetAffiliation () ||

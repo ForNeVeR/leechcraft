@@ -288,6 +288,8 @@ OPTION (ENABLE_GACTS "Build Global Actions provider plugin" OFF)
 OPTION (ENABLE_CEMENTO "Build Cemento, LeechCraft common persistent storage" OFF)
 OPTION (ENABLE_PINTAB "Build Pintab for pinning important tabs" ${WITH_PLUGINS})
 OPTION (ENABLE_OTLOZHU "Build Otlozhu, a GTD-inspired ToDo manager" OFF)
+OPTION (ENABLE_KEYBOARDCRAFT "Build KeyboardCraft, a keyboard plugin" OFF)
+OPTION (ENABLE_XPROXY "Build XProxy, the advanced proxy manager" ${WITH_PLUGINS})
 
 # Defunct
 OPTION (ENABLE_TABPP "Build Tab++, the enhanced tab manager" OFF)
@@ -510,6 +512,14 @@ IF (ENABLE_OTLOZHU)
 	ADD_SUBDIRECTORY (plugins/otlozhu)
 ENDIF (ENABLE_OTLOZHU)
 
+IF (ENABLE_KEYBOARDCRAFT)
+	ADD_SUBDIRECTORY (plugins/keyboardcraft)
+ENDIF (ENABLE_KEYBOARDCRAFT)
+
+IF (ENABLE_XPROXY)
+	ADD_SUBDIRECTORY (plugins/xproxy)
+ENDIF (ENABLE_XPROXY)
+
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
 SET (QT_USE_QTSQL TRUE)
@@ -566,6 +576,7 @@ SET (leechcraft_SRCS
 	winwarndialog.cpp
 	coreplugin2manager.cpp
 	dockmanager.cpp
+	acceptlangwidget.cpp
 	)
 SET (leechcraft_HEADERS
 	mainwindow.h
@@ -611,6 +622,7 @@ SET (leechcraft_HEADERS
 	winwarndialog.h
 	coreplugin2manager.h
 	dockmanager.h
+	acceptlangwidget.h
 	3dparty/qxttooltip.h
 	3dparty/qxttooltip_p.h
 	interfaces/structures.h
@@ -629,6 +641,7 @@ SET (leechcraft_FORMS
 	aboutdialog.ui
 	wizardtypechoicepage.ui
 	settingstab.ui
+	acceptlangwidget.ui
 	)
 SET (leechcraft_RESOURCES mainresources.qrc)
 

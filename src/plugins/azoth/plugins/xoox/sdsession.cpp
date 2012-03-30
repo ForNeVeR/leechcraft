@@ -29,6 +29,7 @@
 #include "formbuilder.h"
 #include "util.h"
 #include "executecommanddialog.h"
+#include "xep0232handler.h"
 
 namespace LeechCraft
 {
@@ -141,6 +142,8 @@ namespace Xoox
 		if (idHasCat ("conference"))
 			result << QPair<QByteArray, QString> ("join-conference", tr ("Join..."));
 
+		result << QPair<QByteArray, QString> ("refresh", tr ("Refresh..."));
+
 		return result;
 	}
 
@@ -148,6 +151,17 @@ namespace Xoox
 	{
 		if (!index.isValid ())
 			return;
+
+		if (id == "refresh")
+		{
+			const QModelIndex& sibling = index.sibling (index.row (), CName);
+			QStandardItem *item = Model_->itemFromIndex (sibling);
+			if (item->rowCount ())
+				item->removeRows (0, item->rowCount ());
+			item->setData (false, SDSession::DRFetchedMore);
+			Model_->fetchMore (sibling);
+			return;
+		}
 
 		const QModelIndex& sibling = index.sibling (index.row (), CName);
 		QStandardItem *item = Model_->itemFromIndex (sibling);
@@ -187,6 +201,21 @@ namespace Xoox
 				return Strings_.join ("<br/>");
 			}
 		};
+
+		QString GetMUCDescr (const QXmppDataForm& form)
+		{
+			QString result;
+			Q_FOREACH (const QXmppDataForm::Field& field, form.fields ())
+				if (field.key () == "FORM_TYPE" && field.value () != "http://jabber.org/protocol/muc#roominfo")
+					return QString ();
+				else if (field.key () == "muc#roominfo_description")
+				{
+					result = field.value ().toString ();
+					break;
+				}
+
+			return result;
+		}
 	}
 
 	void SDSession::HandleInfo (const QXmppDiscoveryIq& iq)
@@ -212,7 +241,36 @@ namespace Xoox
 				targetItem->setText (text);
 		}
 
-		QString tooltip = "<strong>" + tr ("Identities:") + "</strong><ul>";
+		QString tooltip = Qt::escape (targetItem->text ()) + "<br />";
+
+		const QString& mucDescr = GetMUCDescr (iq.form ());
+		if (!mucDescr.isEmpty ())
+		{
+			tooltip += tr ("MUC description: %1.")
+					.arg (mucDescr);
+			tooltip += "<br />";
+		}
+
+		const auto& verStruct = XEP0232Handler::FromDataForm (iq.form ());
+		if (!verStruct.IsNull ())
+		{
+			QStringList verInfos;
+			auto append = [&verInfos] (const QString& tr, const QString& val)
+			{
+				if (!val.isEmpty ())
+					verInfos << tr.arg (val);
+			};
+			append (tr ("OS: %1."), verStruct.OS_);
+			append (tr ("OS version: %1."), verStruct.OSVer_);
+			append (tr ("Software: %1."), verStruct.Software_);
+			append (tr ("Software version: %1."), verStruct.SoftwareVer_);
+
+			tooltip = "<strong>" + tr ("Version:") + "</strong><ul><li>";
+			tooltip += verInfos.join ("</li><li>");
+			tooltip += "</li></ul>";
+		}
+
+		tooltip += "<strong>" + tr ("Identities:") + "</strong><ul>";
 		Q_FOREACH (const auto& id, iq.identities ())
 		{
 			if (id.name ().isEmpty ())

@@ -3,7 +3,7 @@ rem == generate script for MSVS sln file ==
 @echo off
 
 call "%~dp0\winvars32.bat"
-set INSTALL_DIR="%~d0%~p0LeeechCraft"
+set INSTALL_DIR="%~d0%~p0LeechCraft"
 
 @echo on
 

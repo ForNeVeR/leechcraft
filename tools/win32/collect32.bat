@@ -114,6 +114,12 @@ xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\kinotify\themes %TARGET_DIR%\share
 rem - AdvancedNotifications stuff -
 xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\advancednotifications\share %TARGET_DIR%\share
 
+rem - KnowHow stuff -
+xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\knowhow\share %TARGET_DIR%\share
+
+rem - Aggregator Bodyfetch stuff -
+xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\aggregator\plugins\bodyfetch\share %TARGET_DIR%\share
+
 rem - Other stuff -
 copy %LEECHCRAFT_ROOT_DIR%\tools\win32\installer\qt.conf %TARGET_DIR%
 

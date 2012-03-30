@@ -1538,7 +1538,7 @@ namespace Azoth
 					continue;
 
 				SavedStatus_ [acc] = state;
-				EntryStatus status = { SOffline, tr ("Client went to sleep") };
+				auto status = EntryStatus(SOffline, tr ("Client went to sleep"));
 				acc->ChangeState (status);
 			}
 		else if (e.Entity_ == "WokeUp")

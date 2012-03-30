@@ -7,7 +7,7 @@ rem == Build variables ==
 
 call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\vcvars32.bat" x86
 
-set QTDIR=C:\Project\QtSDK\Desktop\Qt\4.8.0\msvc2010
+set QTDIR=C:\Project\Qt
 
 set BOOST_ROOT=C:\Project\boost_1_48_0
 set TORRENT_DIR=C:\Project\libtorrent
@@ -24,7 +24,7 @@ set BUILD_RELEASE_AND_DEBUG=1
 
 rem == Collect variables ==
 
-set BUILD_TYPE=Debug
+set BUILD_TYPE=MinSizeRel
 set CMAKE_GENERATOR="Visual Studio 10"
 
 rem Set these variables to proper paths of your system:

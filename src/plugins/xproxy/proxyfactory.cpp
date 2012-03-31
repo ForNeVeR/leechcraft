@@ -28,10 +28,20 @@ namespace XProxy
 	{
 	}
 
-	QList<QNetworkProxy> ProxyFactory::queryProxy (const QNetworkProxyQuery&)
+	QList<QNetworkProxy> ProxyFactory::queryProxy (const QNetworkProxyQuery& query)
 	{
 		QList<QNetworkProxy> proxies;
-		proxies << QNetworkProxy (QNetworkProxy::NoProxy);
+		if (query.queryType () == QNetworkProxyQuery::TcpSocket ||
+				query.queryType () == QNetworkProxyQuery::UrlRequest)
+		{
+			const auto& matches = CfgWidget_->FindMatching (query.peerHostName (),
+					query.peerPort (), query.protocolTag ());
+			std::copy (matches.begin (), matches.end (), std::back_inserter (proxies));
+		}
+
+		if (proxies.isEmpty ())
+			proxies << QNetworkProxy (QNetworkProxy::NoProxy);
+
 		return proxies;
 	}
 }

@@ -419,6 +419,8 @@ SectionGroup "New plugins"
 		SectionIn 1
 	SectionEnd
 	Section "Liznoo" LIZNOOPLUGIN
+		SetOutPath $INSTDIR
+		File qwt.dll
 		SetOutPath $INSTDIR\settings
 		File settings\liznoosettings.xml
 		SetOutPath $INSTDIR\plugins\bin

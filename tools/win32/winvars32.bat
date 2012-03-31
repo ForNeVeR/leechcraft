@@ -20,6 +20,9 @@ set VLC_DIR=C:\Project\vlc-2.1.0-git-20120204-0003\
 set QWT_DIR=C:\Project\qwt-6.0
 set OXYGENICONS_DIR=C:\Project\oxygen-icons-4.8.0
 
+rem 7za.exe, gunzip.exe, vcredist_x86.exe, myspell
+set TOOLS_DIR=C:\Project\tools
+
 set BUILD_RELEASE_AND_DEBUG=1
 
 rem == Collect variables ==

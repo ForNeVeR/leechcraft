@@ -82,6 +82,9 @@ rem - VLC -
 copy %VLC_DIR%\libvlc.dll %TARGET_DIR%
 copy %VLC_DIR%\libvlccore.dll %TARGET_DIR%
 
+rem - QWT -
+copy %QWT_DIR%\lib\qwt%QT_LIB_SUFFIX%.dll %TARGET_DIR%
+
 rem === LEECHCRAFT FILES ===
 
 rem - Main files -
@@ -129,5 +132,11 @@ copy %QT_BIN_DIR%\..\translations\qt_*.qm %TARGET_DIR%\translations
 
 rem == Copy install script to Leechcraft
 XCOPY installer\* %TARGET_DIR% /Y
+
+rem - Redist & tools -
+xcopy /e /i %TOOLS_DIR%\myspell %TARGET_DIR%
+copy %TOOLS_DIR%\7za.exe %TARGET_DIR%
+copy %TOOLS_DIR%\gunzip.exe %TARGET_DIR%
+copy %TOOLS_DIR%\vcredist_x86.exe %TARGET_DIR%
 
 pause

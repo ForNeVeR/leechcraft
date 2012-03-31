@@ -133,10 +133,27 @@ copy %QT_BIN_DIR%\..\translations\qt_*.qm %TARGET_DIR%\translations
 rem == Copy install script to Leechcraft
 XCOPY installer\* %TARGET_DIR% /Y
 
-rem - Redist & tools -
+rem === Redist & tools ===
 xcopy /e /i %TOOLS_DIR%\myspell %TARGET_DIR%
 copy %TOOLS_DIR%\7za.exe %TARGET_DIR%
 copy %TOOLS_DIR%\gunzip.exe %TARGET_DIR%
 copy %TOOLS_DIR%\vcredist_x86.exe %TARGET_DIR%
+
+rem === Debug files ===
+if "%BUILD_TYPE%" == "Debug" (
+rem - Boost -
+copy %BOOST_ROOT%\bin.v2\libs\date_time\build\msvc-10.0\debug\threading-multi\boost_date_time-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\filesystem\build\msvc-10.0\debug\threading-multi\boost_filesystem-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\program_options\build\msvc-10.0\debug\threading-multi\boost_program_options-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\system\build\msvc-10.0\debug\threading-multi\boost_system-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\thread\build\msvc-10.0\debug\threading-multi\boost_thread-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+rem - Main files -
+copy %LEECHCRAFT_BUILD_DIR%\%BUILD_TYPE%\leechcraft.pdb %TARGET_DIR%
+copy %LEECHCRAFT_BUILD_DIR%\util\%BUILD_TYPE%\lcutil.pdb %TARGET_DIR%
+copy %LEECHCRAFT_BUILD_DIR%\xmlsettingsdialog\%BUILD_TYPE%\xmlsettingsdialog.pdb %TARGET_DIR%
+
+rem - Plugins -
+for /r %LEECHCRAFT_BUILD_DIR%\plugins %%f in (%BUILD_TYPE%\leechcraft_*.pdb) do copy %%f %TARGET_DIR%\plugins\bin
+)
 
 pause

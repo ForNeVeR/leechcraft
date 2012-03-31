@@ -24,11 +24,11 @@ rem 7za.exe, gunzip.exe, vcredist_x86.exe, myspell
 set TOOLS_DIR=C:\Project\tools
 
 set BUILD_RELEASE_AND_DEBUG=1
+set CMAKE_GENERATOR="Visual Studio 10"
 
 rem == Collect variables ==
 
-set BUILD_TYPE=MinSizeRel
-set CMAKE_GENERATOR="Visual Studio 10"
+set BUILD_TYPE=Debug
 
 rem Set these variables to proper paths of your system:
 

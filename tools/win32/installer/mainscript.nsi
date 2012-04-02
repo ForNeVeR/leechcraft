@@ -427,6 +427,13 @@ SectionGroup "New plugins"
 		File plugins\bin\leechcraft_liznoo.dll
 		SectionIn 1
 	SectionEnd
+	Section "XProxy" XPROXYPLUGIN
+		SetOutPath $INSTDIR\settings
+		File settings\xproxysettings.xml
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_xproxy.dll
+		SectionIn 1
+	SectionEnd
 SectionGroupEnd
 
 Var MUI_TEMP
@@ -495,6 +502,7 @@ LangString DESC_SIDEBARPLUGIN ${LANG_ENGLISH} "A nice sidebar with quick launch 
 LangString DESC_SYNCERPLUGIN ${LANG_ENGLISH} "Synchronization plugin for LeechCraft."
 LangString DESC_TABSESSMANAGERPLUGIN ${LANG_ENGLISH} "Manages sessions of tabs in LeechCraft."
 LangString DESC_LIZNOOPLUGIN ${LANG_ENGLISH} "UPower/WinAPI-based power manager."
+LangString DESC_XPROXYPLUGIN ${LANG_ENGLISH} "Advanced proxy servers manager for LeechCraft."
 
 
 LangString DESC_MAINFILES ${LANG_RUSSIAN} "Ядро LeechCraft."
@@ -539,6 +547,7 @@ LangString DESC_SIDEBARPLUGIN ${LANG_RUSSIAN} "Симпатичный сайдбар с панелью быс
 LangString DESC_SYNCERPLUGIN ${LANG_RUSSIAN} "Модуль синхронизации для LeechCraft."
 LangString DESC_TABSESSMANAGERPLUGIN ${LANG_RUSSIAN} "Управляет сессиями вкладок в LeechCraft."
 LangString DESC_LIZNOOPLUGIN ${LANG_RUSSIAN} "Управление энергией, основанное на UPower/WinAPI."
+LangString DESC_XPROXYPLUGIN ${LANG_RUSSIAN} "Расширенный менеджер прокси-серверов для LeechCraft."
 
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
@@ -584,6 +593,7 @@ LangString DESC_LIZNOOPLUGIN ${LANG_RUSSIAN} "Управление энергией, основанное на
 	!insertmacro MUI_DESCRIPTION_TEXT ${SYNCERPLUGIN} $(DESC_SYNCERPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${TABSESSMANAGERPLUGIN} $(DESC_TABSESSMANAGERPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${LIZNOOPLUGIN} $(DESC_LIZNOOPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${XPROXYPLUGIN} $(DESC_XPROXYPLUGIN)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Function .onInit

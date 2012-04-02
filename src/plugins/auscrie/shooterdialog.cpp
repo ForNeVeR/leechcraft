@@ -34,35 +34,60 @@ namespace Auscrie
 	{
 		switch (Ui_.ActionBox_->currentIndex ())
 		{
-			case 0:
-			case 1:
-			case 2:
-				return AUpload;
-			case 3:
-				return ASave;
-			default:
-				qWarning () << Q_FUNC_INFO
-						<< Ui_.ActionBox_->currentIndex ()
-						<< "unhandled";
-				return ASave;
+		case 0:
+		case 1:
+		case 2:
+			return Action::Upload;
+		case 3:
+			return Action::Save;
+		default:
+			qWarning () << Q_FUNC_INFO
+					<< Ui_.ActionBox_->currentIndex ()
+					<< "unhandled";
+			return Action::Save;
 		}
+	}
+
+	ShooterDialog::Mode ShooterDialog::GetMode () const
+	{
+		switch (Ui_.ModeBox_->currentIndex ())
+		{
+		case 0:
+			return Mode::LCWindowOverlay;
+		case 1:
+			return Mode::LCWindow;
+		case 2:
+			return Mode::CurrentScreen;
+		case 3:
+			return Mode::WholeDesktop;
+		default:
+			qWarning () << Q_FUNC_INFO
+					<< Ui_.ModeBox_->currentIndex ()
+					<< "unhandled";
+			return Mode::LCWindowOverlay;
+		}
+	}
+
+	bool ShooterDialog::ShouldHide () const
+	{
+		return Ui_.HideThis_->checkState () == Qt::Checked;
 	}
 
 	Poster::HostingService ShooterDialog::GetHostingService () const
 	{
 		switch (Ui_.ActionBox_->currentIndex ())
 		{
-			case 0:
-				return Poster::DumpBitcheeseNet;
-			case 1:
-				return Poster::SavepicRu;
-			case 2:
-				return Poster::ImagebinCa;
-			default:
-				qWarning () << Q_FUNC_INFO
-						<< Ui_.ActionBox_->currentIndex ()
-						<< "unhandled, defaulting to imagebin.ca";
-				return Poster::ImagebinCa;
+		case 0:
+			return Poster::DumpBitcheeseNet;
+		case 1:
+			return Poster::SavepicRu;
+		case 2:
+			return Poster::ImagebinCa;
+		default:
+			qWarning () << Q_FUNC_INFO
+					<< Ui_.ActionBox_->currentIndex ()
+					<< "unhandled, defaulting to imagebin.ca";
+			return Poster::ImagebinCa;
 		}
 	}
 

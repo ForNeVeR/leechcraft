@@ -19,6 +19,7 @@
 #include "otlozhu.h"
 #include <QIcon>
 #include "todotab.h"
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -26,6 +27,13 @@ namespace Otlozhu
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		Core::Instance ().SetProxy (proxy);
+
+		connect (&Core::Instance (),
+				SIGNAL (gotEntity (LeechCraft::Entity)),
+				this,
+				SIGNAL (gotEntity (LeechCraft::Entity)));
+
 		TCTodo_ = TabClassInfo
 		{
 			GetUniqueID () + "_todo",
@@ -62,7 +70,7 @@ namespace Otlozhu
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon ();
+		return QIcon (":/otlozhu/resources/images/otlozhu.svg");
 	}
 
 	TabClasses_t Plugin::GetTabClasses () const

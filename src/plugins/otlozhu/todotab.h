@@ -26,6 +26,8 @@ namespace LeechCraft
 {
 namespace Otlozhu
 {
+	class TodoSFProxyModel;
+
 	class TodoTab : public QWidget
 				  , public ITabWidget
 	{
@@ -36,6 +38,10 @@ namespace Otlozhu
 		const TabClassInfo TC_;
 		QObject *Plugin_;
 
+		TodoSFProxyModel *ProxyModel_;
+
+		QMenu *ProgressMenu_;
+		QMenu *DueDateMenu_;
 		QToolBar *Bar_;
 	public:
 		TodoTab (const TabClassInfo&, QObject*);
@@ -45,6 +51,13 @@ namespace Otlozhu
 		QObject* ParentMultiTabs ();
 		void Remove ();
 		QToolBar* GetToolBar () const;
+	private slots:
+		void handleAddTodoRequested ();
+		void handleRemoveTodoRequested ();
+		void handleEditCommentRequested ();
+		void handleSetDueDateRequested ();
+		void handleSetCustomDueDateRequested ();
+		void handleQuickProgress ();
 	signals:
 		void removeTab (QWidget*);
 	};

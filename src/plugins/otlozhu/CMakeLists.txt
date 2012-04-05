@@ -2,6 +2,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 PROJECT (leechcraft_otlozhu)
 INCLUDE (InitLCPlugin OPTIONAL)
 
+SET (QT_USE_QTXML TRUE)
 INCLUDE (${QT_USE_FILE})
 INCLUDE_DIRECTORIES (
 	${CMAKE_CURRENT_BINARY_DIR}
@@ -13,26 +14,44 @@ SET (SRCS
 	todotab.cpp
 	core.cpp
 	todomanager.cpp
+	todoitem.cpp
+	todostorage.cpp
+	storagemodel.cpp
+	addtododialog.cpp
+	todolistdelegate.cpp
+	todosfproxymodel.cpp
+	notificationsmanager.cpp
 	)
 SET (HEADERS
 	otlozhu.h
 	todotab.h
 	core.h
 	todomanager.h
+	todoitem.h
+	todostorage.h
+	storagemodel.h
+	addtododialog.h
+	todolistdelegate.h
+	todosfproxymodel.h
+	notificationsmanager.h
 	)
 SET (FORMS
 	todotab.ui
+	addtododialog.ui
 	)
+SET (RESOURCES otlozhuresources.qrc)
 IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 ENDIF (NOT LC_NO_MOC)
 QT4_WRAP_UI (UIS_H ${FORMS})
+QT4_ADD_RESOURCES (RCCS ${RESOURCES})
 
 ADD_LIBRARY (leechcraft_otlozhu SHARED
 	${COMPILED_TRANSLATIONS}
 	${SRCS}
 	${MOC_SRCS}
 	${UIS_H}
+	${RCCS}
 	)
 TARGET_LINK_LIBRARIES (leechcraft_otlozhu
 	${QT_LIBRARIES}

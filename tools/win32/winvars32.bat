@@ -32,12 +32,17 @@ set BUILD_TYPE=Debug
 
 rem Set these variables to proper paths of your system:
 
+set BUILD_DIR_PREFIX=Release
+if "%BUILD_TYPE%" == "Debug" (
+	set BUILD_DIR_PREFIX=Debug
+)
+
 set BOOST_BIN_DIR="%BOOST_ROOT%\stage\lib"
 set BOOST_VERSION="1_48"
-set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\Release\boost-link-shared\boost-source\threading-multi"
+set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\%BUILD_DIR_PREFIX%\boost-link-shared\boost-source\threading-multi"
 set OPENSSL_BIN_DIR="C:\Project\OpenSSL-Win32\"
 set QT_BIN_DIR="%QTDIR%\bin"
-set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\MinSizeRel\"
+set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\%BUILD_DIR_PREFIX%\"
 
 set LEECHCRAFT_ROOT_DIR="..\.."
 set LEECHCRAFT_BUILD_DIR="build32"

@@ -33,19 +33,19 @@
 #include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
-#include "interfaces/iclentry.h"
-#include "interfaces/imessage.h"
-#include "interfaces/irichtextmessage.h"
-#include "interfaces/iaccount.h"
-#include "interfaces/imucentry.h"
-#include "interfaces/itransfermanager.h"
-#include "interfaces/iconfigurablemuc.h"
-#include "interfaces/ichatstyleresourcesource.h"
-#include "interfaces/isupportmediacalls.h"
-#include "interfaces/imediacall.h"
-#include "interfaces/ihistoryplugin.h"
+#include "interfaces/azoth/iclentry.h"
+#include "interfaces/azoth/imessage.h"
+#include "interfaces/azoth/irichtextmessage.h"
+#include "interfaces/azoth/iaccount.h"
+#include "interfaces/azoth/imucentry.h"
+#include "interfaces/azoth/itransfermanager.h"
+#include "interfaces/azoth/iconfigurablemuc.h"
+#include "interfaces/azoth/ichatstyleresourcesource.h"
+#include "interfaces/azoth/isupportmediacalls.h"
+#include "interfaces/azoth/imediacall.h"
+#include "interfaces/azoth/ihistoryplugin.h"
 #ifdef ENABLE_CRYPT
-#include "interfaces/isupportpgp.h"
+#include "interfaces/azoth/isupportpgp.h"
 #endif
 #include "core.h"
 #include "textedit.h"
@@ -943,6 +943,12 @@ namespace Azoth
 					.property ("SendButtonVisible").toBool ());
 	}
 
+	void ChatTab::handleMinLinesHeightChanged ()
+	{
+		PreviousTextHeight_ = 0;
+		UpdateTextHeight ();
+	}
+
 	void ChatTab::handleRichFormatterPosition ()
 	{
 		const QString& posStr = XmlSettingsManager::Instance ()
@@ -1255,6 +1261,9 @@ namespace Azoth
 		XmlSettingsManager::Instance ().RegisterObject ("SendButtonVisible",
 				this, "handleSendButtonVisible");
 		handleSendButtonVisible ();
+
+		XmlSettingsManager::Instance ().RegisterObject ("MinLinesHeight",
+				this, "handleMinLinesHeightChanged");
 	}
 
 	void ChatTab::RequestLogs ()
@@ -1587,7 +1596,9 @@ namespace Azoth
 			return;
 
 		PreviousTextHeight_ = docHeight;
-		const int fontHeight = Ui_.MsgEdit_->fontMetrics ().height ();
+		const int numLines = XmlSettingsManager::Instance ().property ("MinLinesHeight").toInt ();
+		const int fontHeight = Ui_.MsgEdit_->fontMetrics ().lineSpacing () * numLines +
+				Ui_.MsgEdit_->document ()->documentMargin () * 2;
 		const int resHeight = std::min (height () / 3, std::max (docHeight, fontHeight));
 		Ui_.MsgEdit_->setMinimumHeight (resHeight);
 		Ui_.MsgEdit_->setMaximumHeight (resHeight);

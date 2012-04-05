@@ -26,12 +26,31 @@ namespace Otlozhu
 	Core::Core ()
 	: TodoManager_ (new TodoManager ("Default", this))
 	{
+		connect (TodoManager_,
+				SIGNAL (gotEntity (LeechCraft::Entity)),
+				this,
+				SIGNAL (gotEntity (LeechCraft::Entity)));
 	}
 
 	Core& Core::Instance ()
 	{
 		static Core c;
 		return c;
+	}
+
+	ICoreProxy_ptr Core::GetProxy () const
+	{
+		return Proxy_;
+	}
+
+	void Core::SetProxy (ICoreProxy_ptr proxy)
+	{
+		Proxy_ = proxy;
+	}
+
+	void Core::SendEntity (const Entity& e)
+	{
+		emit gotEntity (e);
 	}
 
 	TodoManager* Core::GetTodoManager () const

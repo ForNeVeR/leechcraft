@@ -32,13 +32,13 @@ namespace Auscrie
 
 		Ui::ShooterDialog Ui_;
 	public:
-		enum class Action
+		enum Action
 		{
 			Upload,
 			Save
 		};
 
-		enum class Mode
+		enum Mode
 		{
 			LCWindowOverlay,
 			LCWindow,

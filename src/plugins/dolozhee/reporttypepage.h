@@ -31,7 +31,7 @@ namespace Dolozhee
 
 		Ui::ReportTypePage Ui_;
 	public:
-		enum class Type
+		enum Type
 		{
 			Bug,
 			Feature

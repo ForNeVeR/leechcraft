@@ -18,40 +18,20 @@
 
 #pragma once
 
-#include <QObject>
-#include <interfaces/iinfo.h>
-#include <interfaces/iactionsexporter.h>
+#include "todoitem.h"
 
 namespace LeechCraft
 {
-namespace Dolozhee
+namespace Otlozhu
 {
-	class Plugin : public QObject
-				 , public IInfo
-				 , public IActionsExporter
+	class ICalGenerator
 	{
-		Q_OBJECT
-		Q_INTERFACES (IInfo IActionsExporter)
-
-		ICoreProxy_ptr Proxy_;
-		QAction *Report_;
+		QList<TodoItem_ptr> Items_;
 	public:
-		void Init (ICoreProxy_ptr);
-		void SecondInit ();
-		QByteArray GetUniqueID () const;
-		void Release ();
-		QString GetName () const;
-		QString GetInfo () const;
-		QIcon GetIcon () const;
+		ICalGenerator& operator<< (TodoItem_ptr);
+		ICalGenerator& operator<< (QList<TodoItem_ptr>);
 
-		QList<QAction*> GetActions (LeechCraft::ActionsEmbedPlace area) const;
-	private slots:
-		void initiateReporting ();
-	signals:
-		void gotActions (QList<QAction*>, ActionsEmbedPlace);
-
-		void gotEntity (const LeechCraft::Entity&);
-		void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
+		QByteArray operator() () const;
 	};
 }
 }

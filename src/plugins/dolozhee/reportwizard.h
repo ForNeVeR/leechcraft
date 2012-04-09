@@ -27,6 +27,8 @@ class QNetworkAccessManager;
 
 namespace LeechCraft
 {
+struct Entity;
+
 namespace Dolozhee
 {
 	class ChooseUserPage;
@@ -68,6 +70,9 @@ namespace Dolozhee
 		FeatureRequestPage* GetFRPage () const;
 	private slots:
 		void handleAuthenticationRequired (QNetworkReply*, QAuthenticator*);
+	signals:
+		void gotEntity (const LeechCraft::Entity&);
+		void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
 	};
 }
 }

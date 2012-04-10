@@ -7,7 +7,7 @@ rem == Build variables ==
 
 rem call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\vcvars32.bat" x86
 
-set QTDIR=c:\Programs\QtSDK\Desktop\Qt\4.7.4\mingw
+set QTDIR=c:\Programs\QtSDK\Desktop\Qt\4.8.0\mingw
 
 set BOOST_ROOT=d:\X-Files\Projects\_Lib\boost_1_48_0
 rem set TORRENT_DIR=C:\DEVLIBS\libtorrent-rasterbar-0.15.9

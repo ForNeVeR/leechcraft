@@ -29,6 +29,7 @@ cmake ../../../src ^
 	%BTYPE% ^
 	-DENABLE_AGGREGATOR=False ^
 	-DENABLE_ANHERO=False ^
+	-DENABLE_AZOTH=False ^
 	-DENABLE_AUSCRIE=False ^
 	-DENABLE_DBUSMANAGER=False ^
 	-DENABLE_DEADLYRICS=False ^

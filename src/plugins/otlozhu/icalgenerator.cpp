@@ -18,6 +18,8 @@
 
 #include "icalgenerator.h"
 #include <algorithm>
+#include <interfaces/core/itagsmanager.h>
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -51,7 +53,15 @@ namespace Otlozhu
 			lines << ("SUMMARY:" + item->GetTitle ().toUtf8 ().trimmed ());
 			if (!item->GetComment ().isEmpty ())
 				lines << ("COMMENT:" + item->GetComment ().toUtf8 ().trimmed ());
-			lines << ("PERCENT:" + QByteArray::number (item->GetPercentage ()));
+			lines << ("PERCENT-COMPLETE:" + QByteArray::number (item->GetPercentage ()));
+
+			QStringList cats;
+			auto tm = Core::Instance ().GetProxy ()->GetTagsManager ();
+			Q_FOREACH (const QString& id, item->GetTagIDs ())
+				cats << tm->GetTag (id);
+			if (!cats.isEmpty ())
+				lines << ("CATEGORIES:" + cats.join (",").toUtf8 ());
+
 			lines << "END:VTODO";
 			return lines;
 		}

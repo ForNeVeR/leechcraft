@@ -18,42 +18,16 @@
 
 #pragma once
 
-#include <QObject>
-#include <QSettings>
 #include "todoitem.h"
 
 namespace LeechCraft
 {
 namespace Otlozhu
 {
-	class TodoStorage : public QObject
+	class ICalParser
 	{
-		Q_OBJECT
-
-		const QString Context_;
-		QList<TodoItem_ptr> Items_;
-
-		QSettings Storage_;
 	public:
-		TodoStorage (const QString&, QObject* = 0);
-
-		int GetNumItems () const;
-		int FindItem (const QString&) const;
-
-		void AddItem (TodoItem_ptr);
-		TodoItem_ptr GetItemAt (int idx) const;
-		const QList<TodoItem_ptr>& GetAllItems () const;
-
-		void HandleUpdated (TodoItem_ptr);
-		void RemoveItem (const QString&);
-	private:
-		void Load ();
-		void SaveAt (int);
-		void SaveAt (const QList<int>&);
-	signals:
-		void itemAdded (int);
-		void itemRemoved (int);
-		void itemUpdated (int);
+		QList<TodoItem_ptr> Parse (QByteArray);
 	};
 }
 }

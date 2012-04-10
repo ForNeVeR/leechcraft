@@ -18,42 +18,34 @@
 
 #pragma once
 
-#include <QObject>
-#include <QSettings>
-#include "todoitem.h"
+#include <QDialog>
+#include "ui_itemsmergedialog.h"
 
 namespace LeechCraft
 {
 namespace Otlozhu
 {
-	class TodoStorage : public QObject
+	class ItemsMergeDialog : public QDialog
 	{
 		Q_OBJECT
 
-		const QString Context_;
-		QList<TodoItem_ptr> Items_;
-
-		QSettings Storage_;
+		Ui::ItemsMergeDialog Ui_;
 	public:
-		TodoStorage (const QString&, QObject* = 0);
+		enum class Priority
+		{
+			Imported,
+			Current
+		};
+		enum class SameTitle
+		{
+			Merge,
+			LeaveDistinct
+		};
 
-		int GetNumItems () const;
-		int FindItem (const QString&) const;
+		ItemsMergeDialog (int, QWidget* = 0);
 
-		void AddItem (TodoItem_ptr);
-		TodoItem_ptr GetItemAt (int idx) const;
-		const QList<TodoItem_ptr>& GetAllItems () const;
-
-		void HandleUpdated (TodoItem_ptr);
-		void RemoveItem (const QString&);
-	private:
-		void Load ();
-		void SaveAt (int);
-		void SaveAt (const QList<int>&);
-	signals:
-		void itemAdded (int);
-		void itemRemoved (int);
-		void itemUpdated (int);
+		Priority GetPriority () const;
+		SameTitle GetSameTitle () const;
 	};
 }
 }

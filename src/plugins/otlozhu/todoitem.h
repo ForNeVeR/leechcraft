@@ -43,10 +43,12 @@ namespace Otlozhu
 		QStringList Deps_;
 	public:
 		TodoItem ();
+		TodoItem (const QString&);
 		TodoItem (const TodoItem&) = delete;
 		TodoItem& operator= (const TodoItem&) = delete;
 
 		TodoItem_ptr Clone () const;
+		void CopyFrom (const TodoItem_ptr);
 
 		static TodoItem_ptr Deserialize (const QByteArray&);
 		QByteArray Serialize () const;

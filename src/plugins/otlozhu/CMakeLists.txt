@@ -22,6 +22,8 @@ SET (SRCS
 	todosfproxymodel.cpp
 	notificationsmanager.cpp
 	icalgenerator.cpp
+	icalparser.cpp
+	itemsmergedialog.cpp
 	)
 SET (HEADERS
 	otlozhu.h
@@ -36,10 +38,13 @@ SET (HEADERS
 	todosfproxymodel.h
 	notificationsmanager.h
 	icalgenerator.h
+	icalparser.h
+	itemsmergedialog.h
 	)
 SET (FORMS
 	todotab.ui
 	addtododialog.ui
+	itemsmergedialog.ui
 	)
 SET (RESOURCES otlozhuresources.qrc)
 IF (NOT LC_NO_MOC)

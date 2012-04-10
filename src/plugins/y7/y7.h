@@ -19,41 +19,26 @@
 #pragma once
 
 #include <QObject>
-#include <QSettings>
-#include "todoitem.h"
+#include <interfaces/iinfo.h>
 
 namespace LeechCraft
 {
-namespace Otlozhu
+namespace Y7
 {
-	class TodoStorage : public QObject
+	class Plugin : public QObject
+					, public IInfo
 	{
 		Q_OBJECT
-
-		const QString Context_;
-		QList<TodoItem_ptr> Items_;
-
-		QSettings Storage_;
+		Q_INTERFACES (IInfo)
 	public:
-		TodoStorage (const QString&, QObject* = 0);
-
-		int GetNumItems () const;
-		int FindItem (const QString&) const;
-
-		void AddItem (TodoItem_ptr);
-		TodoItem_ptr GetItemAt (int idx) const;
-		const QList<TodoItem_ptr>& GetAllItems () const;
-
-		void HandleUpdated (TodoItem_ptr);
-		void RemoveItem (const QString&);
-	private:
-		void Load ();
-		void SaveAt (int);
-		void SaveAt (const QList<int>&);
-	signals:
-		void itemAdded (int);
-		void itemRemoved (int);
-		void itemUpdated (int);
+		void Init (ICoreProxy_ptr);
+		void SecondInit ();
+		QByteArray GetUniqueID () const;
+		void Release ();
+		QString GetName () const;
+		QString GetInfo () const;
+		QIcon GetIcon () const;
 	};
 }
 }
+

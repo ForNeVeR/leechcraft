@@ -16,44 +16,46 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#pragma once
-
-#include <QObject>
-#include <QSettings>
-#include "todoitem.h"
+#include "y7.h"
+#include <QIcon>
 
 namespace LeechCraft
 {
-namespace Otlozhu
+namespace Y7
 {
-	class TodoStorage : public QObject
+	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
-		Q_OBJECT
+	}
 
-		const QString Context_;
-		QList<TodoItem_ptr> Items_;
+	void Plugin::SecondInit ()
+	{
+	}
 
-		QSettings Storage_;
-	public:
-		TodoStorage (const QString&, QObject* = 0);
+	QByteArray Plugin::GetUniqueID () const
+	{
+		return "org.LeechCraft.Y7";
+	}
 
-		int GetNumItems () const;
-		int FindItem (const QString&) const;
+	void Plugin::Release ()
+	{
+	}
 
-		void AddItem (TodoItem_ptr);
-		TodoItem_ptr GetItemAt (int idx) const;
-		const QList<TodoItem_ptr>& GetAllItems () const;
+	QString Plugin::GetName () const
+	{
+		return "Y7";
+	}
 
-		void HandleUpdated (TodoItem_ptr);
-		void RemoveItem (const QString&);
-	private:
-		void Load ();
-		void SaveAt (int);
-		void SaveAt (const QList<int>&);
-	signals:
-		void itemAdded (int);
-		void itemRemoved (int);
-		void itemUpdated (int);
-	};
+	QString Plugin::GetInfo () const
+	{
+		return tr ("Windows 7 integration layer.");
+	}
+
+	QIcon Plugin::GetIcon () const
+	{
+		return QIcon ();
+	}
 }
 }
+
+Q_EXPORT_PLUGIN2 (leechcraft_y7, LeechCraft::Y7::Plugin);
+

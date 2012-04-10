@@ -32,6 +32,13 @@ namespace Otlozhu
 	{
 	}
 
+	TodoItem::TodoItem (const QString& id)
+	: ID_ (id)
+	, Created_ (QDateTime::currentDateTime ())
+	, Percentage_ (0)
+	{
+	}
+
 	TodoItem_ptr TodoItem::Clone () const
 	{
 		TodoItem_ptr clone (new TodoItem);
@@ -43,6 +50,17 @@ namespace Otlozhu
 		clone->Percentage_ = Percentage_;
 		clone->Deps_ = Deps_;
 		return clone;
+	}
+
+	void TodoItem::CopyFrom (const TodoItem_ptr item)
+	{
+		Title_ = item->Title_;
+		Comment_ = item->Comment_;
+		TagIDs_ = item->TagIDs_;
+		Created_ = item->Created_;
+		Due_ = item->Due_;
+		Percentage_ = item->Percentage_;
+		Deps_ = item->Deps_;
 	}
 
 	TodoItem_ptr TodoItem::Deserialize (const QByteArray& data)

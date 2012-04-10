@@ -92,6 +92,10 @@ namespace LackMan
 						.arg (DB_.lastError ().text ())));
 		}
 
+		QSqlQuery query (DB_);
+		query.exec ("PRAGMA foreign_keys = ON;");
+		query.exec ("PRAGMA synchronous = OFF;");
+
 		InitTables ();
 		InitQueries ();
 	}
@@ -118,7 +122,7 @@ namespace LackMan
 		return value;
 	}
 
-	InstalledDependencyInfoList Storage::GetInstalledPackages ()
+	QSet<int> Storage::GetInstalledPackagesIDs ()
 	{
 		if (!QueryGetInstalledPackages_.exec ())
 		{
@@ -126,20 +130,28 @@ namespace LackMan
 			throw std::runtime_error ("Query execution failed.");
 		}
 
+		QSet<int> result;
+		while (QueryGetInstalledPackages_.next ())
+			result << QueryGetInstalledPackages_.value (0).toInt ();
+		return result;
+	}
+
+	InstalledDependencyInfoList Storage::GetInstalledPackages ()
+	{
 		InstalledDependencyInfoList result;
 
-		while (QueryGetInstalledPackages_.next ())
+		Q_FOREACH (int id, GetInstalledPackagesIDs ())
 		{
 			PackageShortInfo psi;
 			try
 			{
-				psi = GetPackage (QueryGetInstalledPackages_.value (0).toInt ());
+				psi = GetPackage (id);
 			}
 			catch (const std::exception& e)
 			{
 				qWarning () << Q_FUNC_INFO
 						<< "unable to get installed package info"
-						<< QueryGetInstalledPackages_.value (0).toInt ()
+						<< id
 						<< e.what ();
 				continue;
 			}
@@ -351,30 +363,10 @@ namespace LackMan
 			throw std::runtime_error ("Requested component not found");
 		}
 
-		QSqlQuery idsSelector (DB_);
-		idsSelector.prepare ("SELECT DISTINCT package_id "
-				"FROM locations WHERE component_id = :component_id");
-		idsSelector.bindValue (":component_id", compId);
-		if (!idsSelector.exec ())
-		{
-			Util::DBLock::DumpError (idsSelector);
-			throw std::runtime_error ("Fetching of possibly affected packages failed.");
-		}
-
-		QList<int> possiblyAffected;
-		while (idsSelector.next ())
-			possiblyAffected << idsSelector.value (0).toInt ();
-
-		idsSelector.finish ();
+		const auto& packs = QSet<int>::fromList (GetPackagesInComponent (compId));
+		const auto& toRemove = packs - GetInstalledPackagesIDs ();
 
 		QSqlQuery remover (DB_);
-		remover.prepare ("DELETE FROM locations WHERE component_id = :component_id;");
-		remover.bindValue (":component_id", compId);
-		if (!remover.exec ())
-		{
-			Util::DBLock::DumpError (remover);
-			throw std::runtime_error ("Unable to remove component from locations.");
-		}
 		remover.prepare ("DELETE FROM components WHERE component_id = :component_id;");
 		remover.bindValue (":component_id", compId);
 		if (!remover.exec ())
@@ -382,43 +374,12 @@ namespace LackMan
 			Util::DBLock::DumpError (remover);
 			throw std::runtime_error ("Unable to remove component from components.");
 		}
-
 		remover.finish ();
 
-		QSqlQuery checker (DB_);
-		checker.prepare ("SELECT COUNT (package_id) FROM locations WHERE package_id = :package_id;");
-		Q_FOREACH (int packageId, possiblyAffected)
+		Q_FOREACH (int packageId, toRemove)
 		{
-			checker.bindValue (":package_id", packageId);
-			if (!checker.exec ())
-			{
-				Util::DBLock::DumpError (checker);
-				throw std::runtime_error ("Unable to remove check affected.");
-			}
-
-			if (!checker.next ())
-			{
-				qWarning () << Q_FUNC_INFO
-						<< "zarroo rows";
-				throw std::runtime_error ("Unable to move to the next row");
-			}
-
-			if (checker.value (0).toInt ())
-				continue;
-
-			checker.finish ();
-
 			emit packageRemoved (packageId);
-
-			remover.prepare ("DELETE FROM packages WHERE package_id = :package_id;");
-			remover.bindValue (":package_id", packageId);
-			if (!remover.exec ())
-			{
-				Util::DBLock::DumpError (remover);
-				throw std::runtime_error ("Unable to remove orphaned package.");
-			}
-
-			remover.finish ();
+			RemovePackage (packageId);
 		}
 
 		lock.Good ();
@@ -533,7 +494,7 @@ namespace LackMan
 			throw;
 		}
 
-		QString name = GetPackage (packageId).Name_;
+		const auto& name = GetPackage (packageId).Name_;
 
 		QueryClearTags_.bindValue (":name", name);
 		if (!QueryClearTags_.exec ())
@@ -553,13 +514,6 @@ namespace LackMan
 		if (!QueryClearImages_.exec ())
 		{
 			Util::DBLock::DumpError (QueryClearImages_);
-			throw std::runtime_error ("Query execution failed");
-		}
-
-		QueryRemovePackageFromLocations_.bindValue (":package_id", packageId);
-		if (!QueryRemovePackageFromLocations_.exec ())
-		{
-			Util::DBLock::DumpError (QueryRemovePackageFromLocations_);
 			throw std::runtime_error ("Query execution failed");
 		}
 
@@ -612,19 +566,8 @@ namespace LackMan
 				throw std::runtime_error ("Query execution failed");
 			}
 
-			const qint64 size = pInfo.PackageSizes_.value (version, -1);
-			if (size == -1)
-				continue;
-
 			const int packageId = FindPackage (pInfo.Name_, version);
-
-			QueryAddPackageSize_.bindValue (":package_id", packageId);
-			QueryAddPackageSize_.bindValue (":size", size);
-			if (!QueryAddPackageSize_.exec ())
-			{
-				Util::DBLock::DumpError (QueryAddPackageSize_);
-				throw std::runtime_error ("Query execution failed");
-			}
+			qDebug () << Q_FUNC_INFO << pInfo.Name_ << version << packageId;
 
 			QueryAddPackageArchiver_.bindValue (":package_id", packageId);
 			QueryAddPackageArchiver_.bindValue (":archiver",
@@ -632,6 +575,18 @@ namespace LackMan
 			if (!QueryAddPackageArchiver_.exec ())
 			{
 				Util::DBLock::DumpError (QueryAddPackageArchiver_);
+				throw std::runtime_error ("Query execution failed");
+			}
+
+			const qint64 size = pInfo.PackageSizes_.value (version, -1);
+			if (size == -1)
+				continue;
+
+			QueryAddPackageSize_.bindValue (":package_id", packageId);
+			QueryAddPackageSize_.bindValue (":size", size);
+			if (!QueryAddPackageSize_.exec ())
+			{
+				Util::DBLock::DumpError (QueryAddPackageSize_);
 				throw std::runtime_error ("Query execution failed");
 			}
 		}
@@ -1083,6 +1038,12 @@ namespace LackMan
 		}
 
 		QueryRemoveFromInstalled_.finish ();
+
+		if (GetPackageLocations (packageId).isEmpty ())
+		{
+			emit packageRemoved (packageId);
+			RemovePackage (packageId);
+		}
 	}
 
 	void Storage::InitTables ()
@@ -1221,7 +1182,7 @@ namespace LackMan
 				"VALUES (:package_id, :name, :version, :type);");
 
 		QueryGetPackagesInComponent_ = QSqlQuery (DB_);
-		QueryGetPackagesInComponent_.prepare ("SELECT package_id FROM locations WHERE component_id = :component_id;");
+		QueryGetPackagesInComponent_.prepare ("SELECT DISTINCT package_id FROM locations WHERE component_id = :component_id;");
 
 		QueryGetListPackageInfos_ = QSqlQuery (DB_);
 		QueryGetListPackageInfos_.prepare ("SELECT DISTINCT packages.package_id, packages.name, packages.version, "

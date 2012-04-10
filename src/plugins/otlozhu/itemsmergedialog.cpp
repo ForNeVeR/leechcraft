@@ -16,44 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#pragma once
-
-#include <QObject>
-#include <QSettings>
-#include "todoitem.h"
+#include "itemsmergedialog.h"
 
 namespace LeechCraft
 {
 namespace Otlozhu
 {
-	class TodoStorage : public QObject
+	ItemsMergeDialog::ItemsMergeDialog (int size, QWidget *parent)
+	: QDialog (parent)
 	{
-		Q_OBJECT
+		Ui_.setupUi (this);
 
-		const QString Context_;
-		QList<TodoItem_ptr> Items_;
+		Ui_.TextLabel_->setText (tr ("There are %n items to import. "
+					"How would you like to merge similar tasks?", 0, size));
+	}
 
-		QSettings Storage_;
-	public:
-		TodoStorage (const QString&, QObject* = 0);
+	ItemsMergeDialog::Priority ItemsMergeDialog::GetPriority () const
+	{
+		return Ui_.PrioImport_->isChecked () ?
+				Priority::Imported :
+				Priority::Current;
+	}
 
-		int GetNumItems () const;
-		int FindItem (const QString&) const;
-
-		void AddItem (TodoItem_ptr);
-		TodoItem_ptr GetItemAt (int idx) const;
-		const QList<TodoItem_ptr>& GetAllItems () const;
-
-		void HandleUpdated (TodoItem_ptr);
-		void RemoveItem (const QString&);
-	private:
-		void Load ();
-		void SaveAt (int);
-		void SaveAt (const QList<int>&);
-	signals:
-		void itemAdded (int);
-		void itemRemoved (int);
-		void itemUpdated (int);
-	};
+	ItemsMergeDialog::SameTitle ItemsMergeDialog::GetSameTitle () const
+	{
+		return Ui_.TitleMerge_->isChecked () ?
+				SameTitle::Merge :
+				SameTitle::LeaveDistinct;
+	}
 }
 }

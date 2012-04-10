@@ -32,6 +32,8 @@
 #include "storagemodel.h"
 #include "todosfproxymodel.h"
 #include "icalgenerator.h"
+#include "icalparser.h"
+#include "itemsmergedialog.h"
 
 namespace LeechCraft
 {
@@ -140,6 +142,14 @@ namespace Otlozhu
 		Ui_.TodoTree_->addAction (DueDateMenu_->menuAction ());
 
 		Bar_->addSeparator ();
+
+		QAction *importTodos = new QAction (tr ("Import"), this);
+		importTodos->setProperty ("ActionIcon", "document-import");
+		connect (importTodos,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleImport ()));
+		Bar_->addAction (importTodos);
 
 		QAction *exportTodos = new QAction (tr ("Export"), this);
 		exportTodos->setProperty ("ActionIcon", "document-export");
@@ -278,6 +288,58 @@ namespace Otlozhu
 
 		const int perc = sender ()->property ("Otlozhu/Progress").toInt ();
 		ProxyModel_->setData (index, perc, StorageModel::Roles::ItemProgress);
+	}
+
+	void TodoTab::handleImport ()
+	{
+		const QString& filename = QFileDialog::getOpenFileName (this,
+				tr ("Import todos"),
+				QDir::homePath (),
+				tr ("iCalendar files (*.ics)"));
+
+		QFile file (filename);
+		file.open (QIODevice::ReadOnly);
+		auto items = ICalParser ().Parse (file.readAll ());
+		if (items.isEmpty ())
+			return;
+
+		ItemsMergeDialog dia (items.size (), this);
+		if (dia.exec () != QDialog::Accepted)
+			return;
+
+		auto storage = Core::Instance ().GetTodoManager ()->GetTodoStorage ();
+		auto ourItems = storage->GetAllItems ();
+		Q_FOREACH (auto item, items)
+		{
+			const auto& itemId = item->GetID ();
+			auto pos = std::find_if (ourItems.begin (), ourItems.end (),
+					[&itemId] (decltype (ourItems.front ()) ourItem) { return ourItem->GetID () == itemId; });
+			if (pos != ourItems.end ())
+			{
+				if (dia.GetPriority () == ItemsMergeDialog::Priority::Imported)
+				{
+					(*pos)->CopyFrom (item);
+					storage->HandleUpdated (*pos);
+				}
+				continue;
+			}
+
+			const auto& itemTitle = item->GetTitle ();
+			pos = std::find_if (ourItems.begin (), ourItems.end (),
+					[itemTitle] (decltype (ourItems.front ()) ourItem) { return ourItem->GetTitle () == itemTitle; });
+			if (pos != ourItems.end ())
+			{
+				if (dia.GetPriority () == ItemsMergeDialog::Priority::Imported &&
+						dia.GetSameTitle () == ItemsMergeDialog::SameTitle::Merge)
+				{
+					(*pos)->CopyFrom (item);
+					storage->HandleUpdated (*pos);
+				}
+				continue;
+			}
+
+			storage->AddItem (item);
+		}
 	}
 
 	void TodoTab::handleExport ()

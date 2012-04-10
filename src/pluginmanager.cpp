@@ -841,7 +841,7 @@ namespace LeechCraft
 			settings.remove ("Icon");
 			settings.endGroup ();
 
-			const auto& path = loader->fileName ().toUtf8 ().toBase64 ().replace ('/', '_');
+			const auto path = loader->fileName ().toUtf8 ().toBase64 ().replace ('/', '_');
 			icon.pixmap (48, 48).save (IconsDir_.absoluteFilePath (path), "PNG", 100);
 		}
 

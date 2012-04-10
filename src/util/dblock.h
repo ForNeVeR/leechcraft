@@ -55,10 +55,10 @@ namespace LeechCraft
 
 			static QMutex LockedMutex_;
 			static QSet<QString> LockedBases_;
-		public:
-			DBLock (const DBLock&) = delete;
-			DBLock& operator= (const DBLock&) = delete;
 
+			DBLock (const DBLock&);
+			DBLock& operator= (const DBLock&);
+		public:
 			/** @brief Constructor.
 			 *
 			 * Constructs the lock and prepares it to work with the database.

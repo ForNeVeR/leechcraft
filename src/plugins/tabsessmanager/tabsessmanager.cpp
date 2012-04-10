@@ -226,12 +226,14 @@ namespace TabSessManager
 		if (!recTab || !tab)
 			return;
 
-		const TabUncloseInfo& info =
+		const TabRecoverInfo recovInfo =
 		{
-			{
-				recTab->GetTabRecoverData (),
-				GetSessionProps (widget)
-			},
+			recTab->GetTabRecoverData (),
+			GetSessionProps (widget)
+		};
+		const TabUncloseInfo info =
+		{
+			recovInfo,
 			qobject_cast<IHaveRecoverableTabs*> (tab->ParentMultiTabs ())
 		};
 

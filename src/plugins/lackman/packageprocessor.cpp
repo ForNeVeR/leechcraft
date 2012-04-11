@@ -349,15 +349,15 @@ namespace LackMan
 			<< "-ttar"
 			<< "-si";
 
-		QString outDirArg("-o");
-		outDirArg.append(dirname);
+		QString outDirArg ("-o");
+		outDirArg.append (dirname);
 		args << outDirArg;
 
-		QProcess *firstStep = new QProcess (this);
-		firstStep->setStandardOutputProcess(unarch);
+		QProcess *firstStep = new QProcess (unarch);
+		firstStep->setStandardOutputProcess (unarch);
 		QStringList firstStepArgs;
-		firstStepArgs << "x";
-		firstStepArgs << "-so"
+		firstStepArgs << "x"
+			<< "-so"
 			<< path;
 #else
 		if (archiver == "lzma")

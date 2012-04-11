@@ -121,7 +121,7 @@ namespace LeechCraft
 					case Qt::DecorationRole:
 						{
 							const auto& path = AvailablePlugins_.at (index.row ())->fileName ();
-							const auto& fName = path.toUtf8 ().toBase64 ().replace ('/', '_');
+							const auto fName = path.toUtf8 ().toBase64 ().replace ('/', '_');
 							const auto& res = QPixmap (QString (IconsDir_.absoluteFilePath (fName)));
 							return res.isNull () ? DefaultPluginIcon_ : res;
 						}

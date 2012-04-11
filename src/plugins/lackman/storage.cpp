@@ -496,27 +496,6 @@ namespace LackMan
 
 		const auto& name = GetPackage (packageId).Name_;
 
-		QueryClearTags_.bindValue (":name", name);
-		if (!QueryClearTags_.exec ())
-		{
-			Util::DBLock::DumpError (QueryClearTags_);
-			throw std::runtime_error ("Query execution failed");
-		}
-
-		QueryClearPackageInfos_.bindValue (":name", name);
-		if (!QueryClearPackageInfos_.exec ())
-		{
-			Util::DBLock::DumpError (QueryClearPackageInfos_);
-			throw std::runtime_error ("Query execution failed");
-		}
-
-		QueryClearImages_.bindValue (":name", name);
-		if (!QueryClearImages_.exec ())
-		{
-			Util::DBLock::DumpError (QueryClearImages_);
-			throw std::runtime_error ("Query execution failed");
-		}
-
 		QueryRemovePackage_.bindValue (":package_id", packageId);
 		if (!QueryRemovePackage_.exec ())
 		{
@@ -537,6 +516,46 @@ namespace LackMan
 			Util::DBLock::DumpError (QueryRemovePackageArchiver_);
 			throw std::runtime_error ("Query execution failed");
 		}
+
+		QSqlQuery others (DB_);
+		others.prepare ("SELECT COUNT(1) FROM packages WHERE name = :name;");
+		others.bindValue (":name", name);
+		if (!others.exec ())
+		{
+			Util::DBLock::DumpError (others);
+			throw std::runtime_error ("Query execution failed");
+		}
+
+		others.next ();
+		if (!others.value (0).toInt ())
+		{
+			qDebug () << Q_FUNC_INFO
+					<< "no other packages"
+					<< name;
+
+			QueryClearTags_.bindValue (":name", name);
+			if (!QueryClearTags_.exec ())
+			{
+				Util::DBLock::DumpError (QueryClearTags_);
+				throw std::runtime_error ("Query execution failed");
+			}
+
+			QueryClearPackageInfos_.bindValue (":name", name);
+			if (!QueryClearPackageInfos_.exec ())
+			{
+				Util::DBLock::DumpError (QueryClearPackageInfos_);
+				throw std::runtime_error ("Query execution failed");
+			}
+
+			QueryClearImages_.bindValue (":name", name);
+			if (!QueryClearImages_.exec ())
+			{
+				Util::DBLock::DumpError (QueryClearImages_);
+				throw std::runtime_error ("Query execution failed");
+			}
+		}
+
+		others.finish ();
 
 		lock.Good ();
 	}
@@ -597,7 +616,7 @@ namespace LackMan
 		QueryClearPackageInfos_.bindValue (":name", pInfo.Name_);
 		if (!QueryClearPackageInfos_.exec ())
 		{
-			Util::DBLock::DumpError (QueryAddPackage_);
+			Util::DBLock::DumpError (QueryClearPackageInfos_);
 			throw std::runtime_error ("Query execution failed");
 		}
 		QueryClearPackageInfos_.finish ();
@@ -824,7 +843,6 @@ namespace LackMan
 			throw std::runtime_error ("Query execution failed");
 		}
 
-		QMap<QString, QList<ListPackageInfo>> result;
 		if (!QueryGetSingleListPackageInfo_.next ())
 		{
 			qWarning () << Q_FUNC_INFO
@@ -1016,6 +1034,19 @@ namespace LackMan
 		QueryAddLocation_.finish ();
 	}
 
+	void Storage::RemoveLocation (int packageId, int componentId)
+	{
+		QueryRemovePackageFromLocation_.bindValue (":package_id", packageId);
+		QueryRemovePackageFromLocation_.bindValue (":component_id", componentId);
+		if (!QueryRemovePackageFromLocation_.exec ())
+		{
+			Util::DBLock::DumpError (QueryRemovePackageFromLocation_);
+			throw std::runtime_error ("Query execution failed");
+		}
+
+		QueryRemovePackageFromLocation_.finish ();
+	}
+
 	void Storage::AddToInstalled (int packageId)
 	{
 		QueryAddToInstalled_.bindValue (":package_id", packageId);
@@ -1149,8 +1180,8 @@ namespace LackMan
 		QueryAddLocation_.prepare ("INSERT INTO locations (package_id, component_id) "
 				"VALUES (:package_id, :component_id);");
 
-		QueryRemovePackageFromLocations_ = QSqlQuery (DB_);
-		QueryRemovePackageFromLocations_.prepare ("DELETE FROM locations WHERE package_id = :package_id;");
+		QueryRemovePackageFromLocation_ = QSqlQuery (DB_);
+		QueryRemovePackageFromLocation_.prepare ("DELETE FROM locations WHERE package_id = :package_id AND component_id = :component_id;");
 
 		QueryClearTags_ = QSqlQuery (DB_);
 		QueryClearTags_.prepare ("DELETE FROM tags WHERE name = :name;");

@@ -465,9 +465,9 @@ namespace LackMan
 
 	void Core::acceptPending ()
 	{
-		QSet<int> toInstall = PendingManager_->GetPendingInstall ();
-		QSet<int> toRemove = PendingManager_->GetPendingRemove ();
-		QSet<int> toUpdate = PendingManager_->GetPendingUpdate ();
+		const auto& toInstall = PendingManager_->GetPendingInstall ();
+		const auto& toRemove = PendingManager_->GetPendingRemove ();
+		const auto& toUpdate = PendingManager_->GetPendingUpdate ();
 
 		Q_FOREACH (int packageId, toRemove)
 			PerformRemoval (packageId);
@@ -660,6 +660,7 @@ namespace LackMan
 	{
 		QMap<QString, QList<QString>> PackageName2NewVersions_;
 
+		int newPackages = 0;
 		Q_FOREACH (const PackageShortInfo& info, shortInfos)
 			Q_FOREACH (const QString& version, info.Versions_)
 			{
@@ -683,24 +684,10 @@ namespace LackMan
 					return;
 				}
 
-				try
+				if (packageId == -1)
 				{
-					if (packageId == -1)
-						PackageName2NewVersions_ [info.Name_] << version;
-				}
-				catch (const std::exception& e)
-				{
-					qWarning () << Q_FUNC_INFO
-							<< "unable to get save package"
-							<< info.Name_
-							<< version
-							<< e.what ();
-					emit gotEntity (Util::MakeNotification (tr ("Error parsing component"),
-							tr ("Unable to save package `%1`-%2")
-								.arg (info.Name_)
-								.arg (version),
-							PCritical_));
-					return;
+					PackageName2NewVersions_ [info.Name_] << version;
+					++newPackages;
 				}
 
 				try
@@ -740,6 +727,13 @@ namespace LackMan
 					PackageName2NewVersions_ [packageName],
 					componentId);
 		}
+
+		if (newPackages)
+			emit gotEntity (Util::MakeNotification (tr ("Repositories updated"),
+					tr ("Got %n new or updated packages, "
+						"open LackMan tab to view them.",
+						0, newPackages),
+					PInfo_));
 	}
 
 	void Core::PerformRemoval (int packageId)
@@ -776,7 +770,7 @@ namespace LackMan
 	{
 		try
 		{
-			ListPackageInfo info = Storage_->GetSingleListPackageInfo (packageId);
+			const auto& info = Storage_->GetSingleListPackageInfo (packageId);
 			PackagesModel_->UpdateRow (info);
 		}
 		catch (const std::exception& e)
@@ -1074,14 +1068,16 @@ namespace LackMan
 		}
 
 		QList<int> presentPackages;
+		QSet<int> installedPackages;
 		try
 		{
 			presentPackages = Storage_->GetPackagesInComponent (componentId);
+			installedPackages = Storage_->GetInstalledPackagesIDs ();
 		}
 		catch (const std::exception& e)
 		{
 			qWarning () << Q_FUNC_INFO
-					<< "unable to get present packages in component:"
+					<< "unable to get installed or present packages in component:"
 					<< e.what ();
 			emit gotEntity (Util::MakeNotification (tr ("Error handling component"),
 					tr ("Unable to load packages already present in the component %1.")
@@ -1109,12 +1105,12 @@ namespace LackMan
 				return;
 			}
 
+			const QString& ourVersion = psi.Versions_.at (0);
 			bool found = false;
 			Q_FOREACH (const PackageShortInfo& candidate, shortInfos)
 			{
-				if (candidate.Name_ != psi.Name_)
-					continue;
-				if (candidate.Versions_.contains (psi.Versions_.at (0)))
+				if (candidate.Name_ == psi.Name_ &&
+						candidate.Versions_.contains (ourVersion))
 				{
 					found = true;
 					break;
@@ -1125,7 +1121,10 @@ namespace LackMan
 			{
 				try
 				{
-					Storage_->RemovePackage (presentPId);
+					Storage_->RemoveLocation (presentPId, componentId);
+
+					if (!installedPackages.contains (presentPId))
+						Storage_->RemovePackage (presentPId);
 				}
 				catch (const std::exception& e)
 				{
@@ -1155,24 +1154,21 @@ namespace LackMan
 
 			QStringList versions = pInfo.Versions_;
 			std::sort (versions.begin (), versions.end (), IsVersionLess);
-			QString greatest = versions.last ();
+			const auto& greatest = versions.last ();
 
-			Q_FOREACH (const QString& version, pInfo.Versions_)
+			Q_FOREACH (const auto& version, pInfo.Versions_)
 			{
-				int packageId =
-						Storage_->FindPackage (pInfo.Name_, version);
+				const int packageId = Storage_->FindPackage (pInfo.Name_, version);
 				Storage_->AddLocation (packageId, componentId);
 
 				if (version == greatest)
 				{
-					QString existing = PackagesModel_->
-							FindPackage (pInfo.Name_).Version_;
+					const auto& existing = PackagesModel_->FindPackage (pInfo.Name_).Version_;
 					if (existing.isEmpty ())
-						PackagesModel_->AddRow (Storage_->
-								GetSingleListPackageInfo (packageId));
+						PackagesModel_->AddRow (Storage_->GetSingleListPackageInfo (packageId));
 					else if (IsVersionLess (existing, greatest))
 					{
-						ListPackageInfo info = Storage_->GetSingleListPackageInfo (packageId);
+						auto info = Storage_->GetSingleListPackageInfo (packageId);
 						info.HasNewVersion_ = info.IsInstalled_;
 						PackagesModel_->UpdateRow (info);
 					}
@@ -1262,7 +1258,7 @@ namespace LackMan
 
 		emit gotEntity (Util::MakeNotification (tr ("Package installed"),
 					tr ("Package %1 installed successfully.")
-						.arg (packageName),
+						.arg ("<em>" + packageName + "</em>"),
 					PInfo_));
 
 		emit packageRowActionFinished (GetPackageRow (packageId));
@@ -1293,7 +1289,7 @@ namespace LackMan
 
 		emit gotEntity (Util::MakeNotification (tr ("Package updated"),
 					tr ("Package %1 updated successfully.")
-						.arg (packageName),
+						.arg ("<em>" + packageName + "</em>"),
 					PInfo_));
 
 		emit packageRowActionFinished (GetPackageRow (packageId));

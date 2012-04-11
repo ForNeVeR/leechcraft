@@ -16,25 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#pragma once
-
-#include <xmlsettingsdialog/basesettingsmanager.h>
+#include "xmlsettingsmanager.h"
+#include <QCoreApplication>
 
 namespace LeechCraft
 {
-namespace KeyboardCraft
+namespace KBSwitch
 {
-	class XmlSettingsManager : public
-			LeechCraft::Util::BaseSettingsManager
+	XmlSettingsManager::XmlSettingsManager ()
+	: Util::BaseSettingsManager (true)
 	{
-		Q_OBJECT
+		Util::BaseSettingsManager::Init ();
+	}
 
-		XmlSettingsManager ();
-	public:
-		static XmlSettingsManager& Instance ();
-	protected:
-		virtual QSettings* BeginSettings () const;
-		virtual void EndSettings (QSettings*) const;
-	};
+	XmlSettingsManager& XmlSettingsManager::Instance ()
+	{
+		static XmlSettingsManager xsm;
+		return xsm;
+	}
+
+	QSettings* XmlSettingsManager::BeginSettings () const
+	{
+		return new QSettings (QCoreApplication::organizationName (),
+				QCoreApplication::applicationName () + "_KBSwitch");
+	}
+
+	void XmlSettingsManager::EndSettings (QSettings*) const
+	{
+	}
 }
 }

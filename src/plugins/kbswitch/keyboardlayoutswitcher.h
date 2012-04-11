@@ -23,7 +23,7 @@
 
 namespace LeechCraft
 {
-namespace KeyboardCraft
+namespace KBSwitch
 {
 	class KeyboardLayoutSwitcher : public QObject
 	{

@@ -199,7 +199,6 @@ SectionGroup "Plugins"
 		File plugins\bin\leechcraft_lackman.dll
 		SetOutPath $INSTDIR
 		File 7za.exe
-		File gunzip.exe
 		SectionIn 1
 	SectionEnd
 	Section "NetworkMonitor" NETWORKMONITORPLUGIN

@@ -162,6 +162,10 @@ namespace Xoox
 				SIGNAL (gotMUCInvitation (QVariantMap, QString, QString)),
 				this,
 				SIGNAL (mucInvitationReceived (QVariantMap, QString, QString)));
+		connect (ClientConnection_.get (),
+				SIGNAL (resetClientConnection ()),
+				this,
+				SLOT (handleResetClientConnection ()));
 
 #ifdef ENABLE_MEDIACALLS
 		connect (ClientConnection_->GetCallManager (),
@@ -272,10 +276,8 @@ namespace Xoox
 			 Resource_ != w->GetResource () ||
 			 Host_ != w->GetHost () ||
 			 Port_ != w->GetPort ()))
-		{
 			ChangeState (EntryStatus (SOffline, AccState_.Status_));
-			ClientConnection_->SetOurJID (w->GetJID () + "/" + w->GetResource ());
-		}
+		ClientConnection_->SetOurJID (w->GetJID () + "/" + w->GetResource ());
 
 		JID_ = w->GetJID ();
 		Nick_ = w->GetNick ();
@@ -844,6 +846,13 @@ namespace Xoox
 		PrivacyListsManager *mgr = ClientConnection_->GetPrivacyListsManager ();
 		PrivacyListsConfigDialog *plcd = new PrivacyListsConfigDialog (mgr);
 		plcd->show ();
+	}
+
+	void GlooxAccount::handleResetClientConnection ()
+	{
+		TransferManager_.reset ();
+		Init ();
+		ChangeState (GetState ());
 	}
 
 	void GlooxAccount::handleDestroyClient ()

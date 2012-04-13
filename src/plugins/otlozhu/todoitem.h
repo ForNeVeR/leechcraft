@@ -42,11 +42,12 @@ namespace Otlozhu
 
 		int Percentage_;
 		QStringList Deps_;
+
+		TodoItem (const TodoItem&);
+		TodoItem& operator= (const TodoItem&);
 	public:
 		TodoItem ();
 		explicit TodoItem (const QString&);
-		TodoItem (const TodoItem&) = delete;
-		TodoItem& operator= (const TodoItem&) = delete;
 
 		TodoItem_ptr Clone () const;
 		void CopyFrom (const TodoItem_ptr);

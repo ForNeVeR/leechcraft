@@ -31,12 +31,12 @@ namespace Otlozhu
 
 		Ui::ItemsMergeDialog Ui_;
 	public:
-		enum class Priority
+		enum Priority
 		{
 			Imported,
 			Current
 		};
-		enum class SameTitle
+		enum SameTitle
 		{
 			Merge,
 			LeaveDistinct

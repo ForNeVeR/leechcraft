@@ -19,38 +19,49 @@
 #pragma once
 
 #include <QObject>
-#include <interfaces/core/icoreproxy.h>
+#include <QSettings>
+#include <interfaces/isyncable.h>
+#include "todoitem.h"
 
 namespace LeechCraft
 {
-struct Entity;
-
 namespace Otlozhu
 {
-	class TodoManager;
-	class DeltaGenerator;
-
-	class Core : public QObject
+	class DeltaGenerator : public QObject
 	{
 		Q_OBJECT
 
-		ICoreProxy_ptr Proxy_;
-		TodoManager *TodoManager_;
-		DeltaGenerator *DeltaGen_;
+		QSettings Settings_;
+		bool IsEnabled_;
+		bool IsMerging_;
 
-		Core ();
+		QStringList NewItems_;
+		QHash<QString, QVariantMap> Diffs_;
+		QStringList RemovedItems_;
 	public:
-		static Core& Instance ();
+		enum DeltaType
+		{
+			TodoCreated,
+			TodoUpdated,
+			TodoRemoved
+		};
 
-		void SetProxy (ICoreProxy_ptr);
-		ICoreProxy_ptr GetProxy () const;
+		DeltaGenerator (QObject* = 0);
 
-		void SendEntity (const LeechCraft::Entity&);
+		void BeginRecording ();
 
-		TodoManager* GetTodoManager () const;
-		DeltaGenerator* GetDeltaGenerator () const;
-	signals:
-		void gotEntity (const LeechCraft::Entity&);
+		Sync::Payloads_t GetAllDeltas ();
+		Sync::Payloads_t GetNewDeltas ();
+		void PurgeDeltas (quint32 num);
+		void Apply (const Sync::Payloads_t&);
+	private:
+		void ApplyCreated (QDataStream&);
+		void ApplyUpdated (QDataStream&);
+		void ApplyRemoved (QDataStream&);
+	private slots:
+		void handleItemAdded (int);
+		void handleItemRemoved (int);
+		void handleItemDiffGenerated (const QString&, const QVariantMap&);
 	};
 }
 }

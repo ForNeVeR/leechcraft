@@ -1,7 +1,13 @@
 !include "MUI.nsh"
 
-OutFile ../leechcraft-installer.exe
-Name "LeechCraft"
+# These three must be integers
+!define VERSIONMAJOR 0
+!define VERSIONMINOR 5
+!define VERSIONBUILD 60
+!define VERSIONREVISION 406
+
+OutFile ../leechcraft-installer-${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}.exe
+Name "LeechCraft ${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}"
 SetCompressor /SOLID lzma
 InstallDir "$PROGRAMFILES\Deviant\LeechCraft"
 !define MUI_ABORTWARNING
@@ -57,7 +63,7 @@ SectionGroup "Core"
 	
 		!insertmacro MUI_STARTMENU_WRITE_BEGIN LeechCraft
 			CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
-			CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Leechcraft.lnk" "$INSTDIR\leechcraft.exe"
+			CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\LeechCraft.lnk" "$INSTDIR\leechcraft.exe"
 			CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 		!insertmacro MUI_STARTMENU_WRITE_END
 
@@ -133,10 +139,7 @@ SectionGroup "Plugins"
 
         SetOutPath $INSTDIR\share\azoth
         File /r share\azoth\*
-		
-		SetOutPath $INSTDIR\myspell
-		File myspell\*
-		
+
         SectionIn 1
     SectionEnd
 	Section "BitTorrent" TORRENTPLUGIN
@@ -433,6 +436,16 @@ SectionGroup "New plugins"
 		File plugins\bin\leechcraft_xproxy.dll
 		SectionIn 1
 	SectionEnd
+	Section "Dolozhee" DOLOZHEEPLUGIN
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_dolozhee.dll
+		SectionIn 1
+	SectionEnd
+	Section "Otlozhu" OTLOZHUPLUGIN
+		SetOutPath $INSTDIR\plugins\bin
+		File plugins\bin\leechcraft_otlozhu.dll
+		SectionIn 1
+	SectionEnd
 SectionGroupEnd
 
 Var MUI_TEMP
@@ -441,7 +454,7 @@ Section "Uninstall"
 	RMDir /r "$INSTDIR"
 		
 	!insertmacro MUI_STARTMENU_GETFOLDER LeechCraft $MUI_TEMP
-	Delete "$SMPROGRAMS\$MUI_TEMP\Leechcraft.lnk"
+	Delete "$SMPROGRAMS\$MUI_TEMP\LeechCraft.lnk"
 	Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
 	
 	StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"
@@ -463,11 +476,10 @@ LangString DESC_QT ${LANG_ENGLISH} "Qt libraries."
 LangString DESC_MSVC ${LANG_ENGLISH} "Microsoft Visual Studio libraries."
 LangString DESC_OPENSSL ${LANG_ENGLISH} "OpenSSL support."
 LangString DESC_HTTPPLUGIN ${LANG_ENGLISH} "Support for the HTTP protocol."
-LangString DESC_CHATTERPLUGIN ${LANG_ENGLISH} "IRC chat."
 LangString DESC_TORRENTPLUGIN ${LANG_ENGLISH} "Feature-rich BitTorrent client."
 LangString DESC_AGGREGATORPLUGIN ${LANG_ENGLISH} "Sophisticated RSS/Atom news feed reader."
 LangString DESC_HISTORYHOLDERPLUGIN ${LANG_ENGLISH} "Keeps history of downloaded files."
-LangString DESC_LCFTPPLUGIN ${LANG_ENGLISH} "FTP client."
+#LangString DESC_LCFTPPLUGIN ${LANG_ENGLISH} "FTP client."
 LangString DESC_LMPPLUGIN ${LANG_ENGLISH} "LeechCraft Media Player."
 LangString DESC_PLUGIN ${LANG_ENGLISH} "LeechCraft Media Player."
 LangString DESC_NETWORKMONITORPLUGIN ${LANG_ENGLISH} "Monitors HTTP network requests."
@@ -502,6 +514,8 @@ LangString DESC_SYNCERPLUGIN ${LANG_ENGLISH} "Synchronization plugin for LeechCr
 LangString DESC_TABSESSMANAGERPLUGIN ${LANG_ENGLISH} "Manages sessions of tabs in LeechCraft."
 LangString DESC_LIZNOOPLUGIN ${LANG_ENGLISH} "UPower/WinAPI-based power manager."
 LangString DESC_XPROXYPLUGIN ${LANG_ENGLISH} "Advanced proxy servers manager for LeechCraft."
+LangString DESC_DOLOZHEEPLUGIN ${LANG_ENGLISH} "Bug and feature request reporter."
+LangString DESC_OTLOZHUPLUGIN ${LANG_ENGLISH} "A simple GTD-compatible ToDo manager."
 
 
 LangString DESC_MAINFILES ${LANG_RUSSIAN} "Ядро LeechCraft."
@@ -509,11 +523,10 @@ LangString DESC_QT ${LANG_RUSSIAN} "Библиотеки Qt."
 LangString DESC_MSVC ${LANG_RUSSIAN} "Библиотеки Microsoft Visual Studio."
 LangString DESC_OPENSSL ${LANG_RUSSIAN} "Библиотеки OpenSSL."
 LangString DESC_HTTPPLUGIN ${LANG_RUSSIAN} "Простой HTTP-клиент."
-LangString DESC_CHATTERPLUGIN ${LANG_RUSSIAN} "Клиент для сетей IRC."
 LangString DESC_TORRENTPLUGIN ${LANG_RUSSIAN} "Полнофункциональный Torrent-клиент."
 LangString DESC_AGGREGATORPLUGIN ${LANG_RUSSIAN} "Клиент для чтения RSS/Atom-лент."
 LangString DESC_HISTORYHOLDERPLUGIN ${LANG_RUSSIAN} "Хранение истории закачек."
-LangString DESC_LCFTPPLUGIN ${LANG_RUSSIAN} "Двухпанельный FTP-клиент."
+#LangString DESC_LCFTPPLUGIN ${LANG_RUSSIAN} "Двухпанельный FTP-клиент."
 LangString DESC_LMPPLUGIN ${LANG_RUSSIAN} "LeechCraft Media Player - многофункциональный проигрыватель."
 LangString DESC_NETWORKMONITORPLUGIN ${LANG_RUSSIAN} "Отображает HTTP-запросы."
 LangString DESC_NEWLIFEPLUGIN ${LANG_RUSSIAN} "Импорт настроек из других программ."
@@ -547,6 +560,8 @@ LangString DESC_SYNCERPLUGIN ${LANG_RUSSIAN} "Модуль синхронизации для LeechCraf
 LangString DESC_TABSESSMANAGERPLUGIN ${LANG_RUSSIAN} "Управляет сессиями вкладок в LeechCraft."
 LangString DESC_LIZNOOPLUGIN ${LANG_RUSSIAN} "Управление энергией, основанное на UPower/WinAPI."
 LangString DESC_XPROXYPLUGIN ${LANG_RUSSIAN} "Расширенный менеджер прокси-серверов для LeechCraft."
+LangString DESC_DOLOZHEEPLUGIN ${LANG_RUSSIAN} "Инструмент отправки сообщений об ошибках и запросов функций."
+LangString DESC_OTLOZHUPLUGIN ${LANG_RUSSIAN} "A simple GTD-compatible ToDo manager."
 
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
@@ -568,9 +583,7 @@ LangString DESC_XPROXYPLUGIN ${LANG_RUSSIAN} "Расширенный менеджер прокси-сервер
 	!insertmacro MUI_DESCRIPTION_TEXT ${DEADLYRICSPLUGIN} $(DESC_DEADLYRICSPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SEEKTHRUPLUGIN} $(DESC_SEEKTHRUPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${HISTORYHOLDERPLUGIN} $(DESC_HISTORYHOLDERPLUGIN)
-	!insertmacro MUI_DESCRIPTION_TEXT ${NETWORKMONITORPLUGIN} $(DESC_NETWORKMONITORPLUGIN)
-	!insertmacro MUI_DESCRIPTION_TEXT ${CHATTERPLUGIN} $(DESC_CHATTERPLUGIN)
-	!insertmacro MUI_DESCRIPTION_TEXT ${LCFTPPLUGIN} $(DESC_LCFTPPLUGIN)
+#	!insertmacro MUI_DESCRIPTION_TEXT ${LCFTPPLUGIN} $(DESC_LCFTPPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${VGRABBERPLUGIN} $(DESC_VGRABBERPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SUMMARYPLUGIN} $(DESC_SUMMARYPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${AUSCRIEPLUGIN} $(DESC_AUSCRIEPLUGIN)
@@ -593,6 +606,8 @@ LangString DESC_XPROXYPLUGIN ${LANG_RUSSIAN} "Расширенный менеджер прокси-сервер
 	!insertmacro MUI_DESCRIPTION_TEXT ${TABSESSMANAGERPLUGIN} $(DESC_TABSESSMANAGERPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${LIZNOOPLUGIN} $(DESC_LIZNOOPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${XPROXYPLUGIN} $(DESC_XPROXYPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${DOLOZHEEPLUGIN} $(DESC_DOLOZHEEPLUGIN)
+	!insertmacro MUI_DESCRIPTION_TEXT ${OTLOZHUPLUGIN} $(DESC_OTLOZHUPLUGIN)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Function .onInit

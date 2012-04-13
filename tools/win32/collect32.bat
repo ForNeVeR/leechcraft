@@ -134,10 +134,9 @@ rem == Copy install script to Leechcraft
 XCOPY installer\* %TARGET_DIR% /Y
 
 rem === Redist & tools ===
-mkdir %TARGET_DIR%\myspell
-xcopy /e /i %TOOLS_DIR%\myspell %TARGET_DIR%\myspell
+rem mkdir %TARGET_DIR%\myspell
+rem xcopy /e /i %TOOLS_DIR%\myspell %TARGET_DIR%\myspell
 copy %TOOLS_DIR%\7za.exe %TARGET_DIR%
-copy %TOOLS_DIR%\gunzip.exe %TARGET_DIR%
 copy %TOOLS_DIR%\vcredist_x86.exe %TARGET_DIR%
 
 rem === Debug files ===

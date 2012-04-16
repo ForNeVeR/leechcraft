@@ -45,6 +45,7 @@
 #include "accountslistwidget.h"
 #include "consolewidget.h"
 #include "searchwidget.h"
+#include "chatstyleoptionmanager.h"
 
 namespace LeechCraft
 {
@@ -208,7 +209,7 @@ namespace Azoth
 			tr ("IM console"),
 			tr ("Protocol console, for example, XML console for a XMPP "
 				"client protocol"),
-			QIcon (),
+			QIcon (":/plugins/azoth/resources/images/console.svg"),
 			0,
 			TFEmpty
 		};
@@ -224,10 +225,15 @@ namespace Azoth
 	{
 		XmlSettingsDialog_->SetDataSource ("SmileIcons",
 				Core::Instance ().GetSmilesOptionsModel ());
-		XmlSettingsDialog_->SetDataSource ("ChatWindowStyle",
-				Core::Instance ().GetChatStylesOptionsModel ());
-		XmlSettingsDialog_->SetDataSource ("MUCWindowStyle",
-				Core::Instance ().GetChatStylesOptionsModel ());
+
+		auto setSOM = [this] (const QByteArray& propName)
+		{
+			auto mgr = Core::Instance ().GetChatStylesOptionsManager (propName);
+			XmlSettingsDialog_->SetDataSource (propName, mgr->GetStyleModel ());
+			XmlSettingsDialog_->SetDataSource (propName + "Variant", mgr->GetVariantModel ());
+		};
+		setSOM ("ChatWindowStyle");
+		setSOM ("MUCWindowStyle");
 
 		Entity e = Util::MakeEntity (QVariant (),
 				QString (),
@@ -400,10 +406,19 @@ namespace Azoth
 				ActionInfo (tr ("Clear chat window"),
 						QString ("Ctrl+L"),
 						proxy->GetIcon ("edit-clear-history")));
+		sm->RegisterActionInfo ("org.LeechCraft.Azoth.ScrollHistoryBack",
+				ActionInfo (tr ("Prepend messages from history"),
+						QKeySequence::StandardKey::Back,
+						proxy->GetIcon ("go-previous")));
 		sm->RegisterActionInfo ("org.LeechCraft.Azoth.QuoteSelected",
 				ActionInfo (tr ("Quote selected in chat tab"),
 						QString ("Ctrl+Q"),
 						proxy->GetIcon ("mail-reply-sender")));
+
+		sm->RegisterActionInfo ("org.LeechCraft.Azoth.LeaveMUC",
+				ActionInfo (tr ("Leave"),
+						QString (),
+						proxy->GetIcon ("irc-close-channel")));
 	}
 
 	void Plugin::handleSDWidget (ServiceDiscoveryWidget *sd)

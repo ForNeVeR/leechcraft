@@ -61,7 +61,7 @@
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/itagsmanager.h>
 #include <interfaces/ijobholder.h>
-#include <util/tagscompletionmodel.h>
+#include <util/tags/tagscompletionmodel.h>
 #include <util/util.h>
 #include "xmlsettingsmanager.h"
 #include "piecesmodel.h"
@@ -135,6 +135,7 @@ namespace LeechCraft
 			, Toolbar_ (0)
 			, TabWidget_ (0)
 			, Menu_ (0)
+			, TorrentIcon_ (":/resources/images/bittorrent.svg")
 			{
 				setObjectName ("BitTorrent Core");
 				ExternalAddress_ = tr ("Unknown");
@@ -574,6 +575,8 @@ namespace LeechCraft
 							result += tr ("Peers/seeds: %1/%2").arg (status.num_peers).arg (status.num_seeds);
 							return result;
 						}
+					case Qt::DecorationRole:
+						return column ? QVariant () : TorrentIcon_;
 					case RoleTags:
 						return Handles_.at (row).Tags_;
 					case CustomDataRoles::RoleJobHolderRow:
@@ -1896,7 +1899,7 @@ namespace LeechCraft
 					std::copy (prioritiesLine.begin (), prioritiesLine.end (),
 							std::back_inserter (priorities));
 
-					if (!priorities.size ())
+					if (priorities.empty ())
 					{
 						priorities.resize (handle.get_torrent_info ().num_files ());
 						std::fill (priorities.begin (), priorities.end (), 1);
@@ -2327,7 +2330,6 @@ namespace LeechCraft
 							break;
 						case libtorrent::torrent_status::downloading:
 							Handles_ [i].State_ = TSDownloading;
-							break;
 							break;
 						case libtorrent::torrent_status::finished:
 						case libtorrent::torrent_status::seeding:

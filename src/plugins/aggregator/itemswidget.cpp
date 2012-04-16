@@ -26,9 +26,9 @@
 #include <QTimer>
 #include <QtDebug>
 #include <interfaces/iwebbrowser.h>
-#include <util/categoryselector.h>
+#include <util/tags/categoryselector.h>
 #include <util/util.h>
-#include <util/mergemodel.h>
+#include <util/models/mergemodel.h>
 #include <interfaces/core/itagsmanager.h>
 #include "core.h"
 #include "xmlsettingsmanager.h"
@@ -1063,7 +1063,7 @@ namespace Aggregator
 
 		if (allCategories.size ())
 		{
-			Impl_->ItemCategorySelector_->SetPossibleSelections (allCategories);
+			Impl_->ItemCategorySelector_->setPossibleSelections (allCategories);
 			Impl_->ItemCategorySelector_->selectAll ();
 			if (XmlSettingsManager::Instance ()->
 					property ("ShowCategorySelector").toBool ())
@@ -1072,7 +1072,7 @@ namespace Aggregator
 		}
 		else
 		{
-			Impl_->ItemCategorySelector_->SetPossibleSelections (QStringList ());
+			Impl_->ItemCategorySelector_->setPossibleSelections (QStringList ());
 			Impl_->ItemCategorySelector_->hide ();
 		}
 	}

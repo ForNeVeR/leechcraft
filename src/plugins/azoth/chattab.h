@@ -25,7 +25,7 @@
 #include <interfaces/core/ihookproxy.h>
 #include <interfaces/ihavetabs.h>
 #include <interfaces/ihaverecoverabletabs.h>
-#include "interfaces/azothcommon.h"
+#include "interfaces/azoth/azothcommon.h"
 #include "ui_chattab.h"
 
 namespace LeechCraft
@@ -69,6 +69,7 @@ namespace Azoth
 		QString NickFirstPart_;
 
 		int NumUnreadMsgs_;
+		int ScrollbackPos_;
 
 		QList<IMessage*> HistoryMessages_;
 
@@ -129,6 +130,7 @@ namespace Azoth
 		void on_SubjChange__released ();
 		void on_View__loadFinished (bool);
 		void handleClearChat ();
+		void handleHistoryBack ();
 		void handleRichTextToggled ();
 		void handleQuoteSelection ();
 #ifdef ENABLE_MEDIACALLS
@@ -155,6 +157,7 @@ namespace Azoth
 		void handleGotLastMessages (QObject*, const QList<QObject*>&);
 
 		void handleSendButtonVisible ();
+		void handleMinLinesHeightChanged ();
 		void handleRichFormatterPosition ();
 		void handleFontSettingsChanged ();
 		void handleFontSizeChanged ();
@@ -169,7 +172,7 @@ namespace Azoth
 		void InitMsgEdit ();
 		void RegisterSettings ();
 
-		void RequestLogs ();
+		void RequestLogs (int);
 
 		QStringList GetMUCParticipants () const;
 

@@ -36,7 +36,7 @@
 #include <interfaces/entitytesthandleresult.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/itagsmanager.h>
-#include <util/tagscompletionmodel.h>
+#include <util/tags/tagscompletionmodel.h>
 #include <util/util.h>
 #include <util/shortcuts/shortcutmanager.h>
 #include "core.h"
@@ -550,7 +550,7 @@ namespace LeechCraft
 					{
 						qWarning () << Q_FUNC_INFO
 								<< e.what ();
-						throw e;
+						throw;
 					}
 
 					std::deque<int> selections;
@@ -747,7 +747,7 @@ namespace LeechCraft
 							std::back_inserter (allTrackers));
 				}
 
-				if (!allTrackers.size ())
+				if (allTrackers.empty ())
 					allTrackers = Core::Instance ()->
 							GetTrackers (Core::Instance ()->
 									GetCurrentTorrent ());
@@ -762,7 +762,7 @@ namespace LeechCraft
 
 				allTrackers.erase (newLast, allTrackers.end ());
 
-				if (!allTrackers.size ())
+				if (allTrackers.empty ())
 					return;
 
 				TrackersChanger changer (Core::Instance ()->

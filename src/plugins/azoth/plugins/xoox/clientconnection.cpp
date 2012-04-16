@@ -38,9 +38,10 @@
 #include <QXmppCallManager.h>
 #include <util/util.h>
 #include <util/socketerrorstrings.h>
+#include <util/sysinfo.h>
 #include <xmlsettingsdialog/basesettingsmanager.h>
-#include <interfaces/iprotocol.h>
-#include <interfaces/iproxyobject.h>
+#include <interfaces/azoth/iprotocol.h>
+#include <interfaces/azoth/iproxyobject.h>
 #include "glooxaccount.h"
 #include "glooxclentry.h"
 #include "glooxmessage.h"
@@ -69,6 +70,7 @@
 #include "useravatarmanager.h"
 #include "msgarchivingmanager.h"
 #include "sdmanager.h"
+#include "xep0232handler.h"
 
 #ifdef ENABLE_CRYPT
 #include "pgpmanager.h"
@@ -189,10 +191,25 @@ namespace Xoox
 
 		DiscoveryManager_->setClientCapabilitiesNode ("http://leechcraft.org/azoth");
 
-		Client_->versionManager ().setClientName ("LeechCraft Azoth");
-		Client_->versionManager ().setClientVersion (Core::Instance ()
-					.GetProxy ()->GetVersion ());
-		Client_->versionManager ().setClientOs (ProxyObject_->GetOSName ());
+		const auto& sysInfo = Util::SysInfo::GetOSNameSplit ();
+		auto& vm = Client_->versionManager ();
+		vm.setClientName ("LeechCraft Azoth");
+		vm.setClientVersion (Core::Instance ().GetProxy ()->GetVersion ());
+		vm.setClientOs (sysInfo.first + ' ' + sysInfo.second);
+
+		XEP0232Handler::SoftwareInformation si =
+		{
+			64,
+			64,
+			QUrl ("http://leechcraft.org/leechcraft.png"),
+			QString (),
+			"image/png",
+			sysInfo.first,
+			sysInfo.second,
+			vm.clientName (),
+			vm.clientVersion ()
+		};
+		DiscoveryManager_->setInfoForm (XEP0232Handler::ToDataForm (si));
 
 		connect (Client_,
 				SIGNAL (connected ()),
@@ -315,14 +332,29 @@ namespace Xoox
 		QXmppPresence::Type presType = state.State_ == SOffline ?
 				QXmppPresence::Unavailable :
 				QXmppPresence::Available;
+
 		QXmppPresence pres (presType,
 				QXmppPresence::Status (static_cast<QXmppPresence::Status::Type> (state.State_),
 						state.Status_,
 						state.Priority_));
+		if (!OurPhotoHash_.isEmpty ())
+		{
+			pres.setVCardUpdateType (QXmppPresence::VCardUpdateValidPhoto);
+			pres.setPhotoHash (OurPhotoHash_);
+		}
 
 		if (IsConnected_ ||
 				state.State_ == SOffline)
 			Client_->setClientPresence (pres);
+
+		if (state.State_ == SOffline &&
+				!IsConnected_ &&
+				!FirstTimeConnect_)
+		{
+			emit statusChanged (EntryStatus (SOffline, state.Status_));
+			emit resetClientConnection ();
+			return;
+		}
 
 		if (presType != QXmppPresence::Unavailable)
 			Q_FOREACH (RoomHandler *rh, RoomHandlers_)
@@ -366,6 +398,7 @@ namespace Xoox
 				ODSEntries_ [jid] = entry;
 				entry->Convert2ODS ();
 			}
+			SelfContact_->RemoveVariant (OurResource_);
 		}
 	}
 
@@ -408,6 +441,11 @@ namespace Xoox
 		Split (jid, &OurBareJID_, &OurResource_);
 
 		SelfContact_->UpdateJID (jid);
+	}
+
+	void ClientConnection::SetOurPhotoHash (const QByteArray& hash)
+	{
+		OurPhotoHash_ = hash;
 	}
 
 	RoomCLEntry* ClientConnection::JoinRoom (const QString& jid, const QString& nick)
@@ -477,6 +515,11 @@ namespace Xoox
 	PrivacyListsManager* ClientConnection::GetPrivacyListsManager () const
 	{
 		return PrivacyListsManager_;
+	}
+
+	QXmppBobManager* ClientConnection::GetBobManager () const
+	{
+		return BobManager_;
 	}
 
 #ifdef ENABLE_MEDIACALLS
@@ -821,15 +864,6 @@ namespace Xoox
 		Client_->setLogger (logger);
 	}
 
-	EntryStatus ClientConnection::PresenceToStatus (const QXmppPresence& pres) const
-	{
-		const QXmppPresence::Status& status = pres.status ();
-		EntryStatus st (static_cast<State> (status.type ()), status.statusText ());
-		if (pres.type () == QXmppPresence::Unavailable)
-			st.State_ = SOffline;
-		return st;
-	}
-
 	void ClientConnection::Split (const QString& jid,
 			QString *bare, QString *resource)
 	{
@@ -951,25 +985,6 @@ namespace Xoox
 	{
 		if (iq.error ().isValid ())
 			HandleError (iq);
-
-		try
-		{
-			dynamic_cast<const QXmppActivityItem&> (iq);
-			qDebug () << "got activity item" << iq.id ();
-		}
-		catch (...)
-		{
-		}
-
-		try
-		{
-			dynamic_cast<const QXmppPubSubIq&> (iq);
-			qDebug () << "got pubsub item" << iq.id ();
-		}
-		catch (...)
-		{
-		}
-
 		InvokeCallbacks (iq);
 	}
 
@@ -1015,7 +1030,7 @@ namespace Xoox
 		{
 			const QXmppPresence& pres = presences [resource];
 			entry->SetClientInfo (resource, pres);
-			entry->SetStatus (PresenceToStatus (pres), resource);
+			entry->SetStatus (XooxUtil::PresenceToStatus (pres), resource);
 		}
 		entry->UpdateRI (rm.getRosterEntry (bareJid));
 	}
@@ -1083,13 +1098,13 @@ namespace Xoox
 		if (jid == OurBareJID_)
 		{
 			if (OurJID_ == pres.from ())
-				emit statusChanged (PresenceToStatus (pres));
+				emit statusChanged (XooxUtil::PresenceToStatus (pres));
 
 			if (pres.type () == QXmppPresence::Available)
 			{
 				SelfContact_->SetClientInfo (resource, pres);
 				SelfContact_->UpdatePriority (resource, pres.status ().priority ());
-				SelfContact_->SetStatus (PresenceToStatus (pres), resource);
+				SelfContact_->SetStatus (XooxUtil::PresenceToStatus (pres), resource);
 			}
 			else
 				SelfContact_->RemoveVariant (resource);
@@ -1104,8 +1119,7 @@ namespace Xoox
 				return;
 		}
 
-		JID2CLEntry_ [jid]->SetClientInfo (resource, pres);
-		JID2CLEntry_ [jid]->SetStatus (PresenceToStatus (pres), resource);
+		JID2CLEntry_ [jid]->HandlePresence (pres, resource);
 		if (SignedPresences_.remove (jid))
 		{
 			qDebug () << "got signed presence" << jid;
@@ -1175,6 +1189,11 @@ namespace Xoox
 		}
 		else
 		{
+			Q_FOREACH (const auto& extension, msg.extensions ())
+				if (extension.tagName () == "x" &&
+						extension.attribute ("xmlns") == "jabber:x:conference")
+					return;
+
 			qWarning () << Q_FUNC_INFO
 					<< "could not find source for"
 					<< msg.from ()
@@ -1204,7 +1223,8 @@ namespace Xoox
 				qWarning () << Q_FUNC_INFO
 						<< "unknown PEP event source"
 						<< from
-						<< JID2CLEntry_.keys ();
+						<< "; known entries:"
+						<< JID2CLEntry_.keys ().size ();
 		}
 		else
 			JID2CLEntry_ [bare]->HandlePEPEvent (resource, event);
@@ -1364,13 +1384,23 @@ namespace Xoox
 
 	void ClientConnection::handleLog (QXmppLogger::MessageType type, const QString& msg)
 	{
+		QString entryId;
+		QDomDocument doc;
+		if (doc.setContent (msg))
+		{
+			const auto& elem = doc.documentElement ();
+			if (type == QXmppLogger::ReceivedMessage)
+				entryId = elem.attribute ("from");
+			else if (type == QXmppLogger::SentMessage)
+				entryId = elem.attribute ("to");
+		}
 		switch (type)
 		{
 		case QXmppLogger::SentMessage:
-			emit gotConsoleLog (msg.toUtf8 (), IHaveConsole::PDOut);
+			emit gotConsoleLog (msg.toUtf8 (), IHaveConsole::PDOut, entryId);
 			break;
 		case QXmppLogger::ReceivedMessage:
-			emit gotConsoleLog (msg.toUtf8 (), IHaveConsole::PDIn);
+			emit gotConsoleLog (msg.toUtf8 (), IHaveConsole::PDIn, entryId);
 			break;
 		default:
 			break;
@@ -1625,19 +1655,6 @@ namespace Xoox
 		GlooxCLEntry *entry = ODSEntries_.take (bareJID);
 		entry->UpdateRI (ri);
 		JID2CLEntry_ [bareJID] = entry;
-		if (entry->GetAvatar ().isNull ())
-		{
-			const QXmppVCardIq& vcard = entry->GetVCard ();
-			if (vcard.nickName ().isEmpty () &&
-					vcard.birthday ().isNull () &&
-					vcard.email ().isEmpty () &&
-					vcard.firstName ().isEmpty () &&
-					vcard.lastName ().isEmpty ())
-			{
-				ScheduleFetchVCard (bareJID);
-				FetchVersion (bareJID);
-			}
-		}
 		return entry;
 	}
 }

@@ -46,6 +46,7 @@ namespace LeechCraft
 	PluginManager::PluginManager (const QStringList& pluginPaths, QObject *parent)
 	: QAbstractItemModel (parent)
 	, DefaultPluginIcon_ (QIcon (":/resources/images/defaultpluginicon.svg"))
+	, IconsDir_ (Util::CreateIfNotExists ("core/pluginicons"))
 	, PluginTreeBuilder_ (new PluginTreeBuilder)
 	{
 		Headers_ << tr ("Name")
@@ -84,6 +85,22 @@ namespace LeechCraft
 
 			return QVariant::fromValue<QObject*> (loader->instance ());
 		}
+		else if (role == Roles::PluginID)
+		{
+			auto loader = AvailablePlugins_ [index.row ()];
+			if (!loader || !loader->isLoaded ())
+				return QVariant ();
+
+			return qobject_cast<IInfo*> (loader->instance ())->GetUniqueID ();
+		}
+		else if (role == Roles::PluginFilename)
+		{
+			auto loader = AvailablePlugins_ [index.row ()];
+			if (!loader)
+				return QVariant ();
+
+			return loader->fileName ();
+		}
 
 		switch (index.column ())
 		{
@@ -103,17 +120,10 @@ namespace LeechCraft
 						}
 					case Qt::DecorationRole:
 						{
-							QSettings settings (QCoreApplication::organizationName (),
-									QCoreApplication::applicationName () + "-pg");
-							settings.beginGroup ("Plugins");
-							settings.beginGroup (AvailablePlugins_.at (index.row ())->fileName ());
-							QVariant result = settings.value ("Icon");
-							settings.endGroup ();
-							settings.endGroup ();
-							if (result.value<QIcon> ().isNull () &&
-									result.value<QPixmap> ().isNull ())
-								result = DefaultPluginIcon_;
-							return result;
+							const auto& path = AvailablePlugins_.at (index.row ())->fileName ();
+							const auto fName = path.toUtf8 ().toBase64 ().replace ('/', '_');
+							const auto& res = QPixmap (QString (IconsDir_.absoluteFilePath (fName)));
+							return res.isNull () ? DefaultPluginIcon_ : res;
 						}
 					case Qt::CheckStateRole:
 						{
@@ -595,10 +605,14 @@ namespace LeechCraft
 				QCoreApplication::applicationName () + "-pg");
 		settings.beginGroup ("Plugins");
 
-		QDir pluginsDir = QDir (dir);
-		Q_FOREACH (QFileInfo fileinfo,
-				pluginsDir.entryInfoList (QStringList ("*leechcraft_*"),
-					QDir::Files))
+		QStringList nameFilters;
+#ifdef Q_OS_WIN32
+		nameFilters << "*leechcraft_*.dll";
+#else
+		nameFilters << "*leechcraft_*";
+#endif
+		const QDir& pluginsDir = QDir (dir);
+		Q_FOREACH (const auto& fileinfo, pluginsDir.entryInfoList (nameFilters, QDir::Files))
 		{
 			QString name = fileinfo.canonicalFilePath ();
 			settings.beginGroup (name);
@@ -661,7 +675,7 @@ namespace LeechCraft
 			}
 
 			bool apiMatches = true;
-			typedef QMap<QByteArray, quint64> (*APIVersion_t) ();
+			typedef quint64 (*APIVersion_t) ();
 			auto getter = reinterpret_cast<APIVersion_t> (library.resolve ("GetAPILevels"));
 			if (!getter)
 			{
@@ -671,7 +685,7 @@ namespace LeechCraft
 						<< file;
 			}
 
-			if (apiMatches && getter () ["Core"] != CURRENT_API_LEVEL)
+			if (apiMatches && getter () != CURRENT_API_LEVEL)
 			{
 				apiMatches = false;
 				qWarning () << Q_FUNC_INFO
@@ -824,8 +838,11 @@ namespace LeechCraft
 			settings.beginGroup (loader->fileName ());
 			settings.setValue ("Name", name);
 			settings.setValue ("Info", pinfo);
-			settings.setValue ("Icon", icon.pixmap (48, 48));
+			settings.remove ("Icon");
 			settings.endGroup ();
+
+			const auto path = loader->fileName ().toUtf8 ().toBase64 ().replace ('/', '_');
+			icon.pixmap (48, 48).save (IconsDir_.absoluteFilePath (path), "PNG", 100);
 		}
 
 		settings.endGroup ();

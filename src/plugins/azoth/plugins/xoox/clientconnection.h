@@ -31,7 +31,7 @@
 
 #include <QXmppClient.h>
 #include <QXmppMucIq.h>
-#include <interfaces/imessage.h>
+#include <interfaces/azoth/imessage.h>
 #include "glooxclentry.h"
 #include "glooxaccount.h"
 #include "riexmanager.h"
@@ -120,6 +120,8 @@ namespace Xoox
 		QString OurBareJID_;
 		QString OurResource_;
 
+		QByteArray OurPhotoHash_;
+
 		SelfContact *SelfContact_;
 
 		GlooxAccount *Account_;
@@ -189,6 +191,8 @@ namespace Xoox
 		QString GetOurJID () const;
 		void SetOurJID (const QString&);
 
+		void SetOurPhotoHash (const QByteArray&);
+
 		/** Joins the room and returns the contact list
 		 * entry representing that room.
 		 */
@@ -203,6 +207,7 @@ namespace Xoox
 		AnnotationsManager* GetAnnotationsManager () const;
 		PubSubManager* GetPubSubManager () const;
 		PrivacyListsManager* GetPrivacyListsManager () const;
+		QXmppBobManager* GetBobManager () const;
 #ifdef ENABLE_MEDIACALLS
 		QXmppCallManager* GetCallManager () const;
 #endif
@@ -256,7 +261,6 @@ namespace Xoox
 				QString *bare, QString *resource);
 	private:
 		void SetupLogger ();
-		EntryStatus PresenceToStatus (const QXmppPresence&) const;
 		void HandleOtherPresence (const QXmppPresence&);
 		void HandleError (const QXmppIq&);
 		void HandleRIEX (QString, QList<RIEXManager::Item>, QString = QString ());
@@ -317,11 +321,12 @@ namespace Xoox
 		void gotSubscriptionRequest (QObject*, const QString&);
 		void gotMUCInvitation (const QVariantMap&, const QString&, const QString&);
 
-		void gotConsoleLog (const QByteArray&, int);
+		void gotConsoleLog (const QByteArray&, int, const QString&);
 
 		void serverAuthFailed ();
 		void needPassword ();
 		void statusChanged (const EntryStatus&);
+		void resetClientConnection ();
 	};
 }
 }

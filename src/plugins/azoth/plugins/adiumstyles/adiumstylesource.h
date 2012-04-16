@@ -23,7 +23,7 @@
 #include <QDateTime>
 #include <QHash>
 #include <QColor>
-#include <interfaces/ichatstyleresourcesource.h>
+#include <interfaces/azoth/ichatstyleresourcesource.h>
 #include "plistparser.h"
 
 namespace LeechCraft
@@ -67,9 +67,11 @@ namespace AdiumStyles
 
 		QAbstractItemModel* GetOptionsModel () const;
 		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&, QObject*, QWebFrame*) const;
+		QString GetHTMLTemplate (const QString&,
+				const QString&, QObject*, QWebFrame*) const;
 		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
 		void FrameFocused (QWebFrame*);
+		QStringList GetVariantsForPack (const QString&);
 	private:
 		void PercentTemplate (QString&, const QMap<QString, QString>&) const;
 		void ParseGlobalTemplate (QString& templ, ICLEntry*) const;

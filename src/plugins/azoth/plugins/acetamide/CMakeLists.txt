@@ -2,6 +2,9 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 PROJECT (leechcraft_azoth_acetamide)
 INCLUDE (InitLCPlugin OPTIONAL)
 
+SET (QT_USE_QTNETWORK TRUE)
+SET (QT_USE_QTXML TRUE)
+INCLUDE (${QT_USE_FILE})
 INCLUDE_DIRECTORIES (${AZOTH_INCLUDE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -43,6 +46,7 @@ SET (ACETAMIDE_SRCS
 	serverparticipantentry.cpp
 	serverresponsemanager.cpp
 	sortfilterproxymodel.cpp
+	sslerrorsdialog.cpp
 	usercommandmanager.cpp
 	xmlsettingsmanager.cpp
 	vcarddialog.cpp
@@ -82,6 +86,7 @@ SET (ACETAMIDE_HEADERS
 	serverparticipantentry.h
 	serverresponsemanager.h
 	sortfilterproxymodel.h
+	sslerrorsdialog.h
 	usercommandmanager.h
 	xmlsettingsmanager.h
 	vcarddialog.h
@@ -97,6 +102,7 @@ SET (ACETAMIDE_FORMS
 	newnickservidentifydialog.ui
 	nickservidentifywidget.ui
 	serverinfowidget.ui
+	sslerrorsdialog.ui
 	vcarddialog.ui
 	)
 SET (ACETAMIDE_RESOURCES azothacetamideresources.qrc)

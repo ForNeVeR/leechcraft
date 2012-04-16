@@ -24,7 +24,8 @@
 #include <QXmppMucManager.h>
 #include <QXmppClient.h>
 #include <QXmppConstants.h>
-#include <interfaces/iproxyobject.h>
+#include <util/passutils.h>
+#include <interfaces/azoth/iproxyobject.h>
 #include "glooxaccount.h"
 #include "roomclentry.h"
 #include "roompublicmessage.h"
@@ -35,6 +36,7 @@
 #include "glooxprotocol.h"
 #include "formbuilder.h"
 #include "sdmanager.h"
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -49,11 +51,14 @@ namespace Xoox
 	, MUCManager_ (Account_->GetClientConnection ()->GetMUCManager ())
 	, Room_ (MUCManager_->addRoom (jid))
 	, CLEntry_ (new RoomCLEntry (this, Account_))
+	, HadRequestedPassword_ (false)
 	{
 		const QString& server = jid.split ('@', QString::SkipEmptyParts).value (1);
 		auto sdManager = Account_->GetClientConnection ()->GetSDManager ();
-		sdManager->RequestInfo ([this] (const QXmppDiscoveryIq& iq)
-					{ ServerDisco_ = iq; },
+
+		QPointer<RoomHandler> pThis (this);
+		sdManager->RequestInfo ([pThis] (const QXmppDiscoveryIq& iq)
+					{ if (pThis) pThis->ServerDisco_ = iq; },
 				server);
 
 		Room_->setNickName (ourNick);
@@ -288,23 +293,25 @@ namespace Xoox
 
 	void RoomHandler::HandlePasswordRequired ()
 	{
-		bool ok = false;
-		const QString& pass = QInputDialog::getText (0,
-				tr ("Authorization required"),
-				tr ("This room is password-protected. Please enter the "
-					"password required to join this room."),
-				QLineEdit::Normal,
-				QString (),
-				&ok);
-		if (!ok ||
-			pass.isEmpty ())
+		const auto& text = tr ("This room is password-protected. Please enter the "
+				"password required to join this room.");
+		const QString& pass = Util::GetPassword (GetPassKey (),
+				text, &Core::Instance (), !HadRequestedPassword_);
+		if (pass.isEmpty ())
 		{
 			Leave (QString ());
 			return;
 		}
 
+		HadRequestedPassword_ = true;
+
 		Room_->setPassword (pass);
 		Join ();
+	}
+
+	QString RoomHandler::GetPassKey () const
+	{
+		return "org.LeechCraft.Azoth.Xoox.MUCpass_" + CLEntry_->GetHumanReadableID ();
 	}
 
 	void RoomHandler::HandleErrorPresence (const QXmppPresence& pres, const QString& nick)
@@ -629,14 +636,9 @@ namespace Xoox
 		RoomParticipantEntry_ptr entry = GetParticipantEntry (nick);
 		entry->SetAffiliation (pres.mucItem ().affiliation ());
 		entry->SetRole (pres.mucItem ().role ());
-		const QXmppPresence::Status& xmppSt = pres.status ();
-		entry->SetStatus (EntryStatus (static_cast<State> (xmppSt.type ()),
-					xmppSt.statusText ()),
-				QString ());
-		entry->SetClientInfo ("", pres);
 
-		if (!IsGateway ())
-			Account_->GetClientConnection ()->FetchVCard (jid);
+		entry->SetPhotoHash (pres.photoHash ());
+		entry->HandlePresence (pres, "");
 
 		MakeJoinMessage (pres, nick);
 	}
@@ -650,14 +652,9 @@ namespace Xoox
 
 		RoomParticipantEntry_ptr entry = GetParticipantEntry (nick);
 
-		const QXmppPresence::Status& xmppSt = pres.status ();
-		EntryStatus status (static_cast<State> (xmppSt.type ()),
-				xmppSt.statusText ());
-		if (status != entry->GetStatus (QString ()))
-		{
-			entry->SetStatus (status, QString ());
+		entry->HandlePresence (pres, QString ());
+		if (XooxUtil::PresenceToStatus (pres) != entry->GetStatus (QString ()))
 			MakeStatusChangedMessage (pres, nick);
-		}
 
 		const QXmppMucItem& item = pres.mucItem ();
 		if (item.affiliation () != entry->GetAffiliation () ||

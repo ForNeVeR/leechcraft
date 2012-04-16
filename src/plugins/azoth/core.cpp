@@ -33,26 +33,26 @@
 #include <util/resourceloader.h>
 #include <util/util.h>
 #include <util/defaulthookproxy.h>
-#include <util/categoryselector.h>
+#include <util/tags/categoryselector.h>
 #include <util/notificationactionhandler.h>
 #include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/iplugin2.h>
 #include <interfaces/core/icoreproxy.h>
-#include "interfaces/iprotocolplugin.h"
-#include "interfaces/iprotocol.h"
-#include "interfaces/iaccount.h"
-#include "interfaces/iclentry.h"
-#include "interfaces/iadvancedclentry.h"
-#include "interfaces/imucentry.h"
-#include "interfaces/imucperms.h"
-#include "interfaces/iauthable.h"
-#include "interfaces/iresourceplugin.h"
-#include "interfaces/iurihandler.h"
-#include "interfaces/irichtextmessage.h"
-#include "interfaces/ihaveservicediscovery.h"
-#include "interfaces/iextselfinfoaccount.h"
+#include "interfaces/azoth/iprotocolplugin.h"
+#include "interfaces/azoth/iprotocol.h"
+#include "interfaces/azoth/iaccount.h"
+#include "interfaces/azoth/iclentry.h"
+#include "interfaces/azoth/iadvancedclentry.h"
+#include "interfaces/azoth/imucentry.h"
+#include "interfaces/azoth/imucperms.h"
+#include "interfaces/azoth/iauthable.h"
+#include "interfaces/azoth/iresourceplugin.h"
+#include "interfaces/azoth/iurihandler.h"
+#include "interfaces/azoth/irichtextmessage.h"
+#include "interfaces/azoth/ihaveservicediscovery.h"
+#include "interfaces/azoth/iextselfinfoaccount.h"
 #ifdef ENABLE_CRYPT
-#include "interfaces/isupportpgp.h"
+#include "interfaces/azoth/isupportpgp.h"
 #endif
 #include "chattabsmanager.h"
 #include "pluginmanager.h"
@@ -73,6 +73,7 @@
 #include "servicediscoverywidget.h"
 #include "importmanager.h"
 #include "unreadqueuemanager.h"
+#include "chatstyleoptionmanager.h"
 
 namespace LeechCraft
 {
@@ -167,6 +168,13 @@ namespace Azoth
 	{
 		FillANFields ();
 
+		auto addSOM = [this] (const QByteArray& option)
+		{
+			StyleOptionManagers_ [option].reset (new ChatStyleOptionManager (option, this));
+		};
+		addSOM ("ChatWindowStyle");
+		addSOM ("MUCWindowStyle");
+
 #ifdef ENABLE_CRYPT
 		connect (QCAEventHandler_.get (),
 				SIGNAL (eventReady (int, const QCA::Event&)),
@@ -252,8 +260,8 @@ namespace Azoth
 	void Core::Release ()
 	{
 		ResourceLoaders_.clear ();
-
 		ShortcutManager_.reset ();
+		StyleOptionManagers_.clear ();
 
 #ifdef ENABLE_CRYPT
 		QCAEventHandler_.reset ();
@@ -295,9 +303,9 @@ namespace Azoth
 		return SmilesOptionsModel_->GetSourceForOption (pack);
 	}
 
-	QAbstractItemModel* Core::GetChatStylesOptionsModel () const
+	ChatStyleOptionManager* Core::GetChatStylesOptionsManager (const QByteArray& name) const
 	{
-		return ChatStylesOptionsModel_.get ();
+		return StyleOptionManagers_ [name].get ();
 	}
 
 	Util::ShortcutManager* Core::GetShortcutManager () const
@@ -613,7 +621,7 @@ namespace Azoth
 		if (!mucEntry)
 			return false;
 
-		return msg->GetBody ().contains (mucEntry->GetNick ());
+		return msg->GetBody ().contains (mucEntry->GetNick (), Qt::CaseInsensitive);
 	}
 
 	void Core::AddProtocolPlugin (QObject *plugin)
@@ -651,12 +659,11 @@ namespace Azoth
 
 		Q_FOREACH (QObject *object, irp->GetResourceSources ())
 		{
-			IEmoticonResourceSource *smileSrc = qobject_cast<IEmoticonResourceSource*> (object);
+			auto smileSrc = qobject_cast<IEmoticonResourceSource*> (object);
 			if (smileSrc)
 				AddSmileResourceSource (smileSrc);
 
-			IChatStyleResourceSource *chatStyleSrc =
-					qobject_cast<IChatStyleResourceSource*> (object);
+			auto chatStyleSrc = qobject_cast<IChatStyleResourceSource*> (object);
 			if (chatStyleSrc)
 				AddChatStyleResourceSource (chatStyleSrc);
 		}
@@ -670,6 +677,9 @@ namespace Azoth
 	void Core::AddChatStyleResourceSource (IChatStyleResourceSource *src)
 	{
 		ChatStylesOptionsModel_->AddSource (src);
+
+		Q_FOREACH (auto manager, StyleOptionManagers_.values ())
+			manager->AddChatStyleResourceSource (src);
 	}
 
 	QString Core::GetSelectedChatTemplate (QObject *entry, QWebFrame *frame) const
@@ -678,9 +688,12 @@ namespace Azoth
 		if (!src)
 			return QString ();
 
+		const QByteArray& optName = GetStyleOptName (entry);
 		const QString& opt = XmlSettingsManager::Instance ()
-				.property (GetStyleOptName (entry)).toString ();
-		return src->GetHTMLTemplate (opt, entry, frame);
+				.property (optName).toString ();
+		const QString& var = XmlSettingsManager::Instance ()
+				.property (optName + "Variant").toString ();
+		return src->GetHTMLTemplate (opt, var, entry, frame);
 	}
 
 	QUrl Core::GetSelectedChatTemplateURL (QObject *entry) const
@@ -2478,10 +2491,11 @@ namespace Azoth
 		QString altNick;
 		if (XmlSettingsManager::Instance ().property ("UseAltNick").toBool ())
 		{
-			altNick = XmlSettingsManager::Instance ()
+			QString append = XmlSettingsManager::Instance ()
 				.property ("AlternativeNickname").toString ();
-			if (altNick.isEmpty ())
-				altNick = usedNick + "_azoth";
+			if (append.isEmpty ())
+				append = "_azoth";
+			altNick = usedNick + append;
 		}
 
 		if ((altNick.isEmpty () || altNick == usedNick) &&

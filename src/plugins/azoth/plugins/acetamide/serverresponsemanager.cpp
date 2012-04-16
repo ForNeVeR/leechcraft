@@ -229,6 +229,10 @@ namespace Acetamide
 				this, _1);
 		Command2Action_ ["671"] = boost::bind (&ServerResponseManager::GotWhoIsSecure,
 				this, _1);
+		Command2Action_ ["328"] = boost::bind (&ServerResponseManager::GotChannelUrl,
+				this, _1);
+		Command2Action_ ["333"] = boost::bind (&ServerResponseManager::GotTopicWhoTime,
+				this, _1);
 	}
 
 	bool ServerResponseManager::IsCTCPMessage (const QString& msg)
@@ -460,7 +464,6 @@ namespace Acetamide
 			return;
 
 		const QString& target = QString::fromUtf8 (opts.Parameters_.last ().c_str ());
-		const QString& nick = QString::fromUtf8 (opts.Parameters_.first ().c_str ());
 		ISH_->IncomingMessage (target, target, QString ("[AWAY] %1 :%2")
 				.arg (target, opts.Message_), IMessage::MTStatusMessage);
 	}
@@ -1092,6 +1095,24 @@ namespace Acetamide
 		ISH_->ShowWhoIsReply (msg);
 	}
 
+	void ServerResponseManager::GotChannelUrl (const IrcMessageOptions& opts)
+	{
+		if (opts.Parameters_.count () < 2)
+			return;
+
+		ISH_->GotChannelUrl (QString::fromUtf8 (opts.Parameters_.at (1).c_str ()),
+				opts.Message_);
+	}
+
+	void ServerResponseManager::GotTopicWhoTime (const IrcMessageOptions& opts)
+	{
+		if (opts.Parameters_.count () < 4)
+			return;
+
+		ISH_->GotTopicWhoTime (QString::fromUtf8 (opts.Parameters_.at (1).c_str ()),
+				QString::fromUtf8 (opts.Parameters_.at (2).c_str ()),
+				QString::fromUtf8 (opts.Parameters_.at (3).c_str ()).toULongLong ());
+	}
 }
 }
 }

@@ -17,7 +17,7 @@
  **********************************************************************/
 
 #include "searchwidget.h"
-#include <util/categoryselector.h>
+#include <util/tags/categoryselector.h>
 
 namespace LeechCraft
 {
@@ -65,7 +65,7 @@ namespace Summary
 
 	void SearchWidget::SetPossibleCategories (const QStringList& possible)
 	{
-		CategorySelector_->SetPossibleSelections (possible);
+		CategorySelector_->setPossibleSelections (possible);
 	}
 
 	void SearchWidget::SelectCategories (const QStringList& subset)

@@ -21,7 +21,7 @@
 #include <QUrl>
 #include <QtDebug>
 #include <interfaces/structures.h>
-#include <util/selectablebrowser.h>
+#include <util/gui/selectablebrowser.h>
 #include "searcher.h"
 #include "core.h"
 #include "xmlsettingsmanager.h"
@@ -106,7 +106,7 @@ namespace LeechCraft
 				if (!index.isValid ())
 					return QVariant ();
 			
-				if (Lyrics_.size ())
+				if (!Lyrics_.empty ())
 				{
 					Lyrics lyrics = Lyrics_ [index.row ()];
 					if (role == Qt::DisplayRole)
@@ -192,7 +192,7 @@ namespace LeechCraft
 				if (std::find (Hashes_.begin (), Hashes_.end (), hash) == Hashes_.end ())
 					return;
 			
-				if (!Lyrics_.size ())
+				if (Lyrics_.empty ())
 				{
 					beginRemoveRows (QModelIndex (), 0, 0);
 					FetchedSomething_ = true;

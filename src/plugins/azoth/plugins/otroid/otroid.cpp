@@ -28,10 +28,10 @@ extern "C"
 #include <libotr/privkey.h>
 }
 
-#include <interfaces/iprotocol.h>
-#include <interfaces/iaccount.h>
-#include <interfaces/iclentry.h>
-#include <interfaces/imessage.h>
+#include <interfaces/azoth/iprotocol.h>
+#include <interfaces/azoth/iaccount.h>
+#include <interfaces/azoth/iclentry.h>
+#include <interfaces/azoth/imessage.h>
 #include <util/util.h>
 
 namespace LeechCraft
@@ -90,7 +90,7 @@ namespace OTRoid
 
 		OTRL_INIT;
 
-		OtrDir_ = Util::CreateIfNotExists (".leechcraft/azoth/otr/");
+		OtrDir_ = Util::CreateIfNotExists ("azoth/otr/");
 
 		UserState_ = otrl_userstate_create ();
 

@@ -24,21 +24,21 @@
 #include <QIcon>
 #include <QXmppRosterIq.h>
 #include <QXmppBookmarkSet.h>
-#include <interfaces/iaccount.h>
-#include <interfaces/iextselfinfoaccount.h>
-#include <interfaces/ihaveservicediscovery.h>
-#include <interfaces/ihavesearch.h>
-#include <interfaces/imessage.h>
-#include <interfaces/ihaveconsole.h>
-#include <interfaces/isupporttune.h>
-#include <interfaces/isupportmood.h>
-#include <interfaces/isupportactivity.h>
-#include <interfaces/isupportgeolocation.h>
-#include <interfaces/isupportmediacalls.h>
-#include <interfaces/isupportriex.h>
-#include <interfaces/isupportbookmarks.h>
+#include <interfaces/azoth/iaccount.h>
+#include <interfaces/azoth/iextselfinfoaccount.h>
+#include <interfaces/azoth/ihaveservicediscovery.h>
+#include <interfaces/azoth/ihavesearch.h>
+#include <interfaces/azoth/imessage.h>
+#include <interfaces/azoth/ihaveconsole.h>
+#include <interfaces/azoth/isupporttune.h>
+#include <interfaces/azoth/isupportmood.h>
+#include <interfaces/azoth/isupportactivity.h>
+#include <interfaces/azoth/isupportgeolocation.h>
+#include <interfaces/azoth/isupportmediacalls.h>
+#include <interfaces/azoth/isupportriex.h>
+#include <interfaces/azoth/isupportbookmarks.h>
 #ifdef ENABLE_CRYPT
-#include <interfaces/isupportpgp.h>
+#include <interfaces/azoth/isupportpgp.h>
 #endif
 #include "glooxclentry.h"
 
@@ -114,6 +114,8 @@ namespace Xoox
 		QString Resource_;
 		QString Host_;
 		int Port_;
+
+		QByteArray OurPhotoHash_;
 
 		QPair<int, int> KAParams_;
 
@@ -211,6 +213,8 @@ namespace Xoox
 		QXmppBookmarkSet GetBookmarks () const;
 		void SetBookmarks (const QXmppBookmarkSet&);
 
+		void UpdateOurPhotoHash (const QByteArray&);
+
 		void CreateSDForResource (const QString&);
 
 		QByteArray Serialize () const;
@@ -229,6 +233,7 @@ namespace Xoox
 		void handleServerAuthFailed ();
 		void feedClientPassword ();
 		void showPrivacyDialog ();
+		void handleResetClientConnection ();
 		void handleDestroyClient ();
 #ifdef ENABLE_MEDIACALLS
 		void handleIncomingCall (QXmppCall*);
@@ -254,7 +259,7 @@ namespace Xoox
 		void riexItemsSuggested (QList<LeechCraft::Azoth::RIEXItem> items,
 				QObject*, QString);
 
-		void gotConsolePacket (const QByteArray&, int);
+		void gotConsolePacket (const QByteArray&, int, const QString&);
 
 		void geolocationInfoChanged (const QString&, QObject*);
 

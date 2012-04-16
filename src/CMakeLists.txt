@@ -142,6 +142,14 @@ OPTION (ENABLE_LHTR "Build LeechCraft HTML Text editoR" ${WITH_PLUGINS})
 OPTION (ENABLE_GACTS "Build Global Actions provider plugin" OFF)
 OPTION (ENABLE_CEMENTO "Build Cemento, LeechCraft common persistent storage" OFF)
 OPTION (ENABLE_PINTAB "Build Pintab for pinning important tabs" ${WITH_PLUGINS})
+OPTION (ENABLE_OTLOZHU "Build Otlozhu, a GTD-inspired ToDo manager" OFF)
+OPTION (ENABLE_KBSWITCH "Build KBSwitch, a keyboard plugin" OFF)
+OPTION (ENABLE_XPROXY "Build XProxy, the advanced proxy manager" ${WITH_PLUGINS})
+OPTION (ENABLE_DOLOZHEE "Build Dolozhee, the feature request and bug reporter" ${WITH_PLUGINS})
+
+IF (WIN32)
+	OPTION (ENABLE_Y7 "Build Y7, Windows 7 integration plugin" ${WITH_PLUGINS})
+ENDIF (WIN32)
 
 # Defunct
 OPTION (ENABLE_TABPP "Build Tab++, the enhanced tab manager" OFF)
@@ -359,6 +367,28 @@ IF (ENABLE_PINTAB)
 	ADD_SUBDIRECTORY (plugins/pintab)
 ENDIF (ENABLE_PINTAB)
 
+IF (ENABLE_OTLOZHU)
+	ADD_SUBDIRECTORY (plugins/otlozhu)
+ENDIF (ENABLE_OTLOZHU)
+
+IF (ENABLE_KBSWITCH)
+	ADD_SUBDIRECTORY (plugins/kbswitch)
+ENDIF (ENABLE_KBSWITCH)
+
+IF (ENABLE_XPROXY)
+	ADD_SUBDIRECTORY (plugins/xproxy)
+ENDIF (ENABLE_XPROXY)
+
+IF (ENABLE_DOLOZHEE)
+	ADD_SUBDIRECTORY (plugins/dolozhee)
+ENDIF (ENABLE_DOLOZHEE)
+
+IF (WIN32)
+	IF (ENABLE_Y7)
+		ADD_SUBDIRECTORY (plugins/y7)
+	ENDIF (ENABLE_Y7)
+ENDIF (WIN32)
+
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
 SET (QT_USE_QTSQL TRUE)
@@ -415,6 +445,7 @@ SET (SRCS
 	winwarndialog.cpp
 	coreplugin2manager.cpp
 	dockmanager.cpp
+	acceptlangwidget.cpp
 	)
 SET (HEADERS
 	mainwindow.h
@@ -460,6 +491,7 @@ SET (HEADERS
 	winwarndialog.h
 	coreplugin2manager.h
 	dockmanager.h
+	acceptlangwidget.h
 	3dparty/qxttooltip.h
 	3dparty/qxttooltip_p.h
 	interfaces/structures.h
@@ -478,6 +510,7 @@ SET (FORMS
 	aboutdialog.ui
 	wizardtypechoicepage.ui
 	settingstab.ui
+	acceptlangwidget.ui
 	)
 SET (RESOURCES mainresources.qrc)
 

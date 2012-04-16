@@ -32,15 +32,25 @@ namespace Auscrie
 
 		Ui::ShooterDialog Ui_;
 	public:
-		enum Action
+		enum class Action
 		{
-			AUpload,
-			ASave
+			Upload,
+			Save
+		};
+
+		enum class Mode
+		{
+			LCWindowOverlay,
+			LCWindow,
+			CurrentScreen,
+			WholeDesktop
 		};
 
 		ShooterDialog (QWidget* = 0);
 
 		Action GetAction () const;
+		Mode GetMode () const;
+		bool ShouldHide () const;
 		Poster::HostingService GetHostingService () const;
 		int GetTimeout () const;
 		QString GetFormat () const;

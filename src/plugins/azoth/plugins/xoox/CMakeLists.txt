@@ -1,3 +1,11 @@
+CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
+PROJECT (leechcraft_azoth_xoox)
+INCLUDE (InitLCPlugin OPTIONAL)
+
+SET (QT_USE_QTNETWORK TRUE)
+SET (QT_USE_QTXML TRUE)
+INCLUDE (${QT_USE_FILE})
+
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 FIND_PACKAGE (QXmpp REQUIRED)
@@ -8,6 +16,8 @@ INCLUDE_DIRECTORIES (${AZOTH_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${QXMPP_INCLUDE_DIR}
 	${QCA2_INCLUDE_DIR}
+	${LEECHCRAFT_INCLUDE_DIR}
+	${LEECHCRAFT_INCLUDE_DIR}/azoth
 	)
 SET (XOOX_SRCS
 	xoox.cpp
@@ -68,6 +78,8 @@ SET (XOOX_SRCS
 	useravatarmetadata.cpp
 	sdmanager.cpp
 	msgarchivingmanager.cpp
+	avatarsstorage.cpp
+	xep0232handler.cpp
 	)
 SET (XOOX_HEADERS
 	xoox.h
@@ -128,6 +140,8 @@ SET (XOOX_HEADERS
 	useravatarmetadata.h
 	sdmanager.h
 	msgarchivingmanager.h
+	avatarsstorage.h
+	xep0232handler.h
 	)
 SET (XOOX_FORMS
 	glooxaccountconfigurationdialog.ui

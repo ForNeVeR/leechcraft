@@ -20,7 +20,7 @@
 #define PLUGINS_AZOTH_CONSOLEWIDGET_H
 #include <QWidget>
 #include <interfaces/ihavetabs.h>
-#include "interfaces/ihaveconsole.h"
+#include "interfaces/azoth/ihaveconsole.h"
 #include "ui_consolewidget.h"
 
 namespace LeechCraft
@@ -54,7 +54,7 @@ namespace Azoth
 		void SetParentMultiTabs (QObject*);
 		QString GetTitle () const;
 	private slots:
-		void handleConsolePacket (QByteArray, int);
+		void handleConsolePacket (QByteArray, int, const QString&);
 		void on_ClearButton__released ();
 		void on_EnabledBox__toggled (bool);
 	signals:

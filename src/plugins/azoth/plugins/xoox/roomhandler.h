@@ -20,7 +20,7 @@
 #define PLUGINS_AZOTH_PLUGINS_XOOX_ROOMHANDLER_H
 #include <QObject>
 #include <QHash>
-#include <interfaces/imucentry.h>
+#include <interfaces/azoth/imucentry.h>
 #include "clientconnection.h"
 #include "roomparticipantentry.h"
 
@@ -51,6 +51,7 @@ namespace Xoox
 		QString Subject_;
 		// contains new nicks
 		QSet<QString> PendingNickChanges_;
+		bool HadRequestedPassword_;
 
 		QXmppDiscoveryIq ServerDisco_;
 	public:
@@ -118,6 +119,7 @@ namespace Xoox
 				const QString&);
 		void HandleNickConflict ();
 		void HandlePasswordRequired ();
+		QString GetPassKey () const;
 
 		void RemoveEntry (RoomParticipantEntry*);
 

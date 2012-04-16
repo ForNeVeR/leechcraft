@@ -21,7 +21,7 @@
 #include <QStyledItemDelegate>
 #include <QPointer>
 #include <QHash>
-#include <util/selectablebrowser.h>
+#include <util/gui/selectablebrowser.h>
 
 class QTreeView;
 class QToolButton;
@@ -42,7 +42,6 @@ namespace LackMan
 		static const int CTitleSizeDelta;
 		static const int CNumLines;
 
-		mutable QModelIndex CurrentSelection_;
 		mutable QHash<int, QToolButton*> Row2InstallRemove_;
 		mutable QHash<int, QToolButton*> Row2Update_;
 		mutable QHash<int, QWidget*> Row2Layout_;
@@ -63,7 +62,6 @@ namespace LackMan
 		QToolButton* GetUpdate (const QModelIndex&) const;
 		QWidget* GetLayout (const QModelIndex&) const;
 	public slots:
-		void handleRowChanged (const QModelIndex&, const QModelIndex&);
 		void invalidateWidgetPositions ();
 		void hideOverflousActions (const QModelIndex&, int, int);
 	private slots:

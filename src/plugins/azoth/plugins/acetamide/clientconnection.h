@@ -82,14 +82,15 @@ namespace Acetamide
 	public slots:
 		void serverConnected (const QString&);
 		void serverDisconnected (const QString&);
-		void handleError (QAbstractSocket::SocketError);
+		void handleError (QAbstractSocket::SocketError error,
+				const QString& errorString);
 		void handleLog (IMessage::Direction, const QString&);
 	signals:
 		void gotRosterItems (const QList<QObject*>&);
 		void rosterItemRemoved (QObject*);
 		void rosterItemsRemoved (const QList<QObject*>&);
 		void gotCLItems (const QList<QObject*>&);
-		void gotConsoleLog (const QByteArray&, int);
+		void gotConsoleLog (const QByteArray&, int, const QString&);
 	};
 };
 };

@@ -21,6 +21,7 @@
 #include <QLabel>
 #include <QDomElement>
 #include <QLineEdit>
+#include <QPointer>
 #include <QXmppBobManager.h>
 #include "inbandaccountregfirstpage.h"
 #include "util.h"
@@ -98,16 +99,21 @@ namespace Xoox
 
 	QString InBandAccountRegSecondPage::GetJID () const
 	{
-		if (FormType_ != FTLegacy)
-			return QString ();
-		return LFB_.GetUsername () + '@' + FirstPage_->GetServerName ();
+		QString res;
+		if (FormType_ == FTNew)
+			res = FB_.GetSavedUsername ();
+		else
+			res = LFB_.GetUsername ();
+		res += '@' + FirstPage_->GetServerName ();
+		return res;
 	}
 
 	QString InBandAccountRegSecondPage::GetPassword () const
 	{
-		if (FormType_ != FTLegacy)
-			return QString ();
-		return LFB_.GetPassword ();
+		if (FormType_ == FTNew)
+			return FB_.GetSavedPass ();
+		else
+			return LFB_.GetPassword ();
 	}
 
 	bool InBandAccountRegSecondPage::isComplete () const
@@ -154,9 +160,20 @@ namespace Xoox
 		SetState (SConnecting);
 	}
 
+	void InBandAccountRegSecondPage::Clear ()
+	{
+		auto widgets = findChildren<QWidget*> ();
+		QList<QPointer<QWidget>> pWidgets;
+		std::transform (widgets.begin (), widgets.end (), std::back_inserter (pWidgets),
+				[] (QWidget *w) { return QPointer<QWidget> (w); });
+		Q_FOREACH (auto pWidget, pWidgets)
+			if (pWidget)
+				delete pWidget;
+	}
+
 	void InBandAccountRegSecondPage::ShowMessage (const QString& msg)
 	{
-		qDeleteAll (findChildren<QWidget*> ());
+		Clear ();
 
 		layout ()->addWidget (new QLabel (msg));
 	}
@@ -187,7 +204,7 @@ namespace Xoox
 			return;
 		}
 
-		qDeleteAll (findChildren<QWidget*> ());
+		Clear ();
 
 		const QXmppElement& formElem = queryElem.firstChildElement ("x");
 		if ((formElem.attribute ("xmlns") == NsRegister ||

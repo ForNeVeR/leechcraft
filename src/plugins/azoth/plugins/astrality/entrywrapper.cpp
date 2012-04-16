@@ -20,7 +20,7 @@
 #include <ContactMessenger>
 #include <PendingContactInfo>
 #include <util/util.h>
-#include <interfaces/azothutil.h>
+#include <interfaces/azoth/azothutil.h>
 #include "accountwrapper.h"
 #include "astralityutil.h"
 #include "msgwrapper.h"
@@ -309,6 +309,8 @@ namespace Astrality
 
 	void EntryWrapper::handleMessageReceived (const Tp::ReceivedMessage& tpMsg, Tp::TextChannelPtr)
 	{
+		qDebug () << Q_FUNC_INFO << GetHumanReadableID ()
+				<< tpMsg.isScrollback () << tpMsg.isDeliveryReport ();
 		if (tpMsg.isScrollback ())
 			return;
 

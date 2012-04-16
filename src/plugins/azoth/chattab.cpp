@@ -33,19 +33,19 @@
 #include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
-#include "interfaces/iclentry.h"
-#include "interfaces/imessage.h"
-#include "interfaces/irichtextmessage.h"
-#include "interfaces/iaccount.h"
-#include "interfaces/imucentry.h"
-#include "interfaces/itransfermanager.h"
-#include "interfaces/iconfigurablemuc.h"
-#include "interfaces/ichatstyleresourcesource.h"
-#include "interfaces/isupportmediacalls.h"
-#include "interfaces/imediacall.h"
-#include "interfaces/ihistoryplugin.h"
+#include "interfaces/azoth/iclentry.h"
+#include "interfaces/azoth/imessage.h"
+#include "interfaces/azoth/irichtextmessage.h"
+#include "interfaces/azoth/iaccount.h"
+#include "interfaces/azoth/imucentry.h"
+#include "interfaces/azoth/itransfermanager.h"
+#include "interfaces/azoth/iconfigurablemuc.h"
+#include "interfaces/azoth/ichatstyleresourcesource.h"
+#include "interfaces/azoth/isupportmediacalls.h"
+#include "interfaces/azoth/imediacall.h"
+#include "interfaces/azoth/ihistoryplugin.h"
 #ifdef ENABLE_CRYPT
-#include "interfaces/isupportpgp.h"
+#include "interfaces/azoth/isupportpgp.h"
 #endif
 #include "core.h"
 #include "textedit.h"
@@ -114,6 +114,7 @@ namespace Azoth
 	, CurrentNickIndex_ (0)
 	, LastSpacePosition_(-1)
 	, NumUnreadMsgs_ (0)
+	, ScrollbackPos_ (0)
 	, IsMUC_ (false)
 	, PreviousTextHeight_ (0)
 	, MsgFormatter_ (0)
@@ -163,7 +164,15 @@ namespace Azoth
 				SLOT (typeTimeout ()));
 
 		PrepareTheme ();
-		RequestLogs ();
+
+		auto entry = GetEntry<ICLEntry> ();
+		const int autoNum = XmlSettingsManager::Instance ()
+				.property ("ShowLastNMessages").toInt ();
+		if (entry->GetAllMessages ().size () <= 100 &&
+				entry->GetEntryType () == ICLEntry::ETChat &&
+				autoNum)
+			RequestLogs (autoNum);
+
 		InitEntry ();
 		CheckMUC ();
 		InitExtraActions ();
@@ -539,10 +548,19 @@ namespace Azoth
 		if (!entry)
 			return;
 
+		ScrollbackPos_ = 0;
 		entry->PurgeMessages (QDateTime ());
 		qDeleteAll (HistoryMessages_);
 		HistoryMessages_.clear ();
 		PrepareTheme ();
+	}
+
+	void ChatTab::handleHistoryBack ()
+	{
+		ScrollbackPos_ += 50;
+		qDeleteAll (HistoryMessages_);
+		HistoryMessages_.clear ();
+		RequestLogs (ScrollbackPos_);
 	}
 
 	void ChatTab::handleRichTextToggled ()
@@ -943,6 +961,12 @@ namespace Azoth
 					.property ("SendButtonVisible").toBool ());
 	}
 
+	void ChatTab::handleMinLinesHeightChanged ()
+	{
+		PreviousTextHeight_ = 0;
+		UpdateTextHeight ();
+	}
+
 	void ChatTab::handleRichFormatterPosition ()
 	{
 		const QString& posStr = XmlSettingsManager::Instance ()
@@ -992,18 +1016,32 @@ namespace Azoth
 
 	void ChatTab::BuildBasicActions ()
 	{
-		QAction *clearAction = new QAction (tr ("Clear chat window"), this);
+		auto sm = Core::Instance ().GetShortcutManager ();
+		const auto& infos = sm->GetActionInfo ();
+
+		const auto& clearInfo = infos ["org.LeechCraft.Azoth.ClearChat"];
+		QAction *clearAction = new QAction (clearInfo.UserVisibleText_, this);
 		clearAction->setProperty ("ActionIcon", "edit-clear-history");
-		clearAction->setShortcut (QString ("Ctrl+L"));
+		clearAction->setShortcuts (clearInfo.Seqs_);
 		connect (clearAction,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleClearChat ()));
 		TabToolbar_->addAction (clearAction);
+		sm->RegisterAction ("org.LeechCraft.Azoth.ClearChat", clearAction, true);
 
-		Core::Instance ().GetShortcutManager ()->
-				RegisterAction ("org.LeechCraft.Azoth.ClearChat",
-						clearAction, true);
+		const auto& backInfo = infos ["org.LeechCraft.Azoth.ScrollHistoryBack"];
+		QAction *historyBack = new QAction (backInfo.UserVisibleText_, this);
+		historyBack->setProperty ("ActionIcon", "go-previous");
+		historyBack->setShortcuts (backInfo.Seqs_);
+		connect (historyBack,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleHistoryBack ()));
+		TabToolbar_->addAction (historyBack);
+		sm->RegisterAction ("org.LeechCraft.Azoth.ScrollHistoryBack", historyBack, true);
+
+		TabToolbar_->addSeparator ();
 
 		ToggleRichText_ = new QAction (tr ("Enable rich text"), this);
 		ToggleRichText_->setProperty ("ActionIcon", "text-enriched");
@@ -1017,19 +1055,17 @@ namespace Azoth
 		TabToolbar_->addAction (ToggleRichText_);
 		TabToolbar_->addSeparator ();
 
+		const auto& quoteInfo = infos ["org.LeechCraft.Azoth.QuoteSelected"];
 		QAction *quoteSelection = new QAction (tr ("Quote selection"), this);
 		quoteSelection->setProperty ("ActionIcon", "mail-reply-sender");
-		quoteSelection->setShortcut (QString ("Ctrl+Q"));
+		quoteSelection->setShortcuts (quoteInfo.Seqs_);
 		connect (quoteSelection,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleQuoteSelection ()));
 		TabToolbar_->addAction (quoteSelection);
 		TabToolbar_->addSeparator ();
-
-		Core::Instance ().GetShortcutManager ()->
-				RegisterAction ("org.LeechCraft.Azoth.QuoteSelected",
-						quoteSelection, true);
+		sm->RegisterAction ("org.LeechCraft.Azoth.QuoteSelected", quoteSelection, true);
 
 		Ui_.View_->SetQuoteAction (quoteSelection);
 	}
@@ -1255,9 +1291,12 @@ namespace Azoth
 		XmlSettingsManager::Instance ().RegisterObject ("SendButtonVisible",
 				this, "handleSendButtonVisible");
 		handleSendButtonVisible ();
+
+		XmlSettingsManager::Instance ().RegisterObject ("MinLinesHeight",
+				this, "handleMinLinesHeightChanged");
 	}
 
-	void ChatTab::RequestLogs ()
+	void ChatTab::RequestLogs (int num)
 	{
 		ICLEntry *entry = GetEntry<ICLEntry> ();
 		if (!entry)
@@ -1267,15 +1306,6 @@ namespace Azoth
 					<< EntryID_;
 			return;
 		}
-
-		if (entry->GetAllMessages ().size () > 100 ||
-				entry->GetEntryType () != ICLEntry::ETChat)
-			return;
-
-		const int num = XmlSettingsManager::Instance ()
-				.property ("ShowLastNMessages").toInt ();
-		if (!num)
-			return;
 
 		QObject *entryObj = entry->GetObject ();
 
@@ -1430,7 +1460,6 @@ namespace Azoth
 
 		int cursorPosition = cursor.position ();
 		int pos = -1;
-		int lastNickLen = -1;
 
 		QString text = Ui_.MsgEdit_->toPlainText ();
 
@@ -1477,6 +1506,7 @@ namespace Azoth
 				if (item.startsWith (NickFirstPart_, Qt::CaseInsensitive))
 					newAvailableNick << item + (pos == -1 ? post : "") + " ";
 
+			int lastNickLen = -1;
 			if ((newAvailableNick != AvailableNickList_) && (!newAvailableNick.isEmpty ()))
 			{
 				int newIndex = newAvailableNick.indexOf (AvailableNickList_ [CurrentNickIndex_ - 1]);
@@ -1587,7 +1617,9 @@ namespace Azoth
 			return;
 
 		PreviousTextHeight_ = docHeight;
-		const int fontHeight = Ui_.MsgEdit_->fontMetrics ().height ();
+		const int numLines = XmlSettingsManager::Instance ().property ("MinLinesHeight").toInt ();
+		const int fontHeight = Ui_.MsgEdit_->fontMetrics ().lineSpacing () * numLines +
+				Ui_.MsgEdit_->document ()->documentMargin () * 2;
 		const int resHeight = std::min (height () / 3, std::max (docHeight, fontHeight));
 		Ui_.MsgEdit_->setMinimumHeight (resHeight);
 		Ui_.MsgEdit_->setMaximumHeight (resHeight);

@@ -20,7 +20,7 @@
 #define PLUGINS_AZOTH_PLUGINS_ACETAMIDE_IRCJOINGROUPCHAT_H
 
 #include <QWidget>
-#include <interfaces/imucjoinwidget.h>
+#include <interfaces/azoth/imucjoinwidget.h>
 #include "ui_ircjoingroupchat.h"
 #include "core.h"
 #include "localtypes.h"
@@ -52,9 +52,11 @@ namespace Acetamide
 
 		QString GetServer () const;
 		int GetPort () const;
+		QString GetServerPassword () const;
 		QString GetChannel () const;
 		QString GetNickname () const;
 		QString GetEncoding () const;
+		QString GetChannelPassword () const;
 		bool GetSSL () const;
 
 		ServerOptions GetServerOptions () const;

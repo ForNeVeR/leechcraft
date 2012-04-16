@@ -22,7 +22,7 @@
 #include <boost/function.hpp>
 #include <QObject>
 #include <QTcpSocket>
-#include <interfaces/imessage.h>
+#include <interfaces/azoth/imessage.h>
 #include "localtypes.h"
 #include "serverparticipantentry.h"
 #include "invitechannelsdialog.h"
@@ -217,12 +217,17 @@ namespace Acetamide
 
 		void SetAway (const QString& message);
 		void ChangeAway (bool away, const QString& message = QString ());
+
+		void GotChannelUrl (const QString& channel, const QString& url);
+		void GotTopicWhoTime (const QString& channel,
+				const QString& who, quint64 time);
 	private:
 		void SendToConsole (IMessage::Direction, const QString&);
 		void NickCmdError ();
 		ServerParticipantEntry_ptr CreateParticipantEntry (const QString&);
 	public slots:
 		void autoWhoRequest ();
+		void handleSocketError (QAbstractSocket::SocketError error);
 	private slots:
 		void connectionEstablished ();
 		void connectionClosed ();
@@ -234,6 +239,8 @@ namespace Acetamide
 		void disconnected (const QString&);
 		void sendMessageToConsole (IMessage::Direction, const QString&);
 		void nicknameConflict (const QString&);
+		void gotSocketError (QAbstractSocket::SocketError error,
+				const QString& erorString);
 	};
 };
 };

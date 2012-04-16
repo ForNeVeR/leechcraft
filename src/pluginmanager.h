@@ -24,6 +24,7 @@
 #include <QMultiMap>
 #include <QStringList>
 #include <QPluginLoader>
+#include <QDir>
 #include <QIcon>
 #include "interfaces/iinfo.h"
 #include "interfaces/core/ipluginsmanager.h"
@@ -59,11 +60,15 @@ namespace LeechCraft
 		QStringList PluginLoadErrors_;
 		mutable QMap<QByteArray, QObject*> PluginID2PluginCache_;
 
+		QDir IconsDir_;
+
 		std::shared_ptr<PluginTreeBuilder> PluginTreeBuilder_;
 	public:
 		enum Roles
 		{
-			PluginObject = Qt::UserRole + 100
+			PluginObject = Qt::UserRole + 100,
+			PluginID,
+			PluginFilename
 		};
 
 		typedef PluginsContainer_t::size_type Size_t;

@@ -18,7 +18,7 @@
 
 #include "groupeditordialog.h"
 #include <QStringListModel>
-#include <util/tagscompleter.h>
+#include <util/tags/tagscompleter.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/itagsmanager.h>
 #include "core.h"
@@ -35,7 +35,7 @@ namespace Azoth
 		Ui_.setupUi (this);
 
 		Ui_.GroupsSelector_->setWindowFlags (Qt::Widget);
-		Ui_.GroupsSelector_->SetPossibleSelections (allGroups);
+		Ui_.GroupsSelector_->setPossibleSelections (allGroups);
 		Ui_.GroupsSelector_->SetSelections (initial);
 
 		Util::TagsCompleter *tc = new Util::TagsCompleter (Ui_.CategoriesLineEdit_, this);

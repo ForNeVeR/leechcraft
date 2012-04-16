@@ -26,19 +26,20 @@
 #include <QFileDialog>
 #include <util/util.h>
 #include <util/defaulthookproxy.h>
+#include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/core/icoreproxy.h>
-#include "interfaces/iclentry.h"
-#include "interfaces/imucperms.h"
-#include "interfaces/iadvancedclentry.h"
-#include "interfaces/imucentry.h"
-#include "interfaces/iauthable.h"
-#include "interfaces/iaccount.h"
-#include "interfaces/itransfermanager.h"
-#include "interfaces/iconfigurablemuc.h"
-#include "interfaces/ihavedirectedstatus.h"
+#include "interfaces/azoth/iclentry.h"
+#include "interfaces/azoth/imucperms.h"
+#include "interfaces/azoth/iadvancedclentry.h"
+#include "interfaces/azoth/imucentry.h"
+#include "interfaces/azoth/iauthable.h"
+#include "interfaces/azoth/iaccount.h"
+#include "interfaces/azoth/itransfermanager.h"
+#include "interfaces/azoth/iconfigurablemuc.h"
+#include "interfaces/azoth/ihavedirectedstatus.h"
 
 #ifdef ENABLE_CRYPT
-#include "interfaces/isupportpgp.h"
+#include "interfaces/azoth/isupportpgp.h"
 #include "pgpkeyselectiondialog.h"
 #endif
 
@@ -207,6 +208,8 @@ namespace Azoth
 	{
 		if (!entry)
 			return;
+
+		auto sm = Core::Instance ().GetShortcutManager ();
 
 		QObject *accObj = entry->GetParentAccount ();
 		IAccount *acc = qobject_cast<IAccount*> (accObj);
@@ -445,7 +448,9 @@ namespace Azoth
 					SLOT (handleActionLeaveTriggered ()));
 			Entry2Actions_ [entry] ["leave"] = leave;
 			Action2Areas_ [leave] << CLEAAContactListCtxtMenu
-					<< CLEAATabCtxtMenu;
+					<< CLEAATabCtxtMenu
+					<< CLEAAToolbar;
+			sm->RegisterAction ("org.LeechCraft.Azoth.LeaveMUC", leave, true);
 
 			QAction *bookmarks = new QAction (tr ("Add to bookmarks"), entry->GetObject ());
 			bookmarks->setProperty ("ActionIcon", "bookmark-new");

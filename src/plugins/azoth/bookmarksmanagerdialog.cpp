@@ -19,11 +19,11 @@
 #include "bookmarksmanagerdialog.h"
 #include <QStandardItemModel>
 #include <QMessageBox>
-#include "interfaces/imucjoinwidget.h"
-#include "interfaces/imucbookmarkeditorwidget.h"
-#include "interfaces/iaccount.h"
+#include "interfaces/azoth/imucjoinwidget.h"
+#include "interfaces/azoth/imucbookmarkeditorwidget.h"
+#include "interfaces/azoth/iaccount.h"
+#include "interfaces/azoth/isupportbookmarks.h"
 #include "core.h"
-#include "interfaces/isupportbookmarks.h"
 
 namespace LeechCraft
 {
@@ -34,6 +34,8 @@ namespace Azoth
 	, BMModel_ (new QStandardItemModel (this))
 	{
 		Ui_.setupUi (this);
+		Ui_.MoveDown_->setIcon (QIcon::fromTheme ("go-down"));
+		Ui_.MoveUp_->setIcon (QIcon::fromTheme ("go-up"));
 		Ui_.BookmarksTree_->setModel (BMModel_);
 
 		connect (Ui_.BookmarksTree_->selectionModel (),
@@ -316,7 +318,7 @@ namespace Azoth
 		Ui_.BookmarksTree_->setCurrentIndex (BMModel_->indexFromItem (item));
 	}
 
-	void BookmarksManagerDialog::on_ApplyButton__released()
+	void BookmarksManagerDialog::on_ApplyButton__released ()
 	{
 		QStandardItem *selected = GetSelectedItem ();
 		if (!selected ||
@@ -325,6 +327,38 @@ namespace Azoth
 			return;
 
 		selected->setData (CurrentEditor_->GetIdentifyingData ());
+		Save ();
+	}
+
+	void BookmarksManagerDialog::on_MoveUp__released ()
+	{
+		QStandardItem *selected = GetSelectedItem ();
+		if (!selected)
+			return;
+
+		const int row = selected->row ();
+		if (row <= 0)
+			return;
+
+		auto items = BMModel_->takeRow (row);
+		BMModel_->insertRow (row - 1, items);
+
+		Save ();
+	}
+
+	void BookmarksManagerDialog::on_MoveDown__released ()
+	{
+		QStandardItem *selected = GetSelectedItem ();
+		if (!selected)
+			return;
+
+		const int row = selected->row ();
+		if (row >= BMModel_->rowCount () - 1)
+			return;
+
+		auto items = BMModel_->takeRow (row);
+		BMModel_->insertRow (row, items);
+
 		Save ();
 	}
 }

@@ -4,7 +4,9 @@ INCLUDE (InitLCPlugin OPTIONAL)
 
 OPTION (ENABLE_MEDIACALLS "Enable support for media calls" ON)
 
-SET (QT_USE_QTDBUS TRUE)
+IF (NOT WIN32)
+	SET (QT_USE_QTDBUS TRUE)
+ENDIF (NOT WIN32)
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTWEBKIT TRUE)
 SET (QT_USE_QTSQL TRUE)
@@ -157,10 +159,10 @@ SET (HEADERS
 	chatstyleoptionmanager.h
 	animatediconmanager.h
 	sourcetrackingmodel.h
-	interfaces/iprotocolplugin.h
-	interfaces/iaccount.h
-	interfaces/iprotocol.h
-	interfaces/iclentry.h
+	interfaces/azoth/iprotocolplugin.h
+	interfaces/azoth/iaccount.h
+	interfaces/azoth/iprotocol.h
+	interfaces/azoth/iclentry.h
 	)
 SET (FORMS
 	mainwidget.ui
@@ -231,7 +233,7 @@ INSTALL (TARGETS leechcraft_azoth DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 INSTALL (FILES azothsettings.xml DESTINATION ${LC_SETTINGS_DEST})
 INSTALL (DIRECTORY share/azoth DESTINATION share/leechcraft)
-INSTALL (DIRECTORY interfaces DESTINATION include/leechcraft/azoth)
+INSTALL (DIRECTORY interfaces DESTINATION include/leechcraft)
 
 SET (AZOTH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 

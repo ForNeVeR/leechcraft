@@ -22,8 +22,8 @@
 #include <QtDebug>
 #include <QXmppCallManager.h>
 #include <util/util.h>
-#include <interfaces/iprotocol.h>
-#include <interfaces/iproxyobject.h>
+#include <interfaces/azoth/iprotocol.h>
+#include <interfaces/azoth/iproxyobject.h>
 #include "glooxprotocol.h"
 #include "glooxaccountconfigurationdialog.h"
 #include "core.h"
@@ -92,6 +92,10 @@ namespace Xoox
 	{
 		ClientConnection_.reset (new ClientConnection (JID_ + "/" + Resource_,
 						this));
+
+		if (!OurPhotoHash_.isEmpty ())
+			ClientConnection_->SetOurPhotoHash (OurPhotoHash_);
+
 		ClientConnection_->SetKAParams (KAParams_);
 
 		TransferManager_.reset (new TransferManager (ClientConnection_->
@@ -99,9 +103,9 @@ namespace Xoox
 					this));
 
 		connect (ClientConnection_.get (),
-				SIGNAL (gotConsoleLog (const QByteArray&, int)),
+				SIGNAL (gotConsoleLog (QByteArray, int, QString)),
 				this,
-				SIGNAL (gotConsolePacket (const QByteArray&, int)));
+				SIGNAL (gotConsolePacket (QByteArray, int, QString)));
 
 		connect (ClientConnection_.get (),
 				SIGNAL (serverAuthFailed ()),
@@ -158,6 +162,10 @@ namespace Xoox
 				SIGNAL (gotMUCInvitation (QVariantMap, QString, QString)),
 				this,
 				SIGNAL (mucInvitationReceived (QVariantMap, QString, QString)));
+		connect (ClientConnection_.get (),
+				SIGNAL (resetClientConnection ()),
+				this,
+				SLOT (handleResetClientConnection ()));
 
 #ifdef ENABLE_MEDIACALLS
 		connect (ClientConnection_->GetCallManager (),
@@ -268,10 +276,10 @@ namespace Xoox
 			 Resource_ != w->GetResource () ||
 			 Host_ != w->GetHost () ||
 			 Port_ != w->GetPort ()))
-		{
 			ChangeState (EntryStatus (SOffline, AccState_.Status_));
+
+		if (ClientConnection_)
 			ClientConnection_->SetOurJID (w->GetJID () + "/" + w->GetResource ());
-		}
 
 		JID_ = w->GetJID ();
 		Nick_ = w->GetNick ();
@@ -708,6 +716,18 @@ namespace Xoox
 		ClientConnection_->SetBookmarks (set);
 	}
 
+	void GlooxAccount::UpdateOurPhotoHash (const QByteArray& hash)
+	{
+		if (hash == OurPhotoHash_)
+			return;
+
+		OurPhotoHash_ = hash;
+		ClientConnection_->SetOurPhotoHash (hash);
+		ChangeState (GetState ());
+
+		emit accountSettingsChanged ();
+	}
+
 	void GlooxAccount::CreateSDForResource (const QString& resource)
 	{
 		auto sd = new SDSession (this);
@@ -717,7 +737,7 @@ namespace Xoox
 
 	QByteArray GlooxAccount::Serialize () const
 	{
-		quint16 version = 3;
+		quint16 version = 4;
 
 		QByteArray result;
 		{
@@ -730,7 +750,8 @@ namespace Xoox
 				<< AccState_.Priority_
 				<< Host_
 				<< Port_
-				<< KAParams_;
+				<< KAParams_
+				<< OurPhotoHash_;
 		}
 
 		return result;
@@ -743,7 +764,7 @@ namespace Xoox
 		QDataStream in (data);
 		in >> version;
 
-		if (version < 1 || version > 3)
+		if (version < 1 || version > 4)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unknown version"
@@ -763,6 +784,8 @@ namespace Xoox
 				>> result->Port_;
 		if (version >= 3)
 			in >> result->KAParams_;
+		if (version >= 4)
+			in >> result->OurPhotoHash_;
 		result->Init ();
 
 		return result;
@@ -793,6 +816,8 @@ namespace Xoox
 		else if (JID_.contains ("facebook") ||
 				JID_.contains ("fb.com"))
 			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/facebook.svg");
+		else if (JID_.contains ("vk.com"))
+			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/vk.svg");
 	}
 
 	void GlooxAccount::handleEntryRemoved (QObject *entry)
@@ -825,6 +850,13 @@ namespace Xoox
 		PrivacyListsManager *mgr = ClientConnection_->GetPrivacyListsManager ();
 		PrivacyListsConfigDialog *plcd = new PrivacyListsConfigDialog (mgr);
 		plcd->show ();
+	}
+
+	void GlooxAccount::handleResetClientConnection ()
+	{
+		TransferManager_.reset ();
+		Init ();
+		ChangeState (GetState ());
 	}
 
 	void GlooxAccount::handleDestroyClient ()

@@ -24,12 +24,12 @@
 #include <QtDebug>
 #include <util/resourceloader.h>
 #include <util/util.h>
-#include <interfaces/imessage.h>
-#include <interfaces/iadvancedmessage.h>
-#include <interfaces/irichtextmessage.h>
-#include <interfaces/iaccount.h>
-#include <interfaces/imucentry.h>
-#include <interfaces/iproxyobject.h>
+#include <interfaces/azoth/imessage.h>
+#include <interfaces/azoth/iadvancedmessage.h>
+#include <interfaces/azoth/irichtextmessage.h>
+#include <interfaces/azoth/iaccount.h>
+#include <interfaces/azoth/imucentry.h>
+#include <interfaces/azoth/iproxyobject.h>
 
 namespace LeechCraft
 {
@@ -58,7 +58,8 @@ namespace StandardStyles
 		return QUrl ();
 	}
 
-	QString StandardStyleSource::GetHTMLTemplate (const QString& pack, QObject *entryObj, QWebFrame*) const
+	QString StandardStyleSource::GetHTMLTemplate (const QString& pack,
+			const QString&, QObject *entryObj, QWebFrame*) const
 	{
 		if (pack != LastPack_)
 		{
@@ -307,6 +308,11 @@ namespace StandardStyles
 	void StandardStyleSource::FrameFocused (QWebFrame *frame)
 	{
 		HasBeenAppended_ [frame] = false;
+	}
+
+	QStringList StandardStyleSource::GetVariantsForPack (const QString&)
+	{
+		return QStringList ();
 	}
 
 	QList<QColor> StandardStyleSource::CreateColors (const QString& scheme)

@@ -406,10 +406,19 @@ namespace Azoth
 				ActionInfo (tr ("Clear chat window"),
 						QString ("Ctrl+L"),
 						proxy->GetIcon ("edit-clear-history")));
+		sm->RegisterActionInfo ("org.LeechCraft.Azoth.ScrollHistoryBack",
+				ActionInfo (tr ("Prepend messages from history"),
+						QKeySequence::StandardKey::Back,
+						proxy->GetIcon ("go-previous")));
 		sm->RegisterActionInfo ("org.LeechCraft.Azoth.QuoteSelected",
 				ActionInfo (tr ("Quote selected in chat tab"),
 						QString ("Ctrl+Q"),
 						proxy->GetIcon ("mail-reply-sender")));
+
+		sm->RegisterActionInfo ("org.LeechCraft.Azoth.LeaveMUC",
+				ActionInfo (tr ("Leave"),
+						QString (),
+						proxy->GetIcon ("irc-close-channel")));
 	}
 
 	void Plugin::handleSDWidget (ServiceDiscoveryWidget *sd)

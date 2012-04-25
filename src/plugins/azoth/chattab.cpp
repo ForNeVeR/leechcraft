@@ -194,6 +194,7 @@ namespace Azoth
 		SetChatPartState (CPSGone);
 
 		qDeleteAll (HistoryMessages_);
+		delete Ui_.MsgEdit_->document ();
 	}
 
 	void ChatTab::PrepareTheme ()
@@ -252,7 +253,7 @@ namespace Azoth
 
 	QToolBar* ChatTab::GetToolBar () const
 	{
-		return TabToolbar_;
+		return TabToolbar_.get ();
 	}
 
 	void ChatTab::Remove ()

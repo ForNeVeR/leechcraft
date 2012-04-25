@@ -49,6 +49,7 @@ namespace Xoox
 			GlooxAccount* account)
 	: Account_ (account)
 	, MUCManager_ (Account_->GetClientConnection ()->GetMUCManager ())
+	, RoomJID_ (jid)
 	, Room_ (MUCManager_->addRoom (jid))
 	, CLEntry_ (new RoomCLEntry (this, Account_))
 	, HadRequestedPassword_ (false)
@@ -87,7 +88,7 @@ namespace Xoox
 
 	QString RoomHandler::GetRoomJID () const
 	{
-		return Room_->jid ();
+		return RoomJID_;
 	}
 
 	RoomCLEntry* RoomHandler::GetCLEntry ()
@@ -111,23 +112,10 @@ namespace Xoox
 		Nick2Entry_ [nick]->SetVCard (card);
 	}
 
-	void RoomHandler::SetState (const GlooxAccountState& state)
+	void RoomHandler::SetPresence (QXmppPresence pres)
 	{
-		if (state.State_ == SOffline)
-		{
-			Leave (state.Status_);
-			return;
-		}
-
-		QXmppPresence pres;
-		pres.setTo (GetRoomJID ());
-		pres.setType (QXmppPresence::Available);
-		pres.setStatus (QXmppPresence::Status (static_cast<QXmppPresence::Status::Type> (state.State_),
-				state.Status_,
-				state.Priority_));
-		auto client = Account_->GetClientConnection ()->GetClient ();
-		client->addProperCapability (pres);
-		client->sendPacket (pres);
+		if (pres.type () == QXmppPresence::Unavailable)
+			Leave (pres.status ().statusText ());
 	}
 
 	/** @todo Detect kicks, bans and the respective actor.
@@ -775,6 +763,8 @@ namespace Xoox
 	{
 		Account_->handleEntryRemoved (CLEntry_);
 		Account_->GetClientConnection ()->Unregister (this);
+		delete Room_;
+		Room_ = 0;
 		deleteLater ();
 	}
 }

@@ -347,6 +347,7 @@ namespace LackMan
 #ifdef Q_OS_WIN32
 		args << "x"
 			<< "-ttar"
+			<< "-y"
 			<< "-si";
 
 		QString outDirArg ("-o");
@@ -357,6 +358,7 @@ namespace LackMan
 		firstStep->setStandardOutputProcess (unarch);
 		QStringList firstStepArgs;
 		firstStepArgs << "x"
+			<< "-y"
 			<< "-so"
 			<< path;
 #else

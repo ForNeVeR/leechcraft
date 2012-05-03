@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011-2012  Minh Ngo
+ * Copyright (C) 2011 Minh Ngo
  * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,31 +18,44 @@
  **********************************************************************/
 
 #pragma once
-#include <QWidget>
+
+#include <QObject>
+#include <interfaces/media/iaudioscrobbler.h>
 
 namespace LeechCraft
 {
-namespace Laure
+namespace Lastfmscrobble
 {
-	/** @brief Provides a separate video frame widget.
-	 *
-	 * @author Minh Ngo <nlminhtl@gmail.com>
-	 */
-	class SeparatePlayer : public QWidget
+	class PendingSimilarArtists : public QObject
+								 , public Media::IPendingSimilarArtists
 	{
 		Q_OBJECT
-		
-		bool FullScreenMode_;
+		Q_INTERFACES (Media::IPendingSimilarArtists)
+
+		const QString SourceName_;
+		int NumGet_;
+		Media::SimilarityInfos_t Similar_;
+		int InfosWaiting_;
 	public:
-		/** @brief Constructs a new SeparatePlayer tab
-		 * with the given parent and flags.
-		 */
-		SeparatePlayer (QWidget *parent = 0);
-	protected:
-		void closeEvent (QCloseEvent*);
-		void keyPressEvent (QKeyEvent*);
+		PendingSimilarArtists (const QString&, int num, QObject* = 0);
+
+		QObject* GetObject ();
+		QString GetSourceArtistName () const;
+		Media::SimilarityInfos_t GetSimilar () const;
+	private:
+		void DecrementWaiting ();
+	private slots:
+		void handleReplyFinished ();
+		void handleReplyError ();
+
+		void handleInfoReplyFinished ();
+		void handleInfoReplyError ();
+
+		void handleTagsReplyFinished ();
+		void handleTagsReplyError ();
 	signals:
-		void closed ();
+		void ready ();
+		void error ();
 	};
 }
 }

@@ -21,9 +21,15 @@
 #include <QToolBar>
 #include <QFileDialog>
 #include <QFileSystemModel>
-#include <QMenu>
+#include <QStandardItemModel>
+#include <QSortFilterProxyModel>
 #include <QToolButton>
+#include <QMenu>
+#include <QInputDialog>
 #include <phonon/seekslider.h>
+#include <util/util.h>
+#include <interfaces/core/ipluginsmanager.h>
+#include <interfaces/media/iaudioscrobbler.h>
 #include "player.h"
 #include "playlistdelegate.h"
 #include "util.h"
@@ -31,17 +37,48 @@
 #include "localcollection.h"
 #include "collectiondelegate.h"
 #include "xmlsettingsmanager.h"
-#include <util/util.h>
+#include "playlistmanager.h"
+#include "staticplaylistmanager.h"
 
 namespace LeechCraft
 {
 namespace LMP
 {
+	namespace
+	{
+		class CollectionFilterModel : public QSortFilterProxyModel
+		{
+		public:
+			CollectionFilterModel (QObject *parent = 0)
+			: QSortFilterProxyModel (parent)
+			{
+				setDynamicSortFilter (true);
+			}
+		protected:
+			bool filterAcceptsRow (int sourceRow, const QModelIndex& sourceParent) const
+			{
+				const auto& source = sourceModel ()->index (sourceRow, 0, sourceParent);
+				const auto type = source.data (LocalCollection::Role::Node).toInt ();
+
+				const auto& pattern = filterRegExp ().pattern ();
+
+				if (type == LocalCollection::NodeType::Artist ||
+					type == LocalCollection::NodeType::Album)
+					for (int i = 0, rc = sourceModel ()->rowCount (source); i < rc; ++i)
+						if (filterAcceptsRow (i, source))
+							return true;
+
+				return source.data ().toString ().contains (pattern, Qt::CaseInsensitive);
+			}
+		};
+	}
+
 	PlayerTab::PlayerTab (const TabClassInfo& info, QObject *plugin, QWidget *parent)
 	: QWidget (parent)
 	, Plugin_ (plugin)
 	, TC_ (info)
 	, FSModel_ (new QFileSystemModel (this))
+	, CollectionFilterModel_ (new CollectionFilterModel (this))
 	, Player_ (new Player (this))
 	, PlaylistToolbar_ (new QToolBar ())
 	, TabToolbar_ (new QToolBar ())
@@ -67,6 +104,7 @@ namespace LMP
 
 		SetupToolbar ();
 		SetupCollection ();
+		SetupPlaylistsTab ();
 		SetupFSBrowser ();
 		SetupPlaylist ();
 	}
@@ -89,6 +127,11 @@ namespace LMP
 	QToolBar* PlayerTab::GetToolBar () const
 	{
 		return TabToolbar_;
+	}
+
+	Player* PlayerTab::GetPlayer () const
+	{
+		return Player_;
 	}
 
 	void PlayerTab::SetupToolbar ()
@@ -136,7 +179,8 @@ namespace LMP
 	{
 		Ui_.CollectionTree_->setItemDelegate (new CollectionDelegate (Ui_.CollectionTree_));
 		auto collection = Core::Instance ().GetLocalCollection ();
-		Ui_.CollectionTree_->setModel (collection->GetCollectionModel ());
+		CollectionFilterModel_->setSourceModel (collection->GetCollectionModel ());
+		Ui_.CollectionTree_->setModel (CollectionFilterModel_);
 
 		QAction *addToPlaylist = new QAction (tr ("Add to playlist"), this);
 		addToPlaylist->setProperty ("ActionIcon", "list-add");
@@ -145,6 +189,27 @@ namespace LMP
 				this,
 				SLOT (loadFromCollection ()));
 		Ui_.CollectionTree_->addAction (addToPlaylist);
+		connect (Ui_.CollectionTree_,
+				SIGNAL (doubleClicked (QModelIndex)),
+				this,
+				SLOT (loadFromCollection ()));
+
+		connect (Ui_.CollectionFilter_,
+				SIGNAL (textChanged (QString)),
+				CollectionFilterModel_,
+				SLOT (setFilterFixedString (QString)));
+	}
+
+	void PlayerTab::SetupPlaylistsTab ()
+	{
+		auto mgr = Core::Instance ().GetPlaylistManager ();
+		Ui_.PlaylistsTree_->setModel (mgr->GetPlaylistsModel ());
+		Ui_.PlaylistsTree_->expandAll ();
+
+		connect (Ui_.PlaylistsTree_,
+				SIGNAL (doubleClicked (QModelIndex)),
+				this,
+				SLOT (handlePlaylistSelected (QModelIndex)));
 	}
 
 	void PlayerTab::SetupFSBrowser ()
@@ -166,6 +231,7 @@ namespace LMP
 	{
 		Ui_.Playlist_->setItemDelegate (new PlaylistDelegate (Ui_.Playlist_, Ui_.Playlist_));
 		Ui_.Playlist_->setModel (Player_->GetPlaylistModel ());
+		Ui_.Playlist_->expandAll ();
 		connect (Ui_.Playlist_,
 				SIGNAL (doubleClicked (QModelIndex)),
 				Player_,
@@ -184,6 +250,14 @@ namespace LMP
 				Player_,
 				SLOT (clear ()));
 		PlaylistToolbar_->addAction (clearPlaylist);
+
+		QAction *savePlaylist = new QAction (tr ("Save playlist..."), this);
+		savePlaylist->setProperty ("ActionIcon", "document-save");
+		connect (savePlaylist,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleSavePlaylist ()));
+		PlaylistToolbar_->addAction (savePlaylist);
 
 		QAction *loadFiles = new QAction (tr ("Load from disk..."), this);
 		loadFiles->setProperty ("ActionIcon", "document-open");
@@ -224,6 +298,20 @@ namespace LMP
 		}
 
 		PlaylistToolbar_->addWidget (playButton);
+
+		QAction *removeSelected = new QAction (tr ("Delete from playlist"), Ui_.Playlist_);
+		removeSelected->setProperty ("ActionIcon", "list-remove");
+		removeSelected->setShortcut (Qt::Key_Delete);
+		connect (removeSelected,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (removeSelectedSongs ()));
+		Ui_.Playlist_->addAction (removeSelected);
+	}
+
+	void PlayerTab::FillSimilar (const Media::SimilarityInfos_t& infos)
+	{
+		Ui_.NPWidget_->GetArtistsDisplay ()->SetSimilarArtists (infos);
 	}
 
 	void PlayerTab::handleSongChanged (const MediaInfo& info)
@@ -264,6 +352,49 @@ namespace LMP
 				emit gotEntity (e);
 			}
 		}
+
+		if (!Similars_.contains (info.Artist_))
+		{
+			auto scrobblers = Core::Instance ().GetProxy ()->
+					GetPluginsManager ()->GetAllCastableTo<Media::IAudioScrobbler*> ();
+			qDebug () << Q_FUNC_INFO << scrobblers.size ();
+			Q_FOREACH (Media::IAudioScrobbler *scrobbler, scrobblers)
+			{
+				auto obj = scrobbler->GetSimilarArtists (info.Artist_, 15);
+				if (!obj)
+					continue;
+				connect (obj->GetObject (),
+						SIGNAL (error ()),
+						this,
+						SLOT (handleSimilarError ()));
+				connect (obj->GetObject (),
+						SIGNAL (ready ()),
+						this,
+						SLOT (handleSimilarReady ()));
+			}
+		}
+		else if (info.Artist_ != LastSimilar_)
+		{
+			LastSimilar_ = info.Artist_;
+			FillSimilar (Similars_ [info.Artist_]);
+		}
+	}
+
+	void PlayerTab::handleSimilarError ()
+	{
+		qWarning () << Q_FUNC_INFO;
+		sender ()->deleteLater ();
+	}
+
+	void PlayerTab::handleSimilarReady ()
+	{
+		sender ()->deleteLater ();
+		auto obj = qobject_cast<Media::IPendingSimilarArtists*> (sender ());
+
+		const auto& similar = obj->GetSimilar ();
+		LastSimilar_ = obj->GetSourceArtistName ();
+		Similars_ [LastSimilar_] = similar;
+		FillSimilar (similar);
 	}
 
 	void PlayerTab::handleScanProgress (int progress)
@@ -285,9 +416,38 @@ namespace LMP
 		Player_->SetPlayMode (static_cast<Player::PlayMode> (mode));
 	}
 
+	void PlayerTab::handlePlaylistSelected (const QModelIndex& index)
+	{
+		auto mgr = Core::Instance ().GetPlaylistManager ();
+		const auto& sources = mgr->GetSources (index);
+		if (sources.isEmpty ())
+			return;
+
+		Player_->Enqueue (sources, false);
+	}
+
+	void PlayerTab::removeSelectedSongs ()
+	{
+		auto selModel = Ui_.Playlist_->selectionModel ();
+		if (!selModel)
+			return;
+
+		auto indexes = selModel->selectedRows ();
+		if (indexes.isEmpty ())
+			indexes << Ui_.Playlist_->currentIndex ();
+		indexes.removeAll (QModelIndex ());
+
+		QList<QPersistentModelIndex> persistent;
+		std::copy (indexes.begin (), indexes.end (), std::back_inserter (persistent));
+		Q_FOREACH (const auto& idx, persistent)
+			if (idx.isValid ())
+				Player_->Dequeue (idx);
+	}
+
 	void PlayerTab::loadFromCollection ()
 	{
-		const QModelIndex& index = Ui_.CollectionTree_->currentIndex ();
+		const QModelIndex& index = CollectionFilterModel_->
+				mapToSource (Ui_.CollectionTree_->currentIndex ());
 		if (!index.isValid ())
 			return;
 
@@ -307,6 +467,18 @@ namespace LMP
 			Player_->Enqueue (RecIterate (fi.absoluteFilePath ()));
 		else
 			Player_->Enqueue (QStringList (fi.absoluteFilePath ()));
+	}
+
+	void PlayerTab::handleSavePlaylist ()
+	{
+		const auto& name = QInputDialog::getText (this,
+				tr ("Save playlist"),
+				tr ("Enter name for the playlist:"));
+		if (name.isEmpty ())
+			return;
+
+		auto mgr = Core::Instance ().GetPlaylistManager ()->GetStaticManager ();
+		mgr->SaveCustomPlaylist (name, Player_->GetQueue ());
 	}
 
 	void PlayerTab::loadFromDisk ()

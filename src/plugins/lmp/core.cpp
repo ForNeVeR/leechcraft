@@ -20,6 +20,7 @@
 #include "localfileresolver.h"
 #include "localcollection.h"
 #include "xmlsettingsmanager.h"
+#include "playlistmanager.h"
 
 namespace LeechCraft
 {
@@ -28,6 +29,7 @@ namespace LMP
 	Core::Core ()
 	: Resolver_ (new LocalFileResolver)
 	, Collection_ (new LocalCollection)
+	, PLManager_ (new PlaylistManager)
 	{
 	}
 
@@ -51,6 +53,7 @@ namespace LMP
 	{
 		XmlSettingsManager::Instance ().RegisterObject ("CollectionDir",
 				this, "handleCollectionDirChanged");
+		Collection_->FinalizeInit ();
 	}
 
 	LocalFileResolver* Core::GetLocalFileResolver () const
@@ -61,6 +64,16 @@ namespace LMP
 	LocalCollection* Core::GetLocalCollection () const
 	{
 		return Collection_;
+	}
+
+	PlaylistManager* Core::GetPlaylistManager () const
+	{
+		return PLManager_;
+	}
+
+	void Core::rescan ()
+	{
+		handleCollectionDirChanged ();
 	}
 
 	void Core::handleCollectionDirChanged ()

@@ -22,6 +22,7 @@
 #include <QHash>
 #include <QSet>
 #include <QFutureWatcher>
+#include <QIcon>
 #include "collectiontypes.h"
 #include "mediainfo.h"
 
@@ -42,12 +43,15 @@ namespace LMP
 	{
 		Q_OBJECT
 
+		QIcon ArtistIcon_;
 		LocalCollectionStorage *Storage_;
 		QStandardItemModel *CollectionModel_;
 		QSortFilterProxyModel *Sorter_;
 
 		Collection::Artists_t Artists_;
 		QSet<QString> PresentPaths_;
+		QHash<QString, int> Path2Track_;
+		QHash<int, QString> Track2Path_;
 
 		QHash<int, QStandardItem*> Artist2Item_;
 		QHash<int, QStandardItem*> Album2Item_;
@@ -71,17 +75,30 @@ namespace LMP
 			TrackTitle,
 			TrackPath
 		};
+		enum class DynamicPlaylist
+		{
+			Random50
+		};
 
 		LocalCollection (QObject* = 0);
+
+		void FinalizeInit ();
 
 		QAbstractItemModel* GetCollectionModel () const;
 		void Enqueue (const QModelIndex&, Player*);
 
 		void Clear ();
 		void Scan (const QString&);
+
+		QList<int> GetDynamicPlaylist (DynamicPlaylist) const;
+		QStringList TrackList2PathList (const QList<int>&) const;
+
+		Collection::TrackStats GetTrackStats (const QString&);
 	private:
 		QStringList CollectPaths (const QModelIndex&);
-		void AppendToModel (const Collection::Artists_t&);
+		void HandleNewArtists (const Collection::Artists_t&);
+	public slots:
+		void recordPlayedTrack (const QString&);
 	private slots:
 		void handleLoadFinished ();
 		void handleScanFinished ();

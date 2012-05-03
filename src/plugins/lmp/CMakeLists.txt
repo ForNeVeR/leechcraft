@@ -26,6 +26,7 @@ ENDIF (WIN32)
 FIND_PACKAGE (Taglib REQUIRED)
 ADD_DEFINITIONS (${TAGLIB_CFLAGS})
 
+SET (QT_USE_QTDECLARATIVE TRUE)
 SET (QT_USE_QTSQL TRUE)
 INCLUDE (${QT_USE_FILE})
 IF (NOT PHONON_FOUND)
@@ -53,6 +54,10 @@ SET (SRCS
 	collectiontypes.cpp
 	collectiondelegate.cpp
 	nowplayingwidget.cpp
+	staticplaylistmanager.cpp
+	m3ustuff.cpp
+	playlistmanager.cpp
+	artistsinfodisplay.cpp
 	)
 SET (HEADERS
 	lmp.h
@@ -68,6 +73,10 @@ SET (HEADERS
 	collectiontypes.h
 	collectiondelegate.h
 	nowplayingwidget.h
+	staticplaylistmanager.h
+	m3ustuff.h
+	playlistmanager.h
+	artistsinfodisplay.h
 	)
 SET (FORMS
 	playertab.ui

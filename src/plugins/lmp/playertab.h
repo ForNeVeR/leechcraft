@@ -20,9 +20,12 @@
 
 #include <QWidget>
 #include <interfaces/ihavetabs.h>
+#include <interfaces/media/audiostructs.h>
 #include "ui_playertab.h"
 
+class QStandardItemModel;
 class QFileSystemModel;
+class QSortFilterProxyModel;
 
 namespace LeechCraft
 {
@@ -45,11 +48,15 @@ namespace LMP
 		const TabClassInfo TC_;
 
 		QFileSystemModel *FSModel_;
+		QSortFilterProxyModel *CollectionFilterModel_;
 
 		Player *Player_;
 		QToolBar *PlaylistToolbar_;
 
 		QToolBar *TabToolbar_;
+
+		QHash<QString, Media::SimilarityInfos_t> Similars_;
+		QString LastSimilar_;
 	public:
 		PlayerTab (const TabClassInfo&, QObject*, QWidget* = 0);
 
@@ -57,17 +64,26 @@ namespace LMP
 		QObject* ParentMultiTabs ();
 		void Remove ();
 		QToolBar* GetToolBar () const;
+
+		Player* GetPlayer () const;
 	private:
 		void SetupToolbar ();
 		void SetupCollection ();
+		void SetupPlaylistsTab ();
 		void SetupFSBrowser ();
 		void SetupPlaylist ();
+		void FillSimilar (const Media::SimilarityInfos_t&);
 	private slots:
 		void handleSongChanged (const MediaInfo&);
+		void handleSimilarError ();
+		void handleSimilarReady ();
 		void handleScanProgress (int);
 		void handleChangePlayMode ();
+		void handlePlaylistSelected (const QModelIndex&);
+		void removeSelectedSongs ();
 		void loadFromCollection ();
 		void loadFromFSBrowser ();
+		void handleSavePlaylist ();
 		void loadFromDisk ();
 	signals:
 		void changeTabName (QWidget*, const QString&);

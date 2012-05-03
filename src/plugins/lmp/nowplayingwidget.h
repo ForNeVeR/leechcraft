@@ -26,6 +26,7 @@ namespace LeechCraft
 namespace LMP
 {
 	struct MediaInfo;
+	class ArtistsInfoDisplay;
 
 	class NowPlayingWidget : public QWidget
 	{
@@ -35,8 +36,12 @@ namespace LMP
 	public:
 		NowPlayingWidget (QWidget* = 0);
 
+		ArtistsInfoDisplay* GetArtistsDisplay () const;
+
 		void SetAlbumArt (const QPixmap&);
 		void SetTrackInfo (const MediaInfo&);
+	private:
+		void SetStatistics (const QString&);
 	};
 }
 }

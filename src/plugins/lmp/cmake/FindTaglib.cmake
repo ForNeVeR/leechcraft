@@ -48,25 +48,63 @@ if(TAGLIBCONFIG_EXECUTABLE)
 
 else(TAGLIBCONFIG_EXECUTABLE)
 
-  include(FindLibraryWithDebug)
+
   include(FindPackageHandleStandardArgs)
 
-  find_path(TAGLIB_INCLUDES
-    NAMES
-    tag.h
-    PATH_SUFFIXES taglib
-    PATHS
-    ${KDE4_INCLUDE_DIR}
-    ${INCLUDE_INSTALL_DIR}
-  )
+  IF (WIN32)
+	IF (MSVC)
+		#MSVS 2010
+		IF (MSVC_VERSION LESS 1600)
+			MESSAGE(FATAL_ERROR "We currently support only MSVC 2010 version")
+		ENDIF (MSVC_VERSION LESS 1600)
+	ENDIF (MSVC)
+	IF (NOT DEFINED TAGLIB_DIR)
+		IF (TAGLIB_FIND_REQUIRED)
+			MESSAGE(FATAL_ERROR "Please set TAGLIB_DIR variable")
+		ELSE (TAGLIB_FIND_REQUIRED)
+			MESSAGE(STATUS "Please set TAGLIB_DIR variable for taglib support")
+		ENDIF (TAGLIB_FIND_REQUIRED)
+	ENDIF (NOT DEFINED TAGLIB_DIR)
+	SET (TAGLIB_INCLUDE_WIN32 ${TAGLIB_DIR})
 
-  find_library_with_debug(TAGLIB_LIBRARIES
-    WIN32_DEBUG_POSTFIX d
-    NAMES tag
-    PATHS
-    ${KDE4_LIB_DIR}
-    ${LIB_INSTALL_DIR}
-  )
+    SET (PROBE_DIR_Debug
+		${TAGLIB_DIR}/build/taglib/Debug)
+	SET (PROBE_DIR_Release
+		${TAGLIB_DIR}/build/taglib/MinSizeRel ${TAGLIB_DIR}/build/taglib/Release)
+
+	FIND_LIBRARY (TAGLIB_LIBRARY_DEBUG NAMES tag.lib PATHS ${PROBE_DIR_Debug})
+	FIND_LIBRARY (TAGLIB_LIBRARY_RELEASE NAMES tag.lib PATHS ${PROBE_DIR_Release})
+	win32_tune_libs_names (TAGLIB)
+	
+	find_path(TAGLIB_INCLUDES
+      NAMES
+      taglib/tag.h
+      PATH_SUFFIXES taglib
+      PATHS
+      ${KDE4_INCLUDE_DIR}
+      ${INCLUDE_INSTALL_DIR}
+	  ${TAGLIB_INCLUDE_WIN32}
+    )
+  ELSE (WIN32)
+    include(FindLibraryWithDebug)
+  
+    find_library_with_debug(TAGLIB_LIBRARIES
+      WIN32_DEBUG_POSTFIX d
+      NAMES tag
+      PATHS
+      ${KDE4_LIB_DIR}
+      ${LIB_INSTALL_DIR}
+    )
+	
+	find_path(TAGLIB_INCLUDES
+      NAMES
+      tag.h
+      PATH_SUFFIXES taglib
+      PATHS
+      ${KDE4_INCLUDE_DIR}
+      ${INCLUDE_INSTALL_DIR}
+    )
+  ENDIF (WIN32)
   
   find_package_handle_standard_args(Taglib DEFAULT_MSG 
                                     TAGLIB_INCLUDES TAGLIB_LIBRARIES)

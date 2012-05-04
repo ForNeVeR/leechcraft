@@ -50,7 +50,7 @@ namespace LMP
 		QHash<Phonon::MediaSource, QStandardItem*> Items_;
 		QHash<QPair<QString, QString>, QStandardItem*> AlbumRoots_;
 	public:
-		enum class PlayMode
+		enum PlayMode
 		{
 			Sequential,
 			Shuffle,

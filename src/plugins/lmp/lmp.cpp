@@ -38,7 +38,7 @@ namespace LMP
 		XSD_.reset (new Util::XmlSettingsDialog);
 		XSD_->RegisterObject (&XmlSettingsManager::Instance (), "lmpsettings.xml");
 
-		PlayerTC_ =
+		TabClassInfo temp = 
 		{
 			GetUniqueID () + "_player",
 			"LMP",
@@ -47,6 +47,7 @@ namespace LMP
 			40,
 			TFSingle | TFOpenableByRequest
 		};
+		PlayerTC_ = temp;
 
 		Core::Instance ().SetProxy (proxy);
 		Core::Instance ().PostInit ();

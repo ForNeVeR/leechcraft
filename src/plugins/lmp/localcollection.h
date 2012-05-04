@@ -75,7 +75,7 @@ namespace LMP
 			TrackTitle,
 			TrackPath
 		};
-		enum class DynamicPlaylist
+		enum DynamicPlaylist
 		{
 			Random50
 		};

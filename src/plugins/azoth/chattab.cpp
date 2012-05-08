@@ -1410,7 +1410,7 @@ namespace Azoth
 
 			const auto& parts = mucEntry->GetParticipants ();
 			auto partPos = std::find_if (parts.begin (), parts.end (),
-					[&nick] (QObject *entryObj)
+					[&nick] (QObject *entryObj) -> bool
 					{
 						auto entry = qobject_cast<ICLEntry*> (entryObj);
 						return entry && entry->GetEntryName () == nick;

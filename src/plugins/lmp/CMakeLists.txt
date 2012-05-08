@@ -49,6 +49,7 @@ SET (SRCS
 	playertab.cpp
 	player.cpp
 	core.cpp
+	mediainfo.cpp
 	localfileresolver.cpp
 	playlistdelegate.cpp
 	localcollection.cpp
@@ -61,6 +62,7 @@ SET (SRCS
 	m3ustuff.cpp
 	playlistmanager.cpp
 	artistsinfodisplay.cpp
+	albumartmanager.cpp
 	)
 SET (HEADERS
 	lmp.h
@@ -68,6 +70,7 @@ SET (HEADERS
 	playertab.h
 	player.h
 	core.h
+	mediainfo.h
 	localfileresolver.h
 	playlistdelegate.h
 	localcollection.h
@@ -80,6 +83,7 @@ SET (HEADERS
 	m3ustuff.h
 	playlistmanager.h
 	artistsinfodisplay.h
+	albumartmanager.h
 	)
 SET (FORMS
 	playertab.ui

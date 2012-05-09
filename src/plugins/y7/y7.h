@@ -20,7 +20,7 @@
 
 #include <QObject>
 
-#include <shobjidl.h>
+#include <ShObjIdl.h>
 #include <Windows.h>
 
 #include <interfaces/iinfo.h>
@@ -35,7 +35,6 @@ namespace Y7
 		Q_OBJECT
 		Q_INTERFACES (IInfo)
 	public:
-		static Plugin *instance ();
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
 		QByteArray GetUniqueID () const;
@@ -44,11 +43,12 @@ namespace Y7
 		QString GetInfo () const;
 		QIcon GetIcon () const;
 
-		//DWORD GetMessageId () const;
+	public slots:
+		void progress ();
+
 	private:
-		//static bool EventFilter(void *message);
-		//DWORD messageId_;
-		ITaskbarList3 *taskbar_;
+		ICoreProxy_ptr Proxy_;
+		ITaskbarList3 *Taskbar_;
 	};
 }
 }

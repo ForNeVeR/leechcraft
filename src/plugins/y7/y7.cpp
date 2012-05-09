@@ -17,36 +17,34 @@
  **********************************************************************/
 
 #include "y7.h"
-#include <QAbstractEventDispatcher>
 #include <QDebug>
 #include <QIcon>
+#include <QMainWindow>
 #include <QMessageBox>
+#include <QTimer>
+#include <interfaces/core/icoreproxy.h>
 
 namespace LeechCraft
 {
 namespace Y7
 {
-	Plugin *Plugin::instance ()
-	{
-		static Plugin plugin;
-		return &plugin;
-	}
-
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
-		//QAbstractEventDispatcher::instance()->setEventFilter(&EventFilter);
-		//messageId_ = RegisterWindowMessage(L"TaskbarButtonCreated");
-		//qDebug () << "Message ID: " << messageId_;
+		Proxy_ = proxy;
 
-		if (CoCreateInstance (CLSID_TaskbarList, nullptr, CLSCTX_ALL,
-			IID_ITaskbarList3, reinterpret_cast<LPVOID *>(&taskbar_)) != S_OK)
+		auto taskbarPtr = reinterpret_cast<LPVOID *> (&Taskbar_);
+		if (CoCreateInstance (CLSID_TaskbarList, nullptr, CLSCTX_ALL, IID_ITaskbarList3, taskbarPtr) != S_OK)
 		{
 			qDebug() << "Cannot create TaskbarList";
+			return;
 		}
+
+		QMessageBox::information (nullptr, "Y7", "Created TaskbarList.");
 	}
 
 	void Plugin::SecondInit ()
 	{
+		QTimer::singleShot (5000, this, SLOT(progress ()));
 	}
 
 	QByteArray Plugin::GetUniqueID () const
@@ -56,6 +54,8 @@ namespace Y7
 
 	void Plugin::Release ()
 	{
+		QMessageBox::information (nullptr, "Y7", "Releasing COM object...");
+		Taskbar_->Release ();
 	}
 
 	QString Plugin::GetName () const
@@ -73,23 +73,14 @@ namespace Y7
 		return QIcon ();
 	}
 
-	//DWORD Plugin::GetMessageId () const
-	//{
-	// 	return messageId_;
-	//}
+	void Plugin::progress ()
+	{
+		auto handle = Proxy_->GetMainWindow ()->winId ();
 
-	//bool Plugin::EventFilter(void *message)
-	//{
-	// 	auto msg = (DWORD) message;
-	// 	qDebug() << "Recv: " << msg;
-	// 	if ((DWORD) message == instance ()->GetMessageId ())
-	// 	{
-	// 		QMessageBox::information (nullptr, "Info", "Message has cometh!");
-	// 		return true;
-	// 	}
-	// 
-	// 	return false;
-	//}
+		Taskbar_->SetProgressState (handle, TBPF_ERROR);
+
+		QMessageBox::information (nullptr, "Y7", "Progress succesful set.");
+	}
 }
 }
 

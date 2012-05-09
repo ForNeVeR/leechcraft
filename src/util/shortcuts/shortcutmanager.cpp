@@ -47,8 +47,7 @@ namespace Util
 		const QIcon& icon = act->icon ().isNull () ?
 				CoreProxy_->GetIcon (act->property ("ActionIcon").toString ()) :
 				act->icon ();
-		RegisterActionInfo (id,
-				{ act->text (), act->shortcuts (), icon });
+		RegisterActionInfo (id, ActionInfo (act->text (), act->shortcuts (), icon));
 
 		if (update)
 			SetShortcut (id,

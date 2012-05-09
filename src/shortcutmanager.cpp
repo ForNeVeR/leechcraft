@@ -45,7 +45,7 @@ namespace LeechCraft
 			if (filter.isEmpty ())
 				return true;
 
-			auto checkStr = [row, parent, &filter, this] (int col)
+			auto checkStr = [row, parent, &filter, this] (int col) -> bool
 			{
 				const QString& content = this->sourceModel ()->
 						index (row, col, parent).data ().toString ();

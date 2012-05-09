@@ -31,7 +31,7 @@ set BOOST_BIN_DIR="%BOOST_ROOT%\stage\lib"
 set BOOST_VERSION="1_48"
 rem set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\Release\boost-link-shared\boost-source\threading-multi"
 rem set OPENSSL_BIN_DIR="C:\DEVLIBS\OpenSSL-Win32"
-rem set QT_BIN_DIR="%QTDIR%\bin"
+set QT_BIN_DIR="%QTDIR%\bin"
 rem set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\MinSizeRel\"
 
 set LEECHCRAFT_ROOT_DIR="..\.."

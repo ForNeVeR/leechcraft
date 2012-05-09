@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2012  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy, Von Never
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,14 +17,32 @@
  **********************************************************************/
 
 #include "y7.h"
+#include <QAbstractEventDispatcher>
+#include <QDebug>
 #include <QIcon>
+#include <QMessageBox>
 
 namespace LeechCraft
 {
 namespace Y7
 {
+	Plugin *Plugin::instance ()
+	{
+		static Plugin plugin;
+		return &plugin;
+	}
+
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		//QAbstractEventDispatcher::instance()->setEventFilter(&EventFilter);
+		//messageId_ = RegisterWindowMessage(L"TaskbarButtonCreated");
+		//qDebug () << "Message ID: " << messageId_;
+
+		if (CoCreateInstance (CLSID_TaskbarList, nullptr, CLSCTX_ALL,
+			IID_ITaskbarList3, reinterpret_cast<LPVOID *>(&taskbar_)) != S_OK)
+		{
+			qDebug() << "Cannot create TaskbarList";
+		}
 	}
 
 	void Plugin::SecondInit ()
@@ -54,6 +72,24 @@ namespace Y7
 	{
 		return QIcon ();
 	}
+
+	//DWORD Plugin::GetMessageId () const
+	//{
+	// 	return messageId_;
+	//}
+
+	//bool Plugin::EventFilter(void *message)
+	//{
+	// 	auto msg = (DWORD) message;
+	// 	qDebug() << "Recv: " << msg;
+	// 	if ((DWORD) message == instance ()->GetMessageId ())
+	// 	{
+	// 		QMessageBox::information (nullptr, "Info", "Message has cometh!");
+	// 		return true;
+	// 	}
+	// 
+	// 	return false;
+	//}
 }
 }
 

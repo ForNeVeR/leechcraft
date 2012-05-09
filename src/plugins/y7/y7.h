@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2012  Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy, Von Never
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
 #pragma once
 
 #include <QObject>
+
+#include <shobjidl.h>
+#include <Windows.h>
+
 #include <interfaces/iinfo.h>
 
 namespace LeechCraft
@@ -31,6 +35,7 @@ namespace Y7
 		Q_OBJECT
 		Q_INTERFACES (IInfo)
 	public:
+		static Plugin *instance ();
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
 		QByteArray GetUniqueID () const;
@@ -38,6 +43,12 @@ namespace Y7
 		QString GetName () const;
 		QString GetInfo () const;
 		QIcon GetIcon () const;
+
+		//DWORD GetMessageId () const;
+	private:
+		//static bool EventFilter(void *message);
+		//DWORD messageId_;
+		ITaskbarList3 *taskbar_;
 	};
 }
 }

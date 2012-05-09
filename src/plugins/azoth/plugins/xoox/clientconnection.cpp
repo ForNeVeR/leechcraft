@@ -71,6 +71,7 @@
 #include "msgarchivingmanager.h"
 #include "sdmanager.h"
 #include "xep0232handler.h"
+#include "pepmicroblog.h"
 
 #ifdef ENABLE_CRYPT
 #include "pgpmanager.h"
@@ -150,10 +151,12 @@ namespace Xoox
 		PubSubManager_->RegisterCreator<UserMood> ();
 		PubSubManager_->RegisterCreator<UserTune> ();
 		PubSubManager_->RegisterCreator<UserLocation> ();
+		PubSubManager_->RegisterCreator<PEPMicroblog> ();
 		PubSubManager_->SetAutosubscribe<UserActivity> (true);
 		PubSubManager_->SetAutosubscribe<UserMood> (true);
 		PubSubManager_->SetAutosubscribe<UserTune> (true);
 		PubSubManager_->SetAutosubscribe<UserLocation> (true);
+		PubSubManager_->SetAutosubscribe<PEPMicroblog> (true);
 
 		connect (PubSubManager_,
 				SIGNAL (gotEvent (const QString&, PEPEventBase*)),
@@ -356,12 +359,8 @@ namespace Xoox
 			return;
 		}
 
-		if (presType != QXmppPresence::Unavailable)
-			Q_FOREACH (RoomHandler *rh, RoomHandlers_)
-				rh->SetState (state);
-		else
-			Q_FOREACH (RoomHandler *rh, RoomHandlers_)
-				rh->Leave (QString (), false);
+		Q_FOREACH (RoomHandler *rh, RoomHandlers_)
+			rh->SetPresence (pres);
 
 		if (!IsConnected_ &&
 				state.State_ != SOffline)
@@ -1468,7 +1467,8 @@ namespace Xoox
 	void ClientConnection::HandleError (const QXmppIq& iq)
 	{
 		const QXmppStanza::Error& error = iq.error ();
-		if (error.condition () == QXmppStanza::Error::FeatureNotImplemented)
+		if (error.condition () == QXmppStanza::Error::FeatureNotImplemented ||
+				error.condition () == QXmppStanza::Error::ItemNotFound)
 		{
 			// Whatever it is, it just keeps appearing, hz.
 			return;
@@ -1522,11 +1522,13 @@ namespace Xoox
 		if (!AwaitingPacketCallbacks_.contains (iq.from ()))
 			return;
 
-		const PacketID2Callback_t& cbs = AwaitingPacketCallbacks_ [iq.from ()];
+		PacketID2Callback_t& cbs = AwaitingPacketCallbacks_ [iq.from ()];
 		if (!cbs.contains (iq.id ()))
 			return;
 
-		const PacketCallback_t& cb = cbs [iq.id ()];
+		const PacketCallback_t& cb = cbs.take (iq.id ());
+		if (cbs.isEmpty ())
+			AwaitingPacketCallbacks_.remove (iq.from ());
 		if (!cb.first)
 			return;
 

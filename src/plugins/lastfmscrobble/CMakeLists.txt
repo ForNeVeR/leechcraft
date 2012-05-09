@@ -22,11 +22,15 @@ SET (SRCS
 	lastfmsubmitter.cpp
 	xmlsettingsmanager.cpp
 	lastfmscrobble.cpp
+	pendingsimilarartists.cpp
+	albumartfetcher.cpp
 	)
 SET (HEADERS
 	lastfmsubmitter.h
 	xmlsettingsmanager.h
 	lastfmscrobble.h
+	pendingsimilarartists.h
+	albumartfetcher.h
 	)
 SET (RESOURCES lastfmscrobbleresources.qrc)
 IF (NOT LC_NO_MOC)

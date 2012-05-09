@@ -25,7 +25,7 @@ if exist build32 rmdir /s /q build32
 if not exist build32 mkdir build32
 cd build32
 cmake ../../../src ^
-	-G "MinGW Makefiles" ^
+	-G "Visual Studio 10" ^
 	%BTYPE% ^
 	-DENABLE_ADVANCEDNOTIFICATIONS=False ^
 	-DENABLE_AGGREGATOR=False ^
@@ -63,6 +63,6 @@ cmake ../../../src ^
 	-DENABLE_FTP=False ^
 	-DENABLE_SIDEBAR=False ^
 	-DENABLE_LIZNOO=False ^
-	-DENABLE_XPROXY=False ^
-	-DQWT_DIR="d:\X-Files\Projects\_Lib\qwt"
+	-DENABLE_XPROXY=False
+rem	-DQWT_DIR="d:\X-Files\Projects\_Lib\qwt"
 pause

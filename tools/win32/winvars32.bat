@@ -5,9 +5,9 @@ rem == (c) Eugene Mamin <thedzhon@gmail.com>
 
 rem == Build variables ==
 
-rem call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\vcvars32.bat" x86
+call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\vcvars32.bat" x86
 
-set QTDIR=c:\Programs\QtSDK\Desktop\Qt\4.8.0\mingw
+set QTDIR=c:\Programs\QtSDK\Desktop\Qt\4.8.1\msvc2010
 
 set BOOST_ROOT=d:\X-Files\Projects\_Lib\boost_1_48_0
 rem set TORRENT_DIR=C:\DEVLIBS\libtorrent-rasterbar-0.15.9
@@ -17,7 +17,7 @@ rem set SPEEX_DIR=C:\DEVLIBS\speex-1.2rc1
 rem Go to http://wiki.videolan.org/GenerateLibFromDll first!
 rem Generate libs into this folder
 rem set VLC_DIR=C:\DEVLIBS\vlc-1.1.11-win32\vlc-1.1.11
-set QWT_DIR=d:\X-Files\Projects\_Lib\qwt
+rem set QWT_DIR=d:\X-Files\Projects\_Lib\qwt
 
 set BUILD_RELEASE_AND_DEBUG=1
 

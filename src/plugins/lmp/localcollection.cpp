@@ -145,6 +145,7 @@ namespace LMP
 
 	LocalCollection::LocalCollection (QObject *parent)
 	: QObject (parent)
+	, IsReady_ (false)
 	, Storage_ (new LocalCollectionStorage (this))
 	, CollectionModel_ (new CollectionModel (this))
 	, Sorter_ (new CollectionSorter (this))
@@ -177,6 +178,11 @@ namespace LMP
 	void LocalCollection::FinalizeInit ()
 	{
 		ArtistIcon_ = Core::Instance ().GetProxy ()->GetIcon ("view-media-artist");
+	}
+
+	bool LocalCollection::IsReady () const
+	{
+		return IsReady_;
 	}
 
 	QAbstractItemModel* LocalCollection::GetCollectionModel () const
@@ -247,7 +253,21 @@ namespace LMP
 	{
 		if (Album2Item_.contains (id))
 			Album2Item_ [id]->setData (path, Role::AlbumArt);
+
+		if (AlbumID2Album_.contains (id))
+			AlbumID2Album_ [id]->CoverPath_ = path;
+
 		Storage_->SetAlbumArt (id, path);
+	}
+
+	int LocalCollection::FindTrack (const QString& path) const
+	{
+		return Path2Track_.value (path, -1);
+	}
+
+	Collection::Album_ptr LocalCollection::GetTrackAlbum (int trackId) const
+	{
+		return AlbumID2Album_ [Track2Album_ [trackId]];
 	}
 
 	QList<int> LocalCollection::GetDynamicPlaylist (DynamicPlaylist type) const
@@ -355,6 +375,8 @@ namespace LMP
 						},
 						artistItem);
 
+				AlbumID2Album_ [album->ID_] = album;
+
 				Q_FOREACH (const auto& track, album->Tracks_)
 				{
 					const QString& name = QString::fromUtf8 ("%1 — %2")
@@ -370,6 +392,8 @@ namespace LMP
 
 					Path2Track_ [track.FilePath_] = track.ID_;
 					Track2Path_ [track.ID_] = track.FilePath_;
+
+					Track2Album_ [track.ID_] = album->ID_;
 				}
 			}
 		}
@@ -404,6 +428,10 @@ namespace LMP
 					PresentPaths_ << track.FilePath_;
 
 		HandleNewArtists (Artists_);
+
+		IsReady_ = true;
+
+		emit collectionReady ();
 	}
 
 	void LocalCollection::handleScanFinished ()

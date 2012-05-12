@@ -32,15 +32,14 @@ namespace LMP
 		Q_OBJECT
 
 		MediaInfo CurrentSong_;
+		QString CurrentAlbumArt_;
 		PlayerTab *PlayerTab_;
 	public:
 		LMPSystemTrayIcon (const QIcon& icon, QObject *parent = 0);
 	protected:
 		bool event (QEvent *event);
-
 	public slots:
 		void handleSongChanged (const MediaInfo& song);
-
 	signals:
 		void changedVolume (qreal delta);
 	};

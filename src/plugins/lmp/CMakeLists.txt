@@ -28,6 +28,7 @@ ADD_DEFINITIONS (${TAGLIB_CFLAGS})
 
 SET (QT_USE_QTDECLARATIVE TRUE)
 SET (QT_USE_QTSQL TRUE)
+SET (QT_USE_QTXML TRUE)
 INCLUDE (${QT_USE_FILE})
 IF (NOT QT_PHONON_FOUND)
 	IF (NOT PHONON_FOUND)
@@ -59,10 +60,14 @@ SET (SRCS
 	collectiondelegate.cpp
 	nowplayingwidget.cpp
 	staticplaylistmanager.cpp
-	m3ustuff.cpp
 	playlistmanager.cpp
 	artistsinfodisplay.cpp
 	albumartmanager.cpp
+	lmpsystemtrayicon.cpp
+	playlistparsers/playlistfactory.cpp
+	playlistparsers/m3u.cpp
+	playlistparsers/pls.cpp
+	playlistparsers/xspf.cpp
 	)
 SET (HEADERS
 	lmp.h
@@ -80,10 +85,14 @@ SET (HEADERS
 	collectiondelegate.h
 	nowplayingwidget.h
 	staticplaylistmanager.h
-	m3ustuff.h
 	playlistmanager.h
 	artistsinfodisplay.h
 	albumartmanager.h
+	lmpsystemtrayicon.h
+	playlistparsers/playlistfactory.h
+	playlistparsers/m3u.h
+	playlistparsers/pls.h
+	playlistparsers/xspf.h
 	)
 SET (FORMS
 	playertab.ui

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2011  Oleg Linkin
+ * Copyright (C) 2010-2012  Oleg Linkin
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,31 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "notificationaction.h"
+#pragma once
+
+#include <QSystemTrayIcon>
+#include "mediainfo.h"
 
 namespace LeechCraft
 {
-namespace Kinotify
+namespace LMP
 {
-	NotificationAction::NotificationAction (QObject *parent)
-	: QObject (parent)
-	, ActionObject_ (0)
-	{
-	}
+	class PlayerTab;
 
-	void NotificationAction::SetActionObject (QObject* obj)
+	class LMPSystemTrayIcon : public QSystemTrayIcon
 	{
-		ActionObject_ = obj;
-	}
+		Q_OBJECT
 
-	void NotificationAction::sendActionOnClick (const QString& idx)
-	{
-		QMetaObject::invokeMethod (ActionObject_,
-				"notificationActionTriggered",
-				Qt::QueuedConnection,
-				Q_ARG (int, idx.toInt ()));
+		MediaInfo CurrentSong_;
+		PlayerTab *PlayerTab_;
+	public:
+		LMPSystemTrayIcon (const QIcon& icon, QObject *parent = 0);
+	protected:
+		bool event (QEvent *event);
 
-		emit actionPressed ();
-	}
+	public slots:
+		void handleSongChanged (const MediaInfo& song);
+
+	signals:
+		void changedVolume (qreal delta);
+	};
 }
 }

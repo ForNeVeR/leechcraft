@@ -18,10 +18,21 @@
 
 #pragma once
 
+#include <memory>
 #include <QWidget>
+#include <phonon/mediaobject.h>
+#include <phonon/audiooutput.h>
+#include <phonon/volumeslider.h>
 #include <interfaces/ihavetabs.h>
 #include <interfaces/media/audiostructs.h>
+#include <interfaces/ihaverecoverabletabs.h>
+#include "lmpsystemtrayicon.h"
 #include "ui_playertab.h"
+
+namespace Media
+{
+	struct LyricsQuery;
+}
 
 class QStandardItemModel;
 class QFileSystemModel;
@@ -38,9 +49,10 @@ namespace LMP
 
 	class PlayerTab : public QWidget
 					, public ITabWidget
+					, public IRecoverableTab
 	{
 		Q_OBJECT
-		Q_INTERFACES (ITabWidget);
+		Q_INTERFACES (ITabWidget IRecoverableTab);
 
 		Ui::PlayerTab Ui_;
 
@@ -59,6 +71,10 @@ namespace LMP
 
 		QHash<QString, Media::SimilarityInfos_t> Similars_;
 		QString LastSimilar_;
+
+		LMPSystemTrayIcon *TrayIcon_;
+		QAction *PlayPause_;
+		QMenu *TrayMenu_;
 	public:
 		PlayerTab (const TabClassInfo&, QObject*, QWidget* = 0);
 
@@ -68,6 +84,10 @@ namespace LMP
 		QToolBar* GetToolBar () const;
 
 		Player* GetPlayer () const;
+
+		QByteArray GetTabRecoverData () const;
+		QIcon GetTabRecoverIcon () const;
+		QString GetTabRecoverName () const;
 	private:
 		void SetupToolbar ();
 		void SetupCollection ();
@@ -77,12 +97,17 @@ namespace LMP
 		void SetNowPlaying (const MediaInfo&, const QPixmap&);
 		void Scrobble (const MediaInfo&);
 		void FillSimilar (const Media::SimilarityInfos_t&);
+		void RequestLyrics (const MediaInfo&);
 	private slots:
 		void handleSongChanged (const MediaInfo&);
 		void handleCurrentPlayTime (qint64);
 		void handleLoveTrack ();
+
 		void handleSimilarError ();
 		void handleSimilarReady ();
+
+		void handleGotLyrics (const Media::LyricsQuery&, const QStringList&);
+
 		void handleScanProgress (int);
 		void handleChangePlayMode ();
 		void handlePlaylistSelected (const QModelIndex&);
@@ -91,11 +116,19 @@ namespace LMP
 		void loadFromFSBrowser ();
 		void handleSavePlaylist ();
 		void loadFromDisk ();
+
+		void closeLMP ();
+		void handleStateChanged (Phonon::State newState, Phonon::State oldState);
+		void handleShowTrayIcon ();
+		void handleChangedVolume (qreal delta);
+		void handleTrayIconActivated (QSystemTrayIcon::ActivationReason reason);
 	signals:
 		void changeTabName (QWidget*, const QString&);
 		void removeTab (QWidget*);
 
 		void gotEntity (const LeechCraft::Entity&);
+
+		void tabRecoverDataChanged ();
 	};
 }
 }

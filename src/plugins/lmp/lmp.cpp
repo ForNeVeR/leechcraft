@@ -19,6 +19,7 @@
 #include "lmp.h"
 #include <QIcon>
 #include <QFileInfo>
+#include <QSystemTrayIcon>
 #include <QUrl>
 #include <phonon/mediaobject.h>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
@@ -45,7 +46,7 @@ namespace LMP
 			GetInfo (),
 			GetIcon (),
 			40,
-			TFSingle | TFOpenableByRequest
+			TFSingle | TFByDefault | TFOpenableByRequest
 		};
 		PlayerTC_ = temp;
 
@@ -53,6 +54,7 @@ namespace LMP
 		Core::Instance ().PostInit ();
 
 		PlayerTab_ = new PlayerTab (PlayerTC_, this);
+
 		connect (PlayerTab_,
 				SIGNAL (removeTab (QWidget*)),
 				this,
@@ -198,6 +200,27 @@ namespace LMP
 		result [GetName ()] << ActionRescan_;
 		return result;
 	}
+
+	void Plugin::RecoverTabs (const QList<LeechCraft::TabRecoverInfo>& infos)
+	{
+		Q_FOREACH (const auto& recInfo, infos)
+		{
+			qDebug () << Q_FUNC_INFO << recInfo.Data_;
+
+			if (recInfo.Data_ == "playertab")
+			{
+				Q_FOREACH (const auto& pair, recInfo.DynProperties_)
+					PlayerTab_->setProperty (pair.first, pair.second);
+
+				TabOpenRequested (PlayerTC_.TabClass_);
+			}
+			else
+				qWarning () << Q_FUNC_INFO
+						<< "unknown context"
+						<< recInfo.Data_;
+		}
+	}
+
 }
 }
 

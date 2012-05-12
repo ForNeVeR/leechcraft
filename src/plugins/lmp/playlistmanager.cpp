@@ -21,6 +21,7 @@
 #include <QStandardItemModel>
 #include <QTimer>
 #include <QMimeData>
+#include <QUrl>
 #include "core.h"
 #include "staticplaylistmanager.h"
 #include "localcollection.h"
@@ -56,7 +57,7 @@ namespace LMP
 				{
 					const auto& sources = Manager_->GetSources (idx);
 					std::transform (sources.begin (), sources.end (), std::back_inserter (urls),
-							[] (decltype (sources.front ()) src)
+							[] (decltype (sources.front ()) src) -> QUrl
 							{
 								switch (src.type ())
 								{

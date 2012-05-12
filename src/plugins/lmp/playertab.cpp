@@ -18,6 +18,7 @@
 
 #include "playertab.h"
 #include <algorithm>
+#include <functional>
 #include <QToolBar>
 #include <QFileDialog>
 #include <QFileSystemModel>
@@ -257,8 +258,9 @@ namespace LMP
 				SIGNAL (stateChanged (Phonon::State, Phonon::State)),
 				this,
 				SLOT (handleStateChanged (Phonon::State, Phonon::State)));
-		TrayMenu_->addActions ({previous, PlayPause_, stop, next,
-				TrayMenu_->addSeparator (), closeLMP});
+		QList<QAction*> actions;
+		actions << previous << PlayPause_ << stop << next << TrayMenu_->addSeparator () << closeLMP;
+		TrayMenu_->addActions (actions);
 		TrayIcon_->setContextMenu (TrayMenu_);
 	}
 
@@ -464,7 +466,7 @@ namespace LMP
 					SLOT (handleGotLyrics (const Media::LyricsQuery&, const QStringList&)),
 					Qt::UniqueConnection);
 			auto finder = qobject_cast<Media::ILyricsFinder*> (finderObj);
-			finder->RequestLyrics ({ info.Artist_, info.Album_, info.Title_ },
+			finder->RequestLyrics (Media::LyricsQuery (info.Artist_, info.Album_, info.Title_ ),
 					Media::QueryOption::NoOption);
 		}
 	}
@@ -570,7 +572,7 @@ namespace LMP
 
 	void PlayerTab::handleCurrentPlayTime (qint64 time)
 	{
-		auto niceTime = [] (qint64 time)
+		auto niceTime = [] (qint64 time) -> QString
 		{
 			if (!time)
 				return QString ();

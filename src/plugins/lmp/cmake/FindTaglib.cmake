@@ -75,16 +75,6 @@ else(TAGLIBCONFIG_EXECUTABLE)
 	FIND_LIBRARY (TAGLIB_LIBRARY_DEBUG NAMES tag.lib PATHS ${PROBE_DIR_Debug})
 	FIND_LIBRARY (TAGLIB_LIBRARY_RELEASE NAMES tag.lib PATHS ${PROBE_DIR_Release})
 	win32_tune_libs_names (TAGLIB)
-	
-	find_path(TAGLIB_INCLUDES
-      NAMES
-      taglib/tag.h
-      PATH_SUFFIXES taglib
-      PATHS
-      ${KDE4_INCLUDE_DIR}
-      ${INCLUDE_INSTALL_DIR}
-	  ${TAGLIB_INCLUDE_WIN32}
-    )
   ELSE (WIN32)
     include(FindLibraryWithDebug)
   
@@ -95,16 +85,17 @@ else(TAGLIBCONFIG_EXECUTABLE)
       ${KDE4_LIB_DIR}
       ${LIB_INSTALL_DIR}
     )
-	
-	find_path(TAGLIB_INCLUDES
-      NAMES
-      tag.h
-      PATH_SUFFIXES taglib
-      PATHS
-      ${KDE4_INCLUDE_DIR}
-      ${INCLUDE_INSTALL_DIR}
-    )
   ENDIF (WIN32)
+  
+  find_path(TAGLIB_INCLUDES
+    NAMES
+    tag.h
+    PATH_SUFFIXES taglib
+    PATHS
+    ${KDE4_INCLUDE_DIR}
+    ${INCLUDE_INSTALL_DIR}
+    ${TAGLIB_INCLUDE_WIN32}
+  )
   
   find_package_handle_standard_args(Taglib DEFAULT_MSG 
                                     TAGLIB_INCLUDES TAGLIB_LIBRARIES)

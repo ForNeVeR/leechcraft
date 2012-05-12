@@ -171,8 +171,9 @@ namespace LMP
 			auto parser = MakePlaylistParser (file);
 			if (parser)
 				return parser (file);
-
-			return { Phonon::MediaSource (file) };
+			QList<Phonon::MediaSource> list;
+			list += Phonon::MediaSource (file);
+			return list;
 		}
 	}
 

@@ -18,8 +18,8 @@
 
 #include "localfileresolver.h"
 #include <QtDebug>
-#include <taglib/fileref.h>
-#include <taglib/tag.h>
+#include <fileref.h>
+#include <tag.h>
 
 namespace LeechCraft
 {

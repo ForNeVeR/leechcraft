@@ -44,6 +44,33 @@ INCLUDE_DIRECTORIES (
 	${LEECHCRAFT_INCLUDE_DIR}
 	${TAGLIB_INCLUDES}
 	)
+IF (WIN32)
+	INCLUDE_DIRECTORIES (
+		${TAGLIB_INCLUDES}/toolkit
+		${TAGLIB_INCLUDES}/asf
+		${TAGLIB_INCLUDES}/mpeg
+		${TAGLIB_INCLUDES}/ogg
+		${TAGLIB_INCLUDES}/ogg/flac
+		${TAGLIB_INCLUDES}/flac
+		${TAGLIB_INCLUDES}/mpc
+		${TAGLIB_INCLUDES}/mp4
+		${TAGLIB_INCLUDES}/ogg/vorbis
+		${TAGLIB_INCLUDES}/ogg/speex
+		${TAGLIB_INCLUDES}/mpeg/id3v2
+		${TAGLIB_INCLUDES}/mpeg/id3v2/frames
+		${TAGLIB_INCLUDES}/mpeg/id3v1
+		${TAGLIB_INCLUDES}/ape
+		${TAGLIB_INCLUDES}/wavpack
+		${TAGLIB_INCLUDES}/trueaudio
+		${TAGLIB_INCLUDES}/riff
+		${TAGLIB_INCLUDES}/riff/aiff
+		${TAGLIB_INCLUDES}/riff/wav
+		${TAGLIB_INCLUDES}/mod
+		${TAGLIB_INCLUDES}/s3m
+		${TAGLIB_INCLUDES}/it
+		${TAGLIB_INCLUDES}/xm
+	)
+ENDIF (WIN32)
 SET (SRCS
 	lmp.cpp
 	xmlsettingsmanager.cpp

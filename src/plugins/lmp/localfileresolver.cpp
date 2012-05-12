@@ -52,8 +52,12 @@ namespace LMP
 			if (Cache_.contains (file))
 				return Cache_ [file];
 		}
-
-		TagLib::FileRef r (file.toUtf8 ().constData ());
+#ifdef _MSC_VER
+		TagLib::FileRef r ((const wchar_t *)file.utf16());
+		
+#else
+		TagLib::FileRef r (QFile::encodeName(file).constData());
+#endif
 		auto tag = r.tag ();
 		if (!tag)
 			throw ResolveError (file, "failed to get file tags");

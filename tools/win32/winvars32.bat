@@ -44,6 +44,7 @@ set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\%BUILD_DIR_PREFIX%\boost-lin
 set OPENSSL_BIN_DIR="C:\Project\OpenSSL-Win32\"
 set QT_BIN_DIR="%QTDIR%\bin"
 set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\%BUILD_DIR_PREFIX%\"
+set TAGLIB_BIN_DIR="%TAGLIB_DIR%\build\taglib\%BUILD_DIR_PREFIX%\"
 
 set LEECHCRAFT_ROOT_DIR="..\.."
 set LEECHCRAFT_BUILD_DIR="build32"

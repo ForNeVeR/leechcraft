@@ -107,7 +107,7 @@ SectionGroup "Plugins"
 		SetOutPath $INSTDIR\plugins\bin
 		File plugins\bin\leechcraft_advancednotifications.dll
 
-		SetOutPath $INSTDIR\share\advancednotifications
+		SetOutPath $INSTDIR\share\qml\advancednotifications
 		File /r share\qml\advancednotifications\*
 		SetOutPath $INSTDIR\share\sounds
 		File /r share\sounds\*
@@ -360,6 +360,8 @@ SectionGroup "Unsupported plugins"
 #		File plugins\bin\leechcraft_lcftp.dll
 #	SectionEnd
 	Section "LMP" LMPPLUGIN
+		SetOutPath $INSTDIR
+		File tag.dll
 		SetOutPath $INSTDIR\settings
 		File settings\lmpsettings.xml
 		SetOutPath $INSTDIR\plugins\bin

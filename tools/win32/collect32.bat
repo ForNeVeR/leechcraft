@@ -85,6 +85,9 @@ copy %VLC_DIR%\libvlccore.dll %TARGET_DIR%
 rem - QWT -
 copy %QWT_DIR%\lib\qwt%QT_LIB_SUFFIX%.dll %TARGET_DIR%
 
+rem - Taglib -
+copy %TAGLIB_BIN_DIR%\tag.dll %TARGET_DIR%
+
 rem === LEECHCRAFT FILES ===
 
 rem - Main files -
@@ -147,6 +150,8 @@ rem - libtorrent -
 copy %LIBTORRENT_BIN_DIR%\torrent.pdb %TARGET_DIR%
 rem - QWT -
 copy %QWT_DIR%\lib\qwt%QT_LIB_SUFFIX%.pdb %TARGET_DIR%
+rem - Taglib -
+copy %TAGLIB_BIN_DIR%\tag.pdb %TARGET_DIR%
 rem - Boost -
 copy %BOOST_ROOT%\bin.v2\libs\date_time\build\msvc-10.0\debug\threading-multi\boost_date_time-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
 copy %BOOST_ROOT%\bin.v2\libs\filesystem\build\msvc-10.0\debug\threading-multi\boost_filesystem-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%

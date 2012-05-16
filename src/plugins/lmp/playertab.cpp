@@ -21,7 +21,6 @@
 #include <functional>
 #include <QToolBar>
 #include <QFileDialog>
-#include <QFileSystemModel>
 #include <QStandardItemModel>
 #include <QSortFilterProxyModel>
 #include <QToolButton>
@@ -81,7 +80,6 @@ namespace LMP
 	: QWidget (parent)
 	, Plugin_ (plugin)
 	, TC_ (info)
-	, FSModel_ (new QFileSystemModel (this))
 	, CollectionFilterModel_ (new CollectionFilterModel (this))
 	, Player_ (new Player (this))
 	, PlaylistToolbar_ (new QToolBar ())
@@ -92,6 +90,8 @@ namespace LMP
 		Ui_.setupUi (this);
 		Ui_.MainSplitter_->setStretchFactor (0, 2);
 		Ui_.MainSplitter_->setStretchFactor (1, 1);
+
+		Ui_.FSBrowser_->AssociatePlayer (Player_);
 
 		connect (Player_,
 				SIGNAL (songChanged (MediaInfo)),
@@ -116,7 +116,6 @@ namespace LMP
 		SetupToolbar ();
 		SetupCollection ();
 		SetupPlaylistsTab ();
-		SetupFSBrowser ();
 		SetupPlaylist ();
 
 		XmlSettingsManager::Instance ().RegisterObject ("ShowTrayIcon",
@@ -258,9 +257,12 @@ namespace LMP
 				SIGNAL (stateChanged (Phonon::State, Phonon::State)),
 				this,
 				SLOT (handleStateChanged (Phonon::State, Phonon::State)));
-		QList<QAction*> actions;
-		actions << previous << PlayPause_ << stop << next << TrayMenu_->addSeparator () << closeLMP;
-		TrayMenu_->addActions (actions);
+		TrayMenu_->addAction (previous);
+		TrayMenu_->addAction (PlayPause_);
+		TrayMenu_->addAction (stop);
+		TrayMenu_->addAction (next);
+		TrayMenu_->addSeparator ();
+		TrayMenu_->addAction (closeLMP);
 		TrayIcon_->setContextMenu (TrayMenu_);
 	}
 
@@ -299,21 +301,6 @@ namespace LMP
 				SIGNAL (doubleClicked (QModelIndex)),
 				this,
 				SLOT (handlePlaylistSelected (QModelIndex)));
-	}
-
-	void PlayerTab::SetupFSBrowser ()
-	{
-		FSModel_->setReadOnly (true);
-		FSModel_->setRootPath (QDir::rootPath ());
-		Ui_.FSTree_->setModel (FSModel_);
-
-		QAction *addToPlaylist = new QAction (tr ("Add to playlist"), this);
-		addToPlaylist->setProperty ("ActionIcon", "list-add");
-		connect (addToPlaylist,
-				SIGNAL (triggered ()),
-				this,
-				SLOT (loadFromFSBrowser ()));
-		Ui_.FSTree_->addAction (addToPlaylist);
 	}
 
 	void PlayerTab::SetupPlaylist ()
@@ -679,20 +666,6 @@ namespace LMP
 				continue;
 			collection->Enqueue (index, Player_);
 		}
-	}
-
-	void PlayerTab::loadFromFSBrowser ()
-	{
-		const QModelIndex& index = Ui_.FSTree_->currentIndex ();
-		if (!index.isValid ())
-			return;
-
-		const QFileInfo& fi = FSModel_->fileInfo (index);
-
-		if (fi.isDir ())
-			Player_->Enqueue (RecIterate (fi.absoluteFilePath ()));
-		else
-			Player_->Enqueue (QStringList (fi.absoluteFilePath ()));
 	}
 
 	void PlayerTab::handleSavePlaylist ()

@@ -168,9 +168,8 @@ namespace LMP
 			auto parser = MakePlaylistParser (file);
 			if (parser)
 				return parser (file);
-			QList<Phonon::MediaSource> list;
-			list += Phonon::MediaSource (file);
-			return list;
+
+			return QList<Phonon::MediaSource> () << Phonon::MediaSource (file);
 		}
 	}
 
@@ -366,7 +365,7 @@ namespace LMP
 	{
 		auto resolver = Core::Instance ().GetLocalFileResolver ();
 		std::sort (sources.begin (), sources.end (),
-				[resolver] (const Phonon::MediaSource& s1, const Phonon::MediaSource& s2) -> bool
+				[resolver] (const Phonon::MediaSource& s1, const Phonon::MediaSource& s2)
 				{
 					if (s1.type () != Phonon::MediaSource::LocalFile ||
 						s2.type () != Phonon::MediaSource::LocalFile)

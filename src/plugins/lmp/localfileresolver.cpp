@@ -52,6 +52,9 @@ namespace LMP
 			if (Cache_.contains (file))
 				return Cache_ [file];
 		}
+		
+		QMutexLocker tlLocker (&TaglibMutex_);
+		
 #ifdef _MSC_VER
 		TagLib::FileRef r (reinterpret_cast<const wchar_t*> (file.utf16 ()));
 		

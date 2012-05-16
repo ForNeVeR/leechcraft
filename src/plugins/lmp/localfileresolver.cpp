@@ -53,10 +53,10 @@ namespace LMP
 				return Cache_ [file];
 		}
 #ifdef _MSC_VER
-		TagLib::FileRef r ((const wchar_t *)file.utf16());
+		TagLib::FileRef r (reinterpret_cast<const wchar_t*> (file.utf16 ()));
 		
 #else
-		TagLib::FileRef r (QFile::encodeName(file).constData());
+		TagLib::FileRef r (QFile::encodeName(file).constData ());
 #endif
 		auto tag = r.tag ();
 		if (!tag)

@@ -94,7 +94,7 @@ namespace LMP
 			Random50
 		};
 
-		enum class DirStatus
+		enum DirStatus
 		{
 			RootPath,
 			SubPath,

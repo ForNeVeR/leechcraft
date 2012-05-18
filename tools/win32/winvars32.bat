@@ -19,6 +19,7 @@ rem Generate libs into this folder
 set VLC_DIR=C:\Project\vlc-2.1.0-git-20120204-0003\
 set TAGLIB_DIR=C:\Project\taglib
 set QWT_DIR=C:\Project\qwt-6.0
+set POPPLER_QT4_DIR=C:\Project\poppler-qt4
 set OXYGENICONS_DIR=C:\Project\oxygen-icons-4.8.0
 
 rem 7za.exe, gunzip.exe, vcredist_x86.exe, myspell

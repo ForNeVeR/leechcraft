@@ -50,7 +50,7 @@ namespace Monocle
 		QList<PageGraphicsItem*> Pages_;
 		QGraphicsScene Scene_;
 
-		enum class LayoutMode
+		enum LayoutMode
 		{
 			OnePage,
 			TwoPages

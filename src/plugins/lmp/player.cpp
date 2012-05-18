@@ -365,7 +365,7 @@ namespace LMP
 	{
 		auto resolver = Core::Instance ().GetLocalFileResolver ();
 		std::sort (sources.begin (), sources.end (),
-				[resolver] (const Phonon::MediaSource& s1, const Phonon::MediaSource& s2)
+				[resolver] (const Phonon::MediaSource& s1, const Phonon::MediaSource& s2) -> bool
 				{
 					if (s1.type () != Phonon::MediaSource::LocalFile ||
 						s2.type () != Phonon::MediaSource::LocalFile)

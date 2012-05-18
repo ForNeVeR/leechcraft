@@ -34,7 +34,7 @@ namespace LeechCraft
 		bool ClearOnCancel_;
 		QString Filter_;
 	public:
-		enum class Type
+		enum Type
 		{
 			ExistingDirectory,
 			OpenFileName,

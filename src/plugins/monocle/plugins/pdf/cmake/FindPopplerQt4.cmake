@@ -19,6 +19,11 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_POPPLERQT4 QUIET poppler-qt4)
 
+if(WIN32)
+	set(PC_POPPLERQT4_INCLUDEDIR "${POPPLER_QT4_DIR}/include/")
+	set(PC_POPPLERQT4_LIBDIR "${POPPLER_QT4_DIR}/lib/")
+endif(WIN32)
+
 set(POPPLER_QT4_DEFINITIONS ${PC_POPPLERQT4_CFLAGS_OTHER})
 
 find_path(POPPLER_QT4_INCLUDE_DIR

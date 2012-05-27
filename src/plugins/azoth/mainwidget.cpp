@@ -117,6 +117,10 @@ namespace Azoth
 				SIGNAL (gotSDWidget (ServiceDiscoveryWidget*)),
 				this,
 				SIGNAL (gotSDWidget (ServiceDiscoveryWidget*)));
+		connect (AccountActsMgr_,
+				SIGNAL (gotMicroblogsTab (MicroblogsTab*)),
+				this,
+				SIGNAL (gotMicroblogsTab (MicroblogsTab*)));
 
 		qRegisterMetaType<QPersistentModelIndex> ("QPersistentModelIndex");
 
@@ -495,7 +499,8 @@ namespace Azoth
 
 		EntryStatus status (state, QString ());
 		Q_FOREACH (IAccount *acc, Core::Instance ().GetAccounts ())
-			acc->ChangeState (status);
+			if (acc->IsShownInRoster ())
+				acc->ChangeState (status);
 	}
 
 	void MainWidget::handleEntryActivationType ()

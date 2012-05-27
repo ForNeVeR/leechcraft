@@ -24,6 +24,7 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QToolButton>
+#include <QMessageBox>
 #include <QtDebug>
 #include "core.h"
 #include "pagegraphicsitem.h"
@@ -38,6 +39,7 @@ namespace Monocle
 	: TC_ (tc)
 	, ParentPlugin_ (parent)
 	, Toolbar_ (new QToolBar ("Monocle"))
+	, LayMode_ (LayoutMode::OnePage)
 	{
 		Ui_.setupUi (this);
 		Ui_.PagesView_->setScene (&Scene_);
@@ -113,10 +115,11 @@ namespace Monocle
 
 		ScalesBox_ = new QComboBox ();
 		ScalesBox_->addItem (tr ("Fit width"));
+		ScalesBox_->addItem (tr ("Fit page"));
 		std::vector<double> scales = { 0.1, 0.25, 0.33, 0.5, 0.66, 0.8, 1.0, 1.25, 1.5, 2 };
 		Q_FOREACH (double scale, scales)
 			ScalesBox_->addItem (QString::number (scale * 100) + '%', scale);
-		ScalesBox_->setCurrentIndex (1 + std::distance (scales.begin (),
+		ScalesBox_->setCurrentIndex (2 + std::distance (scales.begin (),
 					std::find (scales.begin (), scales.end (), 1)));
 		connect (ScalesBox_,
 				SIGNAL (currentIndexChanged (int)),
@@ -149,24 +152,81 @@ namespace Monocle
 
 	double DocumentTab::GetCurrentScale () const
 	{
+		if (!CurrentDoc_)
+			return 1;
+
+		auto calcRatio = [this] (std::function<double (const QSize&)> dimGetter)
+		{
+			const int pageIdx = GetCurrentPage ();
+			if (pageIdx < 0)
+				return 1.0;
+
+			double dim = dimGetter (CurrentDoc_->GetPageSize (pageIdx));
+			return dimGetter (Ui_.PagesView_->viewport ()->contentsRect ().size ()) / dim;
+		};
+
 		const int idx = ScalesBox_->currentIndex ();
 		switch (idx)
 		{
 		case 0:
 		{
-			const int pageIdx = GetCurrentPage ();
-			if (!CurrentDoc_ || pageIdx < 0)
-				return 1;
-
-			double width = CurrentDoc_->GetPageSize (pageIdx).width ();
-			double ratio = Ui_.PagesView_->viewport ()->contentsRect ().width () / (width + 2 * Margin);
+			auto ratio = calcRatio ([] (const QSize& size) { return size.width (); });
 			if (LayMode_ != LayoutMode::OnePage)
 				ratio /= 2;
 			return ratio;
 		}
+		case 1:
+		{
+			auto wRatio = calcRatio ([] (const QSize& size) { return size.width (); });
+			if (LayMode_ != LayoutMode::OnePage)
+				wRatio /= 2;
+			auto hRatio = calcRatio ([] (const QSize& size) { return size.height (); });
+			return std::min (wRatio, hRatio);
+		}
 		default:
 			return ScalesBox_->itemData (idx).toDouble ();
 		}
+	}
+
+	bool DocumentTab::SetDoc (const QString& path)
+	{
+		auto document = Core::Instance ().LoadDocument (path);
+		if (!document)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unable to navigate to"
+					<< path;
+			QMessageBox::warning (this,
+					"LeechCraft",
+					tr ("Unable to open document %1.")
+						.arg ("<em>" + path + "</em>"));
+			return false;
+		}
+
+		Scene_.clear ();
+		Pages_.clear ();
+
+		CurrentDoc_ = document;
+		const auto& title = QFileInfo (path).fileName ();
+		emit changeTabName (this, title);
+
+		for (int i = 0, size = CurrentDoc_->GetNumPages (); i < size; ++i)
+		{
+			auto item = new PageGraphicsItem (CurrentDoc_, i);
+			Scene_.addItem (item);
+			Pages_ << item;
+		}
+		Ui_.PagesView_->ensureVisible (Pages_.value (0), Margin, Margin);
+		Relayout (1);
+
+		updateNumLabel ();
+
+		connect (CurrentDoc_->GetObject (),
+				SIGNAL (navigateRequested (QString, int, double, double)),
+				this,
+				SLOT (handleNavigateRequested (QString, int, double, double)),
+				Qt::UniqueConnection);
+		return true;
 	}
 
 	int DocumentTab::GetCurrentPage () const
@@ -201,7 +261,7 @@ namespace Monocle
 		Q_FOREACH (auto item, Pages_)
 			item->SetScale (scale, scale);
 
-		for (int i = 0, size = Pages_.size (); i < size; ++i)
+		for (int i = 0, pagesCount = Pages_.size (); i < pagesCount; ++i)
 		{
 			const auto& size = CurrentDoc_->GetPageSize (i) * scale;
 			auto page = Pages_ [i];
@@ -221,6 +281,26 @@ namespace Monocle
 		updateNumLabel ();
 	}
 
+	void DocumentTab::handleNavigateRequested (const QString& path, int num, double x, double y)
+	{
+		if (!path.isEmpty ())
+			if (!SetDoc (path))
+				return;
+
+		SetCurrentPage (num);
+
+		auto page = Pages_.value (num);
+		if (!page)
+			return;
+
+		if (x > 0 && y > 0)
+		{
+			const auto& size = page->boundingRect ().size ();
+			const auto& mapped = page->mapToScene (size.width () * x, size.height () * y);
+			Ui_.PagesView_->ensureVisible (mapped.x (), mapped.y (), 0, 0);
+		}
+	}
+
 	void DocumentTab::selectFile ()
 	{
 		const auto& path = QFileDialog::getOpenFileName (this,
@@ -229,31 +309,7 @@ namespace Monocle
 		if (path.isEmpty ())
 			return;
 
-		Scene_.clear ();
-		Pages_.clear ();
-
-		CurrentDoc_ = Core::Instance ().LoadDocument (path);
-		if (!CurrentDoc_)
-		{
-			emit changeTabName (this, TC_.VisibleName_);
-			return;
-		}
-
-		const auto& title = QFileInfo (path).fileName ();
-		emit changeTabName (this, title);
-
-		for (int i = 0, size = CurrentDoc_->GetNumPages (); i < size; ++i)
-		{
-			auto item = new PageGraphicsItem (CurrentDoc_, i);
-			Scene_.addItem (item);
-			Pages_ << item;
-		}
-
-		Ui_.PagesView_->ensureVisible (Pages_.value (0), Margin, Margin);
-
-		Relayout (1);
-
-		updateNumLabel ();
+		SetDoc (path);
 	}
 
 	void DocumentTab::handleGoPrev ()

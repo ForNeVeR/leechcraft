@@ -173,13 +173,14 @@ namespace LMP
 				SLOT (previousTrack ()));
 		TabToolbar_->addAction (previous);
 
-		QAction *pause= new QAction (tr ("Play/pause"), this);
-		pause->setProperty ("ActionIcon", "media-playback-pause");
-		connect (pause,
+		PlayPause_ = new QAction (tr ("Play/Pause"), this);
+		PlayPause_->setProperty ("ActionIcon", "media-playback-start");
+		PlayPause_->setProperty ("WatchActionIconChange", true);
+		connect (PlayPause_,
 				SIGNAL (triggered ()),
 				Player_,
 				SLOT (togglePause ()));
-		TabToolbar_->addAction (pause);
+		TabToolbar_->addAction (PlayPause_);
 
 		QAction *stop = new QAction (tr ("Stop"), this);
 		stop->setProperty ("ActionIcon", "media-playback-stop");
@@ -237,14 +238,6 @@ namespace LMP
 				SIGNAL (activated (QSystemTrayIcon::ActivationReason)),
 				this,
 				SLOT (handleTrayIconActivated (QSystemTrayIcon::ActivationReason)));
-
-		PlayPause_ = new QAction (tr ("Play/Pause"), TrayIcon_);
-		PlayPause_->setProperty ("ActionIcon", "media-playback-start");
-		PlayPause_->setProperty ("WatchActionIconChange", true);
-		connect (PlayPause_,
-				SIGNAL (triggered ()),
-				Player_,
-				SLOT (togglePause ()));
 
 		QAction *closeLMP = new QAction (tr ("Close LMP"), TrayIcon_);
 		closeLMP->setProperty ("ActionIcon", "edit-delete");
@@ -351,6 +344,7 @@ namespace LMP
 		QMenu *playMode = new QMenu (tr ("Play mode"));
 		playButton->setMenu (playMode);
 
+<<<<<<< HEAD
 		std::vector<Player::PlayMode> modes; 
 		modes.push_back (Player::PlayMode::Sequential);
 		modes.push_back (Player::PlayMode::Shuffle);
@@ -363,13 +357,23 @@ namespace LMP
 		names.push_back (tr ("Repeat track"));
 		names.push_back (tr ("Repeat album"));
 		names.push_back (tr ("Repeat whole"));
+=======
+		const int resumeMode = XmlSettingsManager::Instance ()
+				.Property ("PlayMode", static_cast<int> (Player::PlayMode::Sequential)).toInt ();
+		const std::vector<Player::PlayMode> modes = { Player::PlayMode::Sequential,
+				Player::PlayMode::Shuffle, Player::PlayMode::RepeatTrack,
+				Player::PlayMode::RepeatAlbum, Player::PlayMode::RepeatWhole };
+		const std::vector<QString> names = { tr ("Sequential"),
+				tr ("Shuffle"), tr ("Repeat track"),
+				tr ("Repeat album"), tr ("Repeat whole") };
+>>>>>>> remotes/upstream/master
 		auto playGroup = new QActionGroup (this);
 		for (size_t i = 0; i < modes.size (); ++i)
 		{
 			QAction *action = new QAction (names [i], this);
 			action->setProperty ("PlayMode", static_cast<int> (modes.at (i)));
 			action->setCheckable (true);
-			action->setChecked (modes.at (i) == Player::PlayMode::Sequential);
+			action->setChecked (static_cast<int> (modes.at (i)) == resumeMode);
 			action->setActionGroup (playGroup);
 			playMode->addAction (action);
 
@@ -378,10 +382,11 @@ namespace LMP
 					this,
 					SLOT (handleChangePlayMode ()));
 		}
+		Player_->SetPlayMode (static_cast<Player::PlayMode> (resumeMode));
 
 		PlaylistToolbar_->addWidget (playButton);
 
-		QAction *removeSelected = new QAction (tr ("Delete from playlist"), Ui_.Playlist_);
+		auto removeSelected = new QAction (tr ("Delete from playlist"), Ui_.Playlist_);
 		removeSelected->setProperty ("ActionIcon", "list-remove");
 		removeSelected->setShortcut (Qt::Key_Delete);
 		connect (removeSelected,
@@ -389,6 +394,16 @@ namespace LMP
 				this,
 				SLOT (removeSelectedSongs ()));
 		Ui_.Playlist_->addAction (removeSelected);
+
+		Ui_.Playlist_->addAction (Util::CreateSeparator (this));
+
+		auto stopAfterSelected = new QAction (tr ("Stop after this track"), Ui_.Playlist_);
+		stopAfterSelected->setProperty ("ActionIcon", "media-playback-stop");
+		connect (stopAfterSelected,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (setStopAfterSelected ()));
+		Ui_.Playlist_->addAction (stopAfterSelected);
 	}
 
 	void PlayerTab::SetNowPlaying (const MediaInfo& info, const QPixmap& px)
@@ -433,12 +448,12 @@ namespace LMP
 
 	void PlayerTab::FillSimilar (const Media::SimilarityInfos_t& infos)
 	{
-		Ui_.NPWidget_->GetArtistsDisplay ()->SetSimilarArtists (infos);
+		Ui_.NPWidget_->SetSimilarArtists (infos);
 	}
 
 	void PlayerTab::RequestLyrics (const MediaInfo& info)
 	{
-		Ui_.LyricsBrowser_->clear ();
+		Ui_.NPWidget_->SetLyrics (QString ());
 
 		if (!XmlSettingsManager::Instance ().property ("RequestLyrics").toBool ())
 			return;
@@ -571,8 +586,8 @@ namespace LMP
 		};
 		PlayedTime_->setText (niceTime (time));
 
-		const auto total = Player_->GetSourceObject ()->totalTime ();
-		RemainingTime_->setText (total < 0 ? tr ("unknown") : niceTime (total - time));
+		const auto remaining = Player_->GetSourceObject ()->remainingTime ();
+		RemainingTime_->setText (remaining < 0 ? tr ("unknown") : niceTime (remaining));
 	}
 
 	void PlayerTab::handleLoveTrack ()
@@ -605,7 +620,7 @@ namespace LMP
 		if (lyrics.isEmpty ())
 			return;
 
-		Ui_.LyricsBrowser_->setHtml (lyrics.value (0));
+		Ui_.NPWidget_->SetLyrics (lyrics.value (0));
 	}
 
 	void PlayerTab::handleScanProgress (int progress)
@@ -625,6 +640,7 @@ namespace LMP
 	{
 		auto mode = sender ()->property ("PlayMode").toInt ();
 		Player_->SetPlayMode (static_cast<Player::PlayMode> (mode));
+		XmlSettingsManager::Instance ().setProperty ("PlayMode", mode);
 	}
 
 	void PlayerTab::handlePlaylistSelected (const QModelIndex& index)
@@ -653,6 +669,15 @@ namespace LMP
 		Q_FOREACH (const auto& idx, persistent)
 			if (idx.isValid ())
 				Player_->Dequeue (idx);
+	}
+
+	void PlayerTab::setStopAfterSelected ()
+	{
+		auto index = Ui_.Playlist_->currentIndex ();
+		if (!index.isValid ())
+			return;
+
+		Player_->SetStopAfter (index);
 	}
 
 	void PlayerTab::loadFromCollection ()
@@ -706,7 +731,6 @@ namespace LMP
 		}
 		UpdateIcon<LMPSystemTrayIcon*> (TrayIcon_, newState,
 				[] (QSystemTrayIcon *icon) { return icon->geometry ().size (); });
-
 	}
 
 	void PlayerTab::handleShowTrayIcon ()

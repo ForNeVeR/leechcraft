@@ -23,7 +23,8 @@ namespace LeechCraft
 namespace Kinotify
 {
 	FSWinWatcher::FSWinWatcher (ICoreProxy_ptr proxy, QObject *parent)
-	: Proxy_ (proxy), QObject (parent)
+	: QObject (parent)
+	, Proxy_ (proxy)
 	{
 	}
 

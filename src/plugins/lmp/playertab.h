@@ -43,7 +43,7 @@ struct Entity;
 
 namespace LMP
 {
-	class MediaInfo;
+	struct MediaInfo;
 	class Player;
 
 	class PlayerTab : public QWidget
@@ -109,6 +109,7 @@ namespace LMP
 		void handleChangePlayMode ();
 		void handlePlaylistSelected (const QModelIndex&);
 		void removeSelectedSongs ();
+		void setStopAfterSelected ();
 		void loadFromCollection ();
 		void handleSavePlaylist ();
 		void loadFromDisk ();

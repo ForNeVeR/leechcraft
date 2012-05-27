@@ -128,8 +128,19 @@ namespace LMP
 		connect (Source_,
 				SIGNAL (aboutToFinish ()),
 				this,
-				SLOT (handleSourceAboutToFinish ()));
+				SLOT (handleUpdateSourceQueue ()));
 		Source_->setTickInterval (1000);
+		Source_->setPrefinishMark (2000);
+		Source_->setTransitionTime (0);
+
+		connect (Source_,
+				SIGNAL (finished ()),
+				this,
+				SLOT (handlePlaybackFinished ()));
+		connect (Source_,
+				SIGNAL (stateChanged (Phonon::State, Phonon::State)),
+				this,
+				SLOT (handleStateChanged (Phonon::State)));
 
 		auto collection = Core::Instance ().GetLocalCollection ();
 		if (collection->IsReady ())
@@ -224,6 +235,29 @@ namespace LMP
 
 		Core::Instance ().GetPlaylistManager ()->
 				GetStaticManager ()->SetOnLoadPlaylist (CurrentQueue_);
+	}
+
+	void Player::SetStopAfter (const QModelIndex& index)
+	{
+		if (!index.isValid ())
+			return;
+
+		Phonon::MediaSource stopSource;
+		if (index.data (Role::IsAlbum).toBool ())
+			stopSource = PlaylistModel_->index (0, 0, index).data (Role::Source).value<Phonon::MediaSource> ();
+		else
+			stopSource = index.data (Role::Source).value<Phonon::MediaSource> ();
+
+		if (CurrentStopSource_.type () != Phonon::MediaSource::Empty)
+			Items_ [CurrentStopSource_]->setData (false, Role::IsStop);
+
+		if (CurrentStopSource_ == stopSource)
+			CurrentStopSource_ = Phonon::MediaSource ();
+		else
+		{
+			CurrentStopSource_ = stopSource;
+			Items_ [stopSource]->setData (true, Role::IsStop);
+		}
 	}
 
 	namespace
@@ -392,6 +426,17 @@ namespace LMP
 				});
 	}
 
+	bool Player::HandleCurrentStop (const Phonon::MediaSource& source)
+	{
+		if (source != CurrentStopSource_)
+			return false;
+
+		CurrentStopSource_ = Phonon::MediaSource ();
+		Items_ [source]->setData (false, Role::IsStop);
+
+		return true;
+	}
+
 	void Player::play (const QModelIndex& index)
 	{
 		if (index.data (Role::IsAlbum).toBool ())
@@ -426,7 +471,7 @@ namespace LMP
 		Source_->play ();
 	}
 
-	void Player::nextTrack()
+	void Player::nextTrack ()
 	{
 		const auto& current = Source_->currentSource ();
 		auto pos = std::find (CurrentQueue_.begin (), CurrentQueue_.end (), current);
@@ -484,9 +529,12 @@ namespace LMP
 		}
 	}
 
-	void Player::handleSourceAboutToFinish ()
+	void Player::handleUpdateSourceQueue ()
 	{
 		const auto& current = Source_->currentSource ();
+		if (HandleCurrentStop (current))
+			return;
+
 		const auto& path = current.fileName ();
 		if (!path.isEmpty ())
 			QMetaObject::invokeMethod (Core::Instance ().GetLocalCollection (),
@@ -526,6 +574,18 @@ namespace LMP
 			Source_->enqueue (*pos);
 			break;
 		}
+	}
+
+	void Player::handlePlaybackFinished ()
+	{
+		emit songChanged (MediaInfo ());
+	}
+
+	void Player::handleStateChanged (Phonon::State state)
+	{
+		qDebug () << Q_FUNC_INFO << state;
+		if (state == Phonon::ErrorState)
+			qDebug () << Source_->errorType () << Source_->errorString ();
 	}
 
 	void Player::handleCurrentSourceChanged (const Phonon::MediaSource& source)

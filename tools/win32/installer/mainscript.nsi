@@ -3,8 +3,8 @@
 # These three must be integers
 !define VERSIONMAJOR 0
 !define VERSIONMINOR 5
-!define VERSIONBUILD 65
-!define VERSIONREVISION 200
+!define VERSIONBUILD 70
+!define VERSIONREVISION 0
 
 OutFile ../leechcraft-installer-${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}.exe
 Name "LeechCraft ${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}"
@@ -563,7 +563,7 @@ LangString DESC_TABSESSMANAGERPLUGIN ${LANG_RUSSIAN} "Управляет сессиями вкладок
 LangString DESC_LIZNOOPLUGIN ${LANG_RUSSIAN} "Управление энергией, основанное на UPower/WinAPI."
 LangString DESC_XPROXYPLUGIN ${LANG_RUSSIAN} "Расширенный менеджер прокси-серверов для LeechCraft."
 LangString DESC_DOLOZHEEPLUGIN ${LANG_RUSSIAN} "Инструмент отправки сообщений об ошибках и запросов функций."
-LangString DESC_OTLOZHUPLUGIN ${LANG_RUSSIAN} "A simple GTD-compatible ToDo manager."
+LangString DESC_OTLOZHUPLUGIN ${LANG_RUSSIAN} "Простой основанный на GTD менеджер задач."
 
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN

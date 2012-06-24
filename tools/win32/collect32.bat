@@ -88,6 +88,12 @@ copy %QWT_DIR%\lib\qwt%QT_LIB_SUFFIX%.dll %TARGET_DIR%
 rem - Taglib -
 copy %TAGLIB_BIN_DIR%\tag.dll %TARGET_DIR%
 
+rem - Poppler-qt4 -
+copy %POPPLER_QT4_BIN_DIR%\poppler-qt4.dll %TARGET_DIR%
+
+rem - Hunspell -
+copy %HUNSPELL_BIN_DIR%\libhunspell.dll %TARGET_DIR%
+
 rem === LEECHCRAFT FILES ===
 
 rem - Main files -
@@ -158,6 +164,8 @@ copy %BOOST_ROOT%\bin.v2\libs\filesystem\build\msvc-10.0\debug\threading-multi\b
 copy %BOOST_ROOT%\bin.v2\libs\program_options\build\msvc-10.0\debug\threading-multi\boost_program_options-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
 copy %BOOST_ROOT%\bin.v2\libs\system\build\msvc-10.0\debug\threading-multi\boost_system-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
 copy %BOOST_ROOT%\bin.v2\libs\thread\build\msvc-10.0\debug\threading-multi\boost_thread-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+rem - Hunspell -
+copy %HUNSPELL_BIN_DIR%\libhunspell.pdb %TARGET_DIR%
 rem - Main files -
 copy %LEECHCRAFT_BUILD_DIR%\%BUILD_TYPE%\leechcraft.pdb %TARGET_DIR%
 copy %LEECHCRAFT_BUILD_DIR%\util\%BUILD_TYPE%\lcutil.pdb %TARGET_DIR%

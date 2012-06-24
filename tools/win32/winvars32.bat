@@ -21,8 +21,9 @@ set TAGLIB_DIR=C:\Project\taglib
 set QWT_DIR=C:\Project\qwt-6.0
 set POPPLER_QT4_DIR=C:\Project\poppler-qt4
 set OXYGENICONS_DIR=C:\Project\oxygen-icons-4.8.0
+set HUNSPELL_DIR=C:\Project\hunspell-1.3.2
 
-rem 7za.exe, gunzip.exe, vcredist_x86.exe, myspell
+rem 7za.exe, gunzip.exe, vcredist_x86.exe, myspell dicts
 set TOOLS_DIR=C:\Project\tools
 
 set BUILD_RELEASE_AND_DEBUG=1
@@ -30,7 +31,7 @@ set CMAKE_GENERATOR="Visual Studio 10"
 
 rem == Collect variables ==
 
-set BUILD_TYPE=Debug
+set BUILD_TYPE=Release
 
 rem Set these variables to proper paths of your system:
 
@@ -46,6 +47,8 @@ set OPENSSL_BIN_DIR="C:\Project\OpenSSL-Win32\"
 set QT_BIN_DIR="%QTDIR%\bin"
 set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\%BUILD_DIR_PREFIX%\"
 set TAGLIB_BIN_DIR="%TAGLIB_DIR%\build\taglib\%BUILD_DIR_PREFIX%\"
+set POPPLER_QT4_BIN_DIR="%POPPLER_QT4_DIR%\bin"
+set HUNSPELL_BIN_DIR="%HUNSPELL_DIR%\src\win_api\%BUILD_DIR_PREFIX%_dll\libhunspell"
 
 set LEECHCRAFT_ROOT_DIR="..\.."
 set LEECHCRAFT_BUILD_DIR="build32"

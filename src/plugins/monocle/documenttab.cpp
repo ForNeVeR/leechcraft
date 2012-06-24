@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "documenttab.h"
+#include <functional>
 #include <QToolBar>
 #include <QComboBox>
 #include <QFileDialog>
@@ -116,7 +117,17 @@ namespace Monocle
 		ScalesBox_ = new QComboBox ();
 		ScalesBox_->addItem (tr ("Fit width"));
 		ScalesBox_->addItem (tr ("Fit page"));
-		std::vector<double> scales = { 0.1, 0.25, 0.33, 0.5, 0.66, 0.8, 1.0, 1.25, 1.5, 2 };
+		std::vector<double> scales;
+		scales.push_back (0.1);
+		scales.push_back (0.25);
+		scales.push_back (0.33);
+		scales.push_back (0.5);
+		scales.push_back (0.66);
+		scales.push_back (0.8);
+		scales.push_back (1.0);
+		scales.push_back (1.25);
+		scales.push_back (1.5);
+		scales.push_back (2.0);
 		Q_FOREACH (double scale, scales)
 			ScalesBox_->addItem (QString::number (scale * 100) + '%', scale);
 		ScalesBox_->setCurrentIndex (2 + std::distance (scales.begin (),
@@ -155,7 +166,7 @@ namespace Monocle
 		if (!CurrentDoc_)
 			return 1;
 
-		auto calcRatio = [this] (std::function<double (const QSize&)> dimGetter)
+		auto calcRatio = [this] (std::function<double (const QSize&)> dimGetter) -> double
 		{
 			const int pageIdx = GetCurrentPage ();
 			if (pageIdx < 0)

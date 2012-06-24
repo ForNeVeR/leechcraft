@@ -344,7 +344,9 @@ namespace LMP
 		QMenu *playMode = new QMenu (tr ("Play mode"));
 		playButton->setMenu (playMode);
 
-<<<<<<< HEAD
+		const int resumeMode = XmlSettingsManager::Instance ()
+				.Property ("PlayMode", static_cast<int> (Player::PlayMode::Sequential)).toInt ();
+
 		std::vector<Player::PlayMode> modes; 
 		modes.push_back (Player::PlayMode::Sequential);
 		modes.push_back (Player::PlayMode::Shuffle);
@@ -357,16 +359,7 @@ namespace LMP
 		names.push_back (tr ("Repeat track"));
 		names.push_back (tr ("Repeat album"));
 		names.push_back (tr ("Repeat whole"));
-=======
-		const int resumeMode = XmlSettingsManager::Instance ()
-				.Property ("PlayMode", static_cast<int> (Player::PlayMode::Sequential)).toInt ();
-		const std::vector<Player::PlayMode> modes = { Player::PlayMode::Sequential,
-				Player::PlayMode::Shuffle, Player::PlayMode::RepeatTrack,
-				Player::PlayMode::RepeatAlbum, Player::PlayMode::RepeatWhole };
-		const std::vector<QString> names = { tr ("Sequential"),
-				tr ("Shuffle"), tr ("Repeat track"),
-				tr ("Repeat album"), tr ("Repeat whole") };
->>>>>>> remotes/upstream/master
+
 		auto playGroup = new QActionGroup (this);
 		for (size_t i = 0; i < modes.size (); ++i)
 		{

@@ -24,6 +24,8 @@
 #include <QPair>
 #include <QDomElement>
 #include <QNetworkRequest>
+#include "core.h"
+#include "profiletypes.h"
 
 namespace LeechCraft
 {
@@ -51,6 +53,7 @@ namespace Metida
 
 	signals:
 		void validatingFinished (bool success);
+		void profileDataReceived ();
 		void error (int code, const QString& msg);
 	};
 }

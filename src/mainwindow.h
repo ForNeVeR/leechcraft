@@ -94,6 +94,9 @@ namespace LeechCraft
 		ToolbarGuard* GetGuard () const;
 		FancyPopupManager* GetFancyPopupManager () const;
 
+		QMenu* GetMainMenu () const;
+		void HideMainMenu ();
+
 		QWidget* GetDockListWidget (Qt::DockWidgetArea) const;
 
 		void ToggleViewActionVisiblity (QDockWidget*, bool);
@@ -102,6 +105,7 @@ namespace LeechCraft
 		void RemoveMenus (const QMap<QString, QList<QAction*>>&);
 	public slots:
 		void catchError (QString);
+		void showHideMain ();
 	protected:
 		virtual void closeEvent (QCloseEvent*);
 		virtual void keyPressEvent (QKeyEvent*);
@@ -135,7 +139,6 @@ namespace LeechCraft
 		void handleRestoreActionAdded (QAction*);
 		void updateSpeedIndicators ();
 		void updateClock ();
-		void showHideMain ();
 		void handleTrayIconActivated (QSystemTrayIcon::ActivationReason);
 		void updateIconSet ();
 		void doDelayedInit ();
@@ -147,6 +150,7 @@ namespace LeechCraft
 		void InitializeShortcuts ();
 		void ShowMenuAndBar (bool);
 	signals:
+		void hookDockWidgetActionVisToggled (LeechCraft::IHookProxy_ptr, QDockWidget*, bool);
 		void hookGonnaFillQuickLaunch (LeechCraft::IHookProxy_ptr);
 	};
 };

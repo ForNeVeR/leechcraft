@@ -24,6 +24,7 @@ class QDockWidget;
 class QToolBar;
 class QWidget;
 class QKeySequence;
+class QMenu;
 
 /** @brief This interface is used for manipulating the main window.
  *
@@ -53,9 +54,26 @@ public:
 	 * @param[in] area The area to add widget to.
 	 * @param[in] widget The dock widget to add.
 	 *
-	 * @sa ToggleViewActionVisiblity()
+	 * @sa AssociateDockWidget(), ToggleViewActionVisiblity()
 	 */
 	virtual void AddDockWidget (Qt::DockWidgetArea area, QDockWidget *widget) = 0;
+
+	/** @brief Connects the given dock widget with the given tab.
+	 *
+	 * This function associates the given dock widget with the given tab
+	 * widget so that the dock widget is only visible when the tab is
+	 * current tab.
+	 *
+	 * A dock widget may be associated with only one tab widget. Calling
+	 * this function repeatedly will override older associations.
+	 *
+	 * @param[in] dock The dock widget to associate.
+	 * @param[in] tab The tab widget for which the dock widget should be
+	 * active.
+	 *
+	 * @sa AddDockWidget()
+	 */
+	virtual void AssociateDockWidget (QDockWidget *dock, QWidget *tab) = 0;
 
 	/** @brief Toggles the visibility of the toggle view action.
 	 *
@@ -95,10 +113,13 @@ public:
 	 */
 	virtual void AddSideWidget (QWidget *widget, WidgetArea area = WALeft) = 0;
 
-	/** @brief Activates the given tab.
-	 *
-	 * @param[in] widget The widget of the tab to activate.
+	/** @brief Toggles the visibility of the main window.
 	 */
+	virtual void ToggleVisibility () = 0;
+
+	virtual QMenu* GetMainMenu () = 0;
+
+	virtual void HideMainMenu () = 0;
 };
 
 Q_DECLARE_INTERFACE (IMWProxy, "org.Deviant.LeechCraft.IMWProxy/1.0");

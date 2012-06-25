@@ -27,15 +27,18 @@
 #include <interfaces/media/audiostructs.h>
 #include <interfaces/ihaverecoverabletabs.h>
 #include "lmpsystemtrayicon.h"
+#include "player.h"
 #include "ui_playertab.h"
+
+class QUndoStack;
+class QStandardItemModel;
+class QSortFilterProxyModel;
+class QActionGroup;
 
 namespace Media
 {
 	struct LyricsQuery;
 }
-
-class QStandardItemModel;
-class QSortFilterProxyModel;
 
 namespace LeechCraft
 {
@@ -64,6 +67,8 @@ namespace LMP
 		QToolBar *PlaylistToolbar_;
 		QToolBar *TabToolbar_;
 
+		QActionGroup *PlayModesGroup_;
+
 		QLabel *PlayedTime_;
 		QLabel *RemainingTime_;
 
@@ -73,6 +78,10 @@ namespace LMP
 		LMPSystemTrayIcon *TrayIcon_;
 		QAction *PlayPause_;
 		QMenu *TrayMenu_;
+
+		QAction *CollectionShowTrackProps_;
+
+		QUndoStack *UndoStack_;
 	public:
 		PlayerTab (const TabClassInfo&, QObject*, QWidget* = 0);
 
@@ -107,10 +116,14 @@ namespace LMP
 
 		void handleScanProgress (int);
 		void handleChangePlayMode ();
+		void handlePlayModeChanged (Player::PlayMode);
 		void handlePlaylistSelected (const QModelIndex&);
 		void removeSelectedSongs ();
 		void setStopAfterSelected ();
+		void showCollectionTrackProps ();
+		void showTrackProps ();
 		void loadFromCollection ();
+		void handleCollectionItemSelected (const QModelIndex&);
 		void handleSavePlaylist ();
 		void loadFromDisk ();
 
@@ -122,6 +135,9 @@ namespace LMP
 	signals:
 		void changeTabName (QWidget*, const QString&);
 		void removeTab (QWidget*);
+		void raiseTab (QWidget*);
+
+		void fullRaiseRequested ();
 
 		void gotEntity (const LeechCraft::Entity&);
 

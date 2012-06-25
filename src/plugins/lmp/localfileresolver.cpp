@@ -18,8 +18,8 @@
 
 #include "localfileresolver.h"
 #include <QtDebug>
-#include <fileref.h>
-#include <tag.h>
+#include <taglib/fileref.h>
+#include <taglib/tag.h>
 
 namespace LeechCraft
 {
@@ -45,6 +45,15 @@ namespace LMP
 	{
 	}
 
+	TagLib::FileRef LocalFileResolver::GetFileRef (const QString& file) const
+	{
+#ifdef Q_OS_WIN32
+		return TagLib::FileRef (file.toStdWString ().c_str ());
+#else
+		return TagLib::FileRef (file.toUtf8 ().constData ());
+#endif
+	}
+
 	MediaInfo LocalFileResolver::ResolveInfo (const QString& file)
 	{
 		{
@@ -52,15 +61,10 @@ namespace LMP
 			if (Cache_.contains (file))
 				return Cache_ [file];
 		}
-		
+
 		QMutexLocker tlLocker (&TaglibMutex_);
-		
-#ifdef _MSC_VER
-		TagLib::FileRef r (reinterpret_cast<const wchar_t*> (file.utf16 ()));
-		
-#else
-		TagLib::FileRef r (QFile::encodeName(file).constData ());
-#endif
+
+		auto r = GetFileRef (file);
 		auto tag = r.tag ();
 		if (!tag)
 			throw ResolveError (file, "failed to get file tags");
@@ -90,6 +94,11 @@ namespace LMP
 			Cache_ [file] = info;
 		}
 		return info;
+	}
+
+	QMutex& LocalFileResolver::GetMutex ()
+	{
+		return TaglibMutex_;
 	}
 }
 }

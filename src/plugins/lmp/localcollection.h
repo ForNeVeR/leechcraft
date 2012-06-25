@@ -117,11 +117,14 @@ namespace LMP
 		DirStatus GetDirStatus (const QString&) const;
 		QStringList GetDirs () const;
 
-		int FindAlbum (const QString&, const QString&) const;
+		int FindArtist (const QString&) const;
+
+		int FindAlbum (const QString& artist, const QString& album) const;
 		void SetAlbumArt (int, const QString&);
+		Collection::Album_ptr GetAlbum (int albumId) const;
 
 		int FindTrack (const QString&) const;
-		Collection::Album_ptr GetTrackAlbum (int) const;
+		Collection::Album_ptr GetTrackAlbum (int trackId) const;
 
 		QList<int> GetDynamicPlaylist (DynamicPlaylist) const;
 		QStringList TrackList2PathList (const QList<int>&) const;
@@ -134,12 +137,14 @@ namespace LMP
 		void RemoveAlbum (int);
 		Collection::Artists_t::iterator RemoveArtist (Collection::Artists_t::iterator);
 
-		void AddRootPaths (const QStringList&);
+		void AddRootPaths (QStringList);
 		void RemoveRootPaths (const QStringList&);
 	public slots:
 		void recordPlayedTrack (const QString&);
 	private slots:
+		void rescanOnLoad ();
 		void handleLoadFinished ();
+		void handleIterateFinished ();
 		void handleScanFinished ();
 		void saveRootPaths ();
 	signals:

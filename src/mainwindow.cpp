@@ -22,13 +22,9 @@
 #include <QMessageBox>
 #include <QCloseEvent>
 #include <QModelIndex>
-#include <QChildEvent>
-#include <QToolButton>
 #include <QStandardItemModel>
 #include <QCursor>
-#include <QCheckBox>
 #include <QShortcut>
-#include <QClipboard>
 #include <QMenu>
 #include <QSplashScreen>
 #include <QBitmap>
@@ -215,6 +211,16 @@ LeechCraft::FancyPopupManager* LeechCraft::MainWindow::GetFancyPopupManager () c
 	return FancyPopupManager_;
 }
 
+QMenu* LeechCraft::MainWindow::GetMainMenu () const
+{
+	return Ui_.ActionMenu_->menu ();
+}
+
+void LeechCraft::MainWindow::HideMainMenu ()
+{
+	Ui_.MainTabWidget_->RemoveActionFromTabBarLayout (QTabBar::LeftSide, Ui_.ActionMenu_);
+}
+
 QWidget* LeechCraft::MainWindow::GetDockListWidget (Qt::DockWidgetArea area) const
 {
 	switch (area)
@@ -230,6 +236,11 @@ QWidget* LeechCraft::MainWindow::GetDockListWidget (Qt::DockWidgetArea area) con
 
 void LeechCraft::MainWindow::ToggleViewActionVisiblity (QDockWidget *widget, bool visible)
 {
+	Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
+	emit hookDockWidgetActionVisToggled (proxy, widget, visible);
+	if (proxy->IsCancelled ())
+		return;
+
 	QAction *act = widget->toggleViewAction ();
 
 	if (!visible)
@@ -290,12 +301,15 @@ void LeechCraft::MainWindow::RemoveMenus (const QMap<QString, QList<QAction*>>& 
 			Q_FOREACH (QAction *action, menus [menuName])
 				toRemove->removeAction (action);
 		else
-			Q_FOREACH (QAction *action, Ui_.ActionMenu_->menu ()->actions ())
+		{
+			auto menu = Ui_.ActionMenu_->menu ();
+			Q_FOREACH (QAction *action, menu->actions ())
 				if (action->text () == menuName)
 				{
-					Ui_.ActionMenu_->menu ()->removeAction (action);
+					menu->removeAction (action);
 					break;
 				}
+		}
 	}
 }
 
@@ -401,7 +415,6 @@ void LeechCraft::MainWindow::InitializeInterface ()
 
 	Ui_.MainTabWidget_->AddAction2TabBarLayout (QTabBar::LeftSide, Ui_.ActionMenu_);
 }
-
 
 void LeechCraft::MainWindow::SetStatusBar ()
 {
@@ -793,7 +806,7 @@ void LeechCraft::MainWindow::FillQuickLaunch ()
 
 	Q_FOREACH (IActionsExporter *exp, exporters)
 	{
-		QList<QAction*> actions = exp->GetActions (AEPQuickLaunch);
+		QList<QAction*> actions = exp->GetActions (ActionsEmbedPlace::QuickLaunch);
 		if (actions.isEmpty ())
 			continue;
 
@@ -817,7 +830,7 @@ void LeechCraft::MainWindow::FillTray ()
 			GetAllCastableTo<IActionsExporter*> ();
 	Q_FOREACH (IActionsExporter *o, trayMenus)
 	{
-		const auto& actions = o->GetActions (AEPTrayMenu);
+		const auto& actions = o->GetActions (ActionsEmbedPlace::TrayMenu);
 		SkinEngine::Instance ().UpdateIconSet (actions);
 		iconMenu->addActions (actions);
 		if (actions.size ())
@@ -844,7 +857,7 @@ void LeechCraft::MainWindow::FillToolMenu ()
 			Core::Instance ().GetPluginManager ()->
 				GetAllCastableTo<IActionsExporter*> ())
 	{
-		const auto& acts = e->GetActions (AEPToolsMenu);
+		const auto& acts = e->GetActions (ActionsEmbedPlace::ToolsMenu);
 		SkinEngine::Instance ().UpdateIconSet (acts);
 
 		Q_FOREACH (QAction *action, acts)

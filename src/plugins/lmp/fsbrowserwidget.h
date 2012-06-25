@@ -37,6 +37,7 @@ namespace LMP
 		Player *Player_;
 		FSModel *FSModel_;
 		QAction *DirCollection_;
+		QAction *ViewProps_;
 	public:
 		FSBrowserWidget (QWidget* = 0);
 
@@ -47,6 +48,7 @@ namespace LMP
 		void handleAddToCollection ();
 		void handleRemoveFromCollection ();
 		void loadFromFSBrowser ();
+		void viewProps ();
 	};
 }
 }

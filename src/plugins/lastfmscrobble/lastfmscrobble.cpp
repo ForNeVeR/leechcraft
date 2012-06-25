@@ -22,11 +22,15 @@
 #include <QByteArray>
 #include <interfaces/core/icoreproxy.h>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
-#include <util/passutils.h>
 #include "lastfmsubmitter.h"
 #include "xmlsettingsmanager.h"
 #include "pendingsimilarartists.h"
 #include "albumartfetcher.h"
+#include "authenticator.h"
+#include "pendingrecommendedartists.h"
+#include "radiostation.h"
+#include "recentreleasesfetcher.h"
+#include "pendingartistbio.h"
 
 namespace LeechCraft
 {
@@ -39,14 +43,28 @@ namespace Lastfmscrobble
 		XmlSettingsDialog_->RegisterObject (&XmlSettingsManager::Instance (),
 				"lastfmscrobblesettings.xml");
 
+		Auth_ = new Authenticator (proxy->GetNetworkAccessManager (), this);
+		connect (Auth_,
+				SIGNAL (gotEntity (LeechCraft::Entity)),
+				this,
+				SIGNAL (gotEntity (LeechCraft::Entity)));
+		connect (Auth_,
+				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)),
+				this,
+				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)));
+
 		LFSubmitter_ = new LastFMSubmitter (this);
+		LFSubmitter_->Init (Proxy_->GetNetworkAccessManager ());
+
+		connect (Auth_,
+				SIGNAL (authenticated ()),
+				LFSubmitter_,
+				SLOT (handleAuthenticated ()));
 	}
 
 	void Plugin::SecondInit ()
 	{
-		XmlSettingsManager::Instance ().RegisterObject ("lastfm.login",
-				this, "handleSubmitterInit");
-		handleSubmitterInit ();
+		Auth_->Init ();
 	}
 
 	QByteArray Plugin::GetUniqueID () const
@@ -98,15 +116,6 @@ namespace Lastfmscrobble
 		LFSubmitter_->Love ();
 	}
 
-	void Plugin::RerequestRecommendations ()
-	{
-	}
-
-	Media::IPendingSimilarArtists* Plugin::GetSimilarArtists (const QString& name, int num)
-	{
-		return new PendingSimilarArtists (name, num, this);
-	}
-
 	QString Plugin::GetAlbumArtProviderName () const
 	{
 		return GetServiceName ();
@@ -121,43 +130,47 @@ namespace Lastfmscrobble
 				SIGNAL (gotAlbumArt (Media::AlbumInfo, QList<QImage>)));
 	}
 
-	void Plugin::FeedPassword (bool authFailure)
+	Media::IPendingSimilarArtists* Plugin::GetSimilarArtists (const QString& name, int num)
 	{
-		const QString& login = XmlSettingsManager::Instance ()
-				.property ("lastfm.login").toString ();
-		LFSubmitter_->SetUsername (login);
+		return new PendingSimilarArtists (name, num, Proxy_->GetNetworkAccessManager (), this);
+	}
 
-		QString password;
-		if (!login.isEmpty ())
+	Media::IPendingSimilarArtists* Plugin::RequestRecommended (int num)
+	{
+		return new PendingRecommendedArtists (Auth_,
+				Proxy_->GetNetworkAccessManager (), num, this);
+	}
+
+	QString Plugin::GetRadioName () const
+	{
+		return "Last.FM";
+	}
+
+	Media::IRadioStation_ptr Plugin::GetRadioStation (Type type, const QString& name)
+	{
+		try
 		{
-			const auto& text = tr ("Enter password for Last.fm account with login %1:")
-						.arg (login);
-			password = Util::GetPassword ("org.LeechCraft.Lastfmscrobble/" + login,
-					text,
-					this,
-					!authFailure);
-			if (password.isEmpty ())
-				return;
+			auto nam = Proxy_->GetNetworkAccessManager ();
+			return Media::IRadioStation_ptr (new RadioStation (nam, type, name));
 		}
-
-		LFSubmitter_->SetPassword (password);
-		LFSubmitter_->Init (Proxy_->GetNetworkAccessManager ());
+		catch (const RadioStation::UnsupportedType&)
+		{
+			return Media::IRadioStation_ptr ();
+		}
 	}
 
-	void Plugin::handleSubmitterInit ()
+	void Plugin::RequestRecentReleases (int num, bool withRecs)
 	{
-		connect (LFSubmitter_,
-				SIGNAL (authFailure ()),
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		connect (new RecentReleasesFetcher (withRecs, num, nam, this),
+				SIGNAL (gotRecentReleases (QList<Media::AlbumRelease>)),
 				this,
-				SLOT (handleAuthFailure ()),
-				Qt::UniqueConnection);
-
-		FeedPassword (false);
+				SIGNAL (gotRecentReleases (QList<Media::AlbumRelease>)));
 	}
 
-	void Plugin::handleAuthFailure ()
+	Media::IPendingArtistBio* Plugin::RequestArtistBio (const QString& artist)
 	{
-		FeedPassword (true);
+		return new PendingArtistBio (artist, Proxy_->GetNetworkAccessManager (), this);
 	}
 }
 }

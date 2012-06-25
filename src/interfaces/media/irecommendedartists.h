@@ -1,7 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011-2012  Minh Ngo
- * Copyright (C) 2006-2012 Georg Rudoy
+ * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,25 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "postitionslider.h"
-#include <QMouseEvent>
-#include <QStyle>
+#pragma once
 
-namespace LeechCraft
-{
-namespace Laure
-{
-	PostitionSlider::PostitionSlider (QWidget *parent)
-	: QSlider (parent)
-	{
-	}
+#include <QtPlugin>
 
-	void PostitionSlider::mouseReleaseEvent (QMouseEvent *event)
+namespace Media
+{
+	class IPendingSimilarArtists;
+
+	class IRecommendedArtists
 	{
-		const int val = QStyle::sliderValueFromPosition (minimum (), maximum (),
-				event->x (), width (), false);
-		setValue (val);
-		emit sliderMoved (val);
-	}
+	public:
+		virtual ~IRecommendedArtists () {}
+
+		virtual IPendingSimilarArtists* RequestRecommended (int) = 0;
+	};
 }
-}
+
+Q_DECLARE_INTERFACE (Media::IRecommendedArtists, "org.LeechCraft.Media.IRecommendedArtists/1.0");

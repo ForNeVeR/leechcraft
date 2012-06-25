@@ -21,6 +21,8 @@
 #include <QObject>
 #include <phonon/mediasource.h>
 #include <phonon/path.h>
+#include <interfaces/media/iradiostation.h>
+#include "mediainfo.h"
 
 class QModelIndex;
 class QStandardItem;
@@ -53,6 +55,10 @@ namespace LMP
 		QHash<QPair<QString, QString>, QStandardItem*> AlbumRoots_;
 
 		Phonon::MediaSource CurrentStopSource_;
+
+		Media::IRadioStation_ptr CurrentStation_;
+		QStandardItem *RadioItem_;
+		QHash<QUrl, MediaInfo> Url2Info_;
 	public:
 		enum PlayMode
 		{
@@ -82,37 +88,55 @@ namespace LMP
 		Phonon::MediaObject* GetSourceObject () const;
 		Phonon::AudioOutput* GetAudioOutput () const;
 
+		PlayMode GetPlayMode () const;
 		void SetPlayMode (PlayMode);
 
 		void Enqueue (const QStringList&, bool = true);
 		void Enqueue (const QList<Phonon::MediaSource>&, bool = true);
 		QList<Phonon::MediaSource> GetQueue () const;
+		QList<Phonon::MediaSource> GetIndexSources (const QModelIndex&) const;
 
 		void Dequeue (const QModelIndex&);
+		void Dequeue (const QList<Phonon::MediaSource>&);
 
 		void SetStopAfter (const QModelIndex&);
+
+		void SetRadioStation (Media::IRadioStation_ptr);
+
+		MediaInfo GetCurrentMediaInfo () const;
+		QString GetCurrentAAPath () const;
 	private:
 		MediaInfo GetMediaInfo (const Phonon::MediaSource&) const;
 		void AddToPlaylistModel (QList<Phonon::MediaSource>, bool);
 		void ApplyOrdering (QList<Phonon::MediaSource>&);
 
 		bool HandleCurrentStop (const Phonon::MediaSource&);
+
+		void UnsetRadio ();
+
+		Phonon::MediaSource GetNextSource (const Phonon::MediaSource&) const;
 	public slots:
 		void play (const QModelIndex&);
 		void previousTrack ();
 		void nextTrack ();
 		void togglePause ();
+		void setPause ();
 		void stop ();
 		void clear ();
 	private slots:
 		void restorePlaylist ();
+		void handleStationError (const QString&);
+		void handleRadioStream (const QUrl&, const Media::AudioInfo&);
 		void handleUpdateSourceQueue ();
 		void handlePlaybackFinished ();
 		void handleStateChanged (Phonon::State);
 		void handleCurrentSourceChanged (const Phonon::MediaSource&);
+		void setTransitionTime ();
 	signals:
 		void songChanged (const MediaInfo&);
 		void insertedAlbum (const QModelIndex&);
+
+		void playModeChanged (Player::PlayMode);
 	};
 }
 }

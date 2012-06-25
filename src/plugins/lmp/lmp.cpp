@@ -70,9 +70,22 @@ namespace LMP
 				this,
 				SIGNAL (changeTabName (QWidget*, QString)));
 		connect (PlayerTab_,
+				SIGNAL (raiseTab (QWidget*)),
+				this,
+				SIGNAL (raiseTab (QWidget*)));
+		connect (PlayerTab_,
 				SIGNAL (gotEntity (LeechCraft::Entity)),
 				this,
 				SIGNAL (gotEntity (LeechCraft::Entity)));
+		connect (&Core::Instance (),
+				SIGNAL (gotEntity (LeechCraft::Entity)),
+				this,
+				SIGNAL (gotEntity (LeechCraft::Entity)));
+
+		connect (PlayerTab_,
+				SIGNAL (fullRaiseRequested ()),
+				this,
+				SLOT (handleFullRaiseRequested ()));
 
 		ActionRescan_ = new QAction (tr ("Rescan collection"), this);
 		ActionRescan_->setProperty ("ActionIcon", "view-refresh");
@@ -227,6 +240,10 @@ namespace LMP
 		}
 	}
 
+	void Plugin::handleFullRaiseRequested ()
+	{
+		TabOpenRequested (PlayerTC_.TabClass_);
+	}
 }
 }
 

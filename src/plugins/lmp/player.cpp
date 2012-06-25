@@ -23,8 +23,10 @@
 #include <QDir>
 #include <QMimeData>
 #include <QUrl>
+#include <QApplication>
 #include <phonon/mediaobject.h>
 #include <phonon/audiooutput.h>
+#include <util/util.h>
 #include "core.h"
 #include "mediainfo.h"
 #include "localfileresolver.h"
@@ -119,6 +121,7 @@ namespace LMP
 	, Source_ (new Phonon::MediaObject (this))
 	, Output_ (new Phonon::AudioOutput (Phonon::MusicCategory, this))
 	, Path_ (Phonon::createPath (Source_, Output_))
+	, RadioItem_ (0)
 	, PlayMode_ (PlayMode::Sequential)
 	{
 		connect (Source_,
@@ -131,7 +134,10 @@ namespace LMP
 				SLOT (handleUpdateSourceQueue ()));
 		Source_->setTickInterval (1000);
 		Source_->setPrefinishMark (2000);
-		Source_->setTransitionTime (0);
+
+		XmlSettingsManager::Instance ().RegisterObject ("TransitionTime",
+				this, "setTransitionTime");
+		setTransitionTime ();
 
 		connect (Source_,
 				SIGNAL (finished ()),
@@ -167,9 +173,18 @@ namespace LMP
 		return Output_;
 	}
 
+	Player::PlayMode Player::GetPlayMode () const
+	{
+		return PlayMode_;
+	}
+
 	void Player::SetPlayMode (Player::PlayMode playMode)
 	{
+		if (PlayMode_ == playMode)
+			return;
+
 		PlayMode_ = playMode;
+		emit playModeChanged (PlayMode_);
 	}
 
 	namespace
@@ -203,30 +218,56 @@ namespace LMP
 		return CurrentQueue_;
 	}
 
-	void Player::Dequeue (const QModelIndex& index)
+	QList<Phonon::MediaSource> Player::GetIndexSources (const QModelIndex& index) const
 	{
-		if (!index.isValid ())
-			return;
-
 		QList<Phonon::MediaSource> sources;
 		if (index.data (Role::IsAlbum).toBool ())
 			for (int i = 0; i < PlaylistModel_->rowCount (index); ++i)
 				sources << PlaylistModel_->index (i, 0, index).data (Role::Source).value<Phonon::MediaSource> ();
 		else
 			sources << index.data (Role::Source).value<Phonon::MediaSource> ();
+		return sources;
+	}
 
+	namespace
+	{
+		void IncAlbumLength (QStandardItem *albumItem, int length)
+		{
+			const int prevLength = albumItem->data (Player::Role::AlbumLength).toInt ();
+			albumItem->setData (length + prevLength, Player::Role::AlbumLength);
+		}
+	}
+
+	void Player::Dequeue (const QModelIndex& index)
+	{
+		if (!index.isValid ())
+			return;
+
+		Dequeue (GetIndexSources (index));
+	}
+
+	void Player::Dequeue (const QList<Phonon::MediaSource>& sources)
+	{
 		Q_FOREACH (const auto& source, sources)
 		{
-			CurrentQueue_.removeAll (source);
+			if (!CurrentQueue_.removeAll (source))
+				continue;
+
 			auto item = Items_.take (source);
 			auto parent = item->parent ();
 			if (parent)
 			{
-				parent->removeRow (item->row ());
-				if (!parent->rowCount ())
+				if (parent->rowCount () == 1)
 				{
 					AlbumRoots_.remove (AlbumRoots_.key (parent));
 					PlaylistModel_->removeRow (parent->row ());
+				}
+				else
+				{
+					const auto& info = item->data (Role::Info).value<MediaInfo> ();
+					if (!info.LocalPath_.isEmpty ())
+						IncAlbumLength (parent, -info.Length_);
+					parent->removeRow (item->row ());
 				}
 			}
 			else
@@ -260,6 +301,61 @@ namespace LMP
 		}
 	}
 
+	void Player::SetRadioStation (Media::IRadioStation_ptr station)
+	{
+		clear ();
+
+		CurrentStation_ = station;
+
+		connect (CurrentStation_->GetObject (),
+				SIGNAL (gotError (const QString&)),
+				this,
+				SLOT (handleStationError (const QString&)));
+		connect (CurrentStation_->GetObject (),
+				SIGNAL (gotNewStream (QUrl, Media::AudioInfo)),
+				this,
+				SLOT (handleRadioStream (QUrl, Media::AudioInfo)));
+		CurrentStation_->RequestNewStream ();
+
+		RadioItem_ = new QStandardItem (tr ("Radio"));
+		RadioItem_->setEditable (false);
+		PlaylistModel_->appendRow (RadioItem_);
+	}
+
+	MediaInfo Player::GetCurrentMediaInfo () const
+	{
+		const auto& source = Source_->currentSource ();
+		if (source.type () == Phonon::MediaSource::Empty)
+			return MediaInfo ();
+
+		auto info = GetMediaInfo (source);
+		if (!info.LocalPath_.isEmpty ())
+			return info;
+
+		info.Artist_ = Source_->metaData (Phonon::ArtistMetaData).value (0);
+		info.Album_ = Source_->metaData (Phonon::AlbumMetaData).value (0);
+		info.Title_ = Source_->metaData (Phonon::TitleMetaData).value (0);
+		info.Genres_ = Source_->metaData (Phonon::GenreMetaData);
+		info.TrackNumber_ = Source_->metaData (Phonon::TracknumberMetaData).value (0).toInt ();
+		info.Length_ = Source_->totalTime ();
+		return info;
+	}
+
+	QString Player::GetCurrentAAPath () const
+	{
+		const auto& info = GetCurrentMediaInfo ();
+		auto coll = Core::Instance ().GetLocalCollection ();
+		auto album = coll->GetAlbum (coll->FindAlbum (info.Artist_, info.Album_));
+		return album ? album->CoverPath_ : QString ();;
+	}
+
+	MediaInfo Player::GetMediaInfo (const Phonon::MediaSource& source) const
+	{
+		return Items_.contains (source) ?
+				Items_ [source]->data (Role::Info).value<MediaInfo> () :
+				MediaInfo ();
+	}
+
 	namespace
 	{
 		void FillItem (QStandardItem *item, const MediaInfo& info)
@@ -282,25 +378,19 @@ namespace LMP
 			albumItem->setData (0, Player::Role::AlbumLength);
 			return albumItem;
 		}
-
-		void IncAlbumLength (QStandardItem *albumItem, int length)
-		{
-			const int prevLength = albumItem->data (Player::Role::AlbumLength).toInt ();
-			albumItem->setData (length + prevLength, Player::Role::AlbumLength);
-		}
-	}
-
-	MediaInfo Player::GetMediaInfo (const Phonon::MediaSource& source) const
-	{
-		return Items_.contains (source) ?
-				Items_ [source]->data (Role::Info).value<MediaInfo> () :
-				MediaInfo ();
 	}
 
 	void Player::AddToPlaylistModel (QList<Phonon::MediaSource> sources, bool sort)
 	{
 		if (!CurrentQueue_.isEmpty ())
 		{
+			auto vals = Items_.values ();
+			auto curSrcPos = std::find_if (vals.begin (), vals.end (),
+					[] (decltype (vals.front ()) item) { return item->data (Role::IsCurrent).toBool (); });
+			const auto& currentSource = curSrcPos != vals.end () ?
+					(*curSrcPos)->data (Role::Source).value<Phonon::MediaSource> () :
+					Phonon::MediaSource ();
+
 			PlaylistModel_->clear ();
 			Items_.clear ();
 			AlbumRoots_.clear ();
@@ -308,6 +398,9 @@ namespace LMP
 			auto newList = CurrentQueue_ + sources;
 			CurrentQueue_.clear ();
 			AddToPlaylistModel (newList, sort);
+
+			if (Items_.contains (currentSource))
+				Items_ [currentSource]->setData (true, Role::IsCurrent);
 			return;
 		}
 
@@ -437,8 +530,64 @@ namespace LMP
 		return true;
 	}
 
+	void Player::UnsetRadio ()
+	{
+		if (!CurrentStation_)
+			return;
+
+		PlaylistModel_->removeRow (RadioItem_->row ());
+		RadioItem_ = 0;
+
+		CurrentStation_.reset ();
+	}
+
+	Phonon::MediaSource Player::GetNextSource (const Phonon::MediaSource& current) const
+	{
+		auto pos = std::find (CurrentQueue_.begin (), CurrentQueue_.end (), current);
+		switch (PlayMode_)
+		{
+		case PlayMode::Sequential:
+			if (pos != CurrentQueue_.end () && ++pos != CurrentQueue_.end ())
+				return *pos;
+			else
+				return Phonon::MediaSource ();
+		case PlayMode::Shuffle:
+			return CurrentQueue_.at (qrand () % CurrentQueue_.size ());
+		case PlayMode::RepeatTrack:
+			return current;
+		case PlayMode::RepeatAlbum:
+		{
+			if (pos == CurrentQueue_.end ())
+				return Phonon::MediaSource ();
+
+			const auto& curAlbum = GetMediaInfo (*pos).Album_;
+			if (++pos == CurrentQueue_.end () ||
+					GetMediaInfo (*pos).Album_ != curAlbum)
+				while (pos >= CurrentQueue_.begin () &&
+						GetMediaInfo (*pos).Album_ == curAlbum)
+					--pos;
+			return *pos;
+		}
+		case PlayMode::RepeatWhole:
+			if (pos == CurrentQueue_.end () || ++pos == CurrentQueue_.end ())
+				pos = CurrentQueue_.begin ();
+			return *pos;
+		}
+
+		return Phonon::MediaSource ();
+	}
+
 	void Player::play (const QModelIndex& index)
 	{
+		if (CurrentStation_)
+		{
+			auto item = PlaylistModel_->itemFromIndex (index);
+			if (item == RadioItem_)
+				return;
+			else
+				UnsetRadio ();
+		}
+
 		if (index.data (Role::IsAlbum).toBool ())
 		{
 			play (index.child (0, 0));
@@ -473,6 +622,14 @@ namespace LMP
 
 	void Player::nextTrack ()
 	{
+		if (CurrentStation_)
+		{
+			Source_->clear ();
+			qApp->processEvents ();
+			CurrentStation_->RequestNewStream ();
+			return;
+		}
+
 		const auto& current = Source_->currentSource ();
 		auto pos = std::find (CurrentQueue_.begin (), CurrentQueue_.end (), current);
 		if (pos == CurrentQueue_.end () || pos == CurrentQueue_.end () - 1)
@@ -496,14 +653,24 @@ namespace LMP
 		}
 	}
 
+	void Player::setPause ()
+	{
+		Source_->pause ();
+	}
+
 	void Player::stop ()
 	{
 		Source_->stop ();
 		emit songChanged (MediaInfo ());
+
+		if (CurrentStation_)
+			UnsetRadio ();
 	}
 
 	void Player::clear ()
 	{
+		UnsetRadio ();
+
 		PlaylistModel_->clear ();
 		Items_.clear ();
 		AlbumRoots_.clear ();
@@ -529,12 +696,34 @@ namespace LMP
 		}
 	}
 
+	void Player::handleStationError (const QString& error)
+	{
+		const auto& e = Util::MakeNotification ("LMP",
+				tr ("Radio station error: %1.")
+					.arg (error),
+				PCritical_);
+		Core::Instance ().SendEntity (e);
+	}
+
+	void Player::handleRadioStream (const QUrl& url, const Media::AudioInfo& info)
+	{
+		Url2Info_ [url] = info;
+		Source_->enqueue (url);
+
+		qDebug () << Q_FUNC_INFO << Source_->state ();
+		if (Source_->state () == Phonon::StoppedState)
+			Source_->play ();
+	}
+
 	void Player::handleUpdateSourceQueue ()
 	{
-		const auto& current = Source_->currentSource ();
-		if (HandleCurrentStop (current))
+		if (CurrentStation_)
+		{
+			CurrentStation_->RequestNewStream ();
 			return;
+		}
 
+		const auto& current = Source_->currentSource ();
 		const auto& path = current.fileName ();
 		if (!path.isEmpty ())
 			QMetaObject::invokeMethod (Core::Instance ().GetLocalCollection (),
@@ -542,38 +731,12 @@ namespace LMP
 					Qt::QueuedConnection,
 					Q_ARG (QString, path));
 
-		auto pos = std::find (CurrentQueue_.begin (), CurrentQueue_.end (), current);
-		switch (PlayMode_)
-		{
-		case PlayMode::Sequential:
-			if (pos != CurrentQueue_.end () && ++pos != CurrentQueue_.end ())
-				Source_->enqueue (*pos);
-			break;
-		case PlayMode::Shuffle:
-			Source_->enqueue (CurrentQueue_.at (qrand () % CurrentQueue_.size ()));
-			break;
-		case PlayMode::RepeatTrack:
-			Source_->enqueue (current);
-			break;
-		case PlayMode::RepeatAlbum:
-		{
-			if (pos == CurrentQueue_.end ())
-				return;
-			const auto& curAlbum = GetMediaInfo (*pos).Album_;
-			if (++pos == CurrentQueue_.end () ||
-					GetMediaInfo (*pos).Album_ != curAlbum)
-				while (pos >= CurrentQueue_.begin () &&
-						GetMediaInfo (*pos).Album_ == curAlbum)
-					--pos;
-			Source_->enqueue (*pos);
-			break;
-		}
-		case PlayMode::RepeatWhole:
-			if (pos == CurrentQueue_.end () || ++pos == CurrentQueue_.end ())
-				pos = CurrentQueue_.begin ();
-			Source_->enqueue (*pos);
-			break;
-		}
+		if (HandleCurrentStop (current))
+			return;
+
+		const auto& next = GetNextSource (current);
+		if (next.type () != Phonon::MediaSource::Empty)
+			Source_->enqueue (next);
 	}
 
 	void Player::handlePlaybackFinished ()
@@ -592,10 +755,16 @@ namespace LMP
 	{
 		XmlSettingsManager::Instance ().setProperty ("LastSong", source.fileName ());
 
-		auto curItem = Items_ [source];
+		auto curItem = CurrentStation_ ? RadioItem_ : Items_ [source];
 		curItem->setData (true, Role::IsCurrent);
 
-		emit songChanged (curItem->data (Role::Info).value<MediaInfo> ());
+		if (CurrentStation_)
+		{
+			const auto& info = Url2Info_.take (source.url ());
+			emit songChanged (info);
+		}
+		else
+			emit songChanged (curItem->data (Role::Info).value<MediaInfo> ());
 
 		Q_FOREACH (auto item, Items_.values ())
 		{
@@ -607,6 +776,13 @@ namespace LMP
 				break;
 			}
 		}
+	}
+
+	void Player::setTransitionTime ()
+	{
+		const int time = XmlSettingsManager::Instance ()
+				.property ("TransitionTime").toInt ();
+		Source_->setTransitionTime (time);
 	}
 }
 }

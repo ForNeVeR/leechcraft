@@ -42,6 +42,7 @@ namespace TabSessManager
 	{
 		Util::InstallTranslator ("tabsessmanager");
 
+		IsScheduled_ = false;
 		UncloseMenu_ = new QMenu (tr ("Unclose tabs"));
 
 		Proxy_ = proxy;
@@ -110,12 +111,12 @@ namespace TabSessManager
 	QList<QAction*> Plugin::GetActions (ActionsEmbedPlace place) const
 	{
 		QList<QAction*> result;
-		if (place == AEPToolsMenu)
+		if (place == ActionsEmbedPlace::ToolsMenu)
 		{
 			result << SessMgrMenu_->menuAction ();
 			result << UncloseMenu_->menuAction ();
 		}
-		else if (place == AEPCommonContextMenu)
+		else if (place == ActionsEmbedPlace::CommonContextMenu)
 			result << UncloseMenu_->menuAction ();
 		return result;
 	}
@@ -127,13 +128,7 @@ namespace TabSessManager
 
 		auto propEvent = static_cast<QDynamicPropertyChangeEvent*> (e);
 		if (propEvent->propertyName ().startsWith ("SessionData/"))
-		{
-			qDebug () << Q_FUNC_INFO
-					<< "changed"
-					<< propEvent->propertyName ()
-					<< obj->property (propEvent->propertyName ());
 			handleTabRecoverDataChanged ();
-		}
 
 		return false;
 	}
@@ -180,9 +175,6 @@ namespace TabSessManager
 					<< rec->GetTabRecoverName ()
 					<< forRecover
 					<< GetSessionProps (tab);
-
-			qDebug () << Q_FUNC_INFO << "appended data for"
-					<< plugin->GetUniqueID () << rec->GetTabRecoverName ();
 		}
 
 		return result;
@@ -222,14 +214,23 @@ namespace TabSessManager
 		if (!recTab || !tab)
 			return;
 
-		const TabRecoverInfo recovInfo =
+		auto removeGuard = [this, widget] (void*)
 		{
-			recTab->GetTabRecoverData (),
-			GetSessionProps (widget)
+			Tabs_.remove (widget);
+			handleTabRecoverDataChanged ();
 		};
-		const TabUncloseInfo info =
+		std::shared_ptr<void> guard (static_cast<void*> (0), removeGuard);
+
+		const auto& recoverData = recTab->GetTabRecoverData ();
+		if (recoverData.isEmpty ())
+			return;
+
+		const TabUncloseInfo& info =
 		{
-			recovInfo,
+			{
+				recoverData,
+				GetSessionProps (widget)
+			},
 			qobject_cast<IHaveRecoverableTabs*> (tab->ParentMultiTabs ())
 		};
 
@@ -258,9 +259,6 @@ namespace TabSessManager
 		UncloseMenu_->insertAction (UncloseMenu_->actions ().value (0), action);
 		UncloseMenu_->setDefaultAction (action);
 		action->setShortcut (QString ("Ctrl+Shift+T"));
-
-		Tabs_.remove (widget);
-		handleTabRecoverDataChanged ();
 	}
 
 	namespace
@@ -393,12 +391,23 @@ namespace TabSessManager
 
 	void Plugin::handleTabRecoverDataChanged ()
 	{
-		qDebug () << Q_FUNC_INFO << IsRecovering_ << Proxy_->IsShuttingDown ();
 		if (IsRecovering_ || Proxy_->IsShuttingDown ())
 			return;
 
+		if (IsScheduled_)
+			return;
+
+		IsScheduled_ = true;
+		QTimer::singleShot (2000,
+				this,
+				SLOT (saveDefaultSession ()));
+	}
+
+	void Plugin::saveDefaultSession ()
+	{
+		IsScheduled_ = false;
+
 		const auto& result = GetCurrentSession ();
-		qDebug () << "saving restore data" << result.size ();
 
 		QSettings settings (QCoreApplication::organizationName (),
 				QCoreApplication::applicationName () + "_TabSessManager");

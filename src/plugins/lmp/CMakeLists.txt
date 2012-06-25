@@ -2,7 +2,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 PROJECT (leechcraft_lmp)
 INCLUDE (InitLCPlugin OPTIONAL)
 
-SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+SET (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
 IF (NOT WIN32)
 	FIND_PACKAGE (Phonon)
@@ -95,6 +95,13 @@ SET (SRCS
 	fsmodel.cpp
 	rootpathsettingsmanager.cpp
 	localcollectionwatcher.cpp
+	recommendationswidget.cpp
+	radiowidget.cpp
+	releaseswidget.cpp
+	playlistundocommand.cpp
+	biowidget.cpp
+	biopropproxy.cpp
+	audiopropswidget.cpp
 	playlistparsers/playlistfactory.cpp
 	playlistparsers/m3u.cpp
 	playlistparsers/pls.cpp
@@ -124,6 +131,13 @@ SET (HEADERS
 	fsmodel.h
 	rootpathsettingsmanager.h
 	localcollectionwatcher.h
+	recommendationswidget.h
+	radiowidget.h
+	releaseswidget.h
+	playlistundocommand.h
+	biowidget.h
+	biopropproxy.h
+	audiopropswidget.h
 	playlistparsers/playlistfactory.h
 	playlistparsers/m3u.h
 	playlistparsers/pls.h
@@ -133,6 +147,11 @@ SET (FORMS
 	playertab.ui
 	nowplayingwidget.ui
 	fsbrowserwidget.ui
+	recommendationswidget.ui
+	radiowidget.ui
+	releaseswidget.ui
+	biowidget.ui
+	audiopropswidget.ui
 	)
 SET (RESOURCES resources.qrc)
 CreateTrVars ("lmp" "en;es;ru_RU" TRANSLATIONS COMPILED_TRANSLATIONS)
@@ -141,6 +160,8 @@ IF (NOT LC_NO_MOC)
 ENDIF (NOT LC_NO_MOC)
 QT4_WRAP_UI (UIS_H ${FORMS})
 QT4_ADD_RESOURCES (RCCS ${RESOURCES})
+
+OPTION (ENABLE_LMP_MPRIS "Enable MPRIS support for LMP" FALSE)
 
 ADD_CUSTOM_COMMAND (OUTPUT
 	${COMPILED_TRANSLATIONS}
@@ -155,11 +176,17 @@ ADD_LIBRARY (leechcraft_lmp SHARED
 	${UIS_H}
 	${RCCS}
 	)
+IF (ENABLE_LMP_MPRIS)
+	ADD_SUBDIRECTORY (mpris)
+	ADD_DEFINITIONS (-DENABLE_MPRIS)
+ENDIF (ENABLE_LMP_MPRIS)
 TARGET_LINK_LIBRARIES (leechcraft_lmp
 	${QT_LIBRARIES}
 	${LEECHCRAFT_LIBRARIES}
 	${QT_PHONON_LIBS}
 	${TAGLIB_LIBRARIES}
+
+	${MPRIS_SUBLIB}
 	)
 INSTALL (TARGETS leechcraft_lmp DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})

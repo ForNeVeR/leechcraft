@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <list>
 #include <functional>
+#include <iostream>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QtDebug>
@@ -104,7 +105,7 @@ namespace LeechCraft
 		StorageBackend_->Prepare ();
 
 		QStringList paths;
-		boost::program_options::variables_map map = qobject_cast<Application*> (qApp)->GetVarMap ();
+		const auto& map = qobject_cast<Application*> (qApp)->GetVarMap ();
 		if (map.count ("plugin"))
 		{
 			const std::vector<std::string>& plugins = map ["plugin"].as<std::vector<std::string>> ();
@@ -200,7 +201,7 @@ namespace LeechCraft
 		QList<QList<QAction*>> actions;
 		Q_FOREACH (const IActionsExporter *plugin, plugins)
 		{
-			const QList<QAction*>& list = plugin->GetActions (AEPCommonContextMenu);
+			const QList<QAction*>& list = plugin->GetActions (ActionsEmbedPlace::CommonContextMenu);
 			if (!list.size ())
 				continue;
 			actions << list;
@@ -254,6 +255,14 @@ namespace LeechCraft
 
 	void Core::DelayedInit ()
 	{
+		const auto& map = qobject_cast<Application*> (qApp)->GetVarMap ();
+		if (map.count ("list-plugins"))
+		{
+			Q_FOREACH (QPluginLoader_ptr loader, PluginManager_->GetAllAvailable ())
+				std::cout << "Found plugin: " << loader->fileName ().toUtf8 ().constData () << std::endl;
+			std::exit (0);
+		}
+
 		connect (this,
 				SIGNAL (error (QString)),
 				ReallyMainWindow_,
@@ -262,7 +271,12 @@ namespace LeechCraft
 		TabManager_.reset (new TabManager (ReallyMainWindow_->GetTabWidget (),
 					ReallyMainWindow_->GetTabWidget ()));
 
-		PluginManager_->Init ();
+		connect (TabManager_.get (),
+				SIGNAL (currentTabChanged (QWidget*)),
+				DM_,
+				SLOT (handleTabChanged (QWidget*)));
+
+		PluginManager_->Init (map.count ("safe-mode"));
 
 		NewTabMenuManager_->SetToolbarActions (GetActions2Embed ());
 
@@ -376,10 +390,10 @@ namespace LeechCraft
 			{
 				QDragEnterEvent *event = static_cast<QDragEnterEvent*> (e);
 
-				Q_FOREACH (const QString& format, event->mimeData ()->formats ())
+				auto mimeData = event->mimeData ();
+				Q_FOREACH (const QString& format, mimeData->formats ())
 				{
-					const Entity& e = Util::MakeEntity (event->
-								mimeData ()->data (format),
+					const Entity& e = Util::MakeEntity (mimeData->data (format),
 							QString (),
 							FromUserInitiated,
 							format);
@@ -397,10 +411,10 @@ namespace LeechCraft
 			{
 				QDropEvent *event = static_cast<QDropEvent*> (e);
 
-				Q_FOREACH (const QString& format, event->mimeData ()->formats ())
+				auto mimeData = event->mimeData ();
+				Q_FOREACH (const QString& format, mimeData->formats ())
 				{
-					const Entity& e = Util::MakeEntity (event->
-								mimeData ()->data (format),
+					const Entity& e = Util::MakeEntity (mimeData->data (format),
 							QString (),
 							FromUserInitiated,
 							format);

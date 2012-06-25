@@ -1,6 +1,5 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2011-2012  Minh Ngo
  * Copyright (C) 2006-2012  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,19 +17,41 @@
  **********************************************************************/
 
 #pragma once
-#include <QSlider>
+
+#include <QObject>
+#include <lastfm/Track>
+
+class QNetworkAccessManager;
+
+namespace lastfm
+{
+	class RadioStation;
+}
 
 namespace LeechCraft
 {
-namespace Laure
+namespace Lastfmscrobble
 {
-	class PostitionSlider : public QSlider
+	class RadioTuner : public QObject
 	{
 		Q_OBJECT
+
+		QNetworkAccessManager *NAM_;
+		QList<lastfm::Track> Queue_;
+		int NumTries_;
 	public:
-		PostitionSlider (QWidget *parent = 0);
-	protected:
-		void mouseReleaseEvent (QMouseEvent *event);
+		RadioTuner (const lastfm::RadioStation&, QNetworkAccessManager*, QObject* = 0);
+
+		lastfm::Track GetNextTrack ();
+	private:
+		void FetchMoreTracks ();
+		bool TryAgain ();
+	private slots:
+		void handleTuned ();
+		void handleGotPlaylist ();
+	signals:
+		void error (const QString&);
+		void trackAvailable ();
 	};
 }
 }

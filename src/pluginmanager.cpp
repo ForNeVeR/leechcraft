@@ -48,6 +48,7 @@ namespace LeechCraft
 	, DefaultPluginIcon_ (QIcon (":/resources/images/defaultpluginicon.svg"))
 	, IconsDir_ (Util::CreateIfNotExists ("core/pluginicons"))
 	, PluginTreeBuilder_ (new PluginTreeBuilder)
+	, CacheValid_ (false)
 	{
 		Headers_ << tr ("Name")
 			<< tr ("Description");
@@ -370,10 +371,13 @@ namespace LeechCraft
 		}
 	}
 
-	void PluginManager::Init ()
+	void PluginManager::Init (bool safeMode)
 	{
 		CheckPlugins ();
 		FillInstances ();
+
+		if (safeMode)
+			Plugins_.clear ();
 
 		Plugins_.prepend (Core::Instance ().GetCoreInstanceObject ());
 
@@ -467,13 +471,22 @@ namespace LeechCraft
 		return qobject_cast<IInfo*> (Plugins_ [pos])->GetInfo ();
 	}
 
+	QList<QPluginLoader_ptr> PluginManager::GetAllAvailable () const
+	{
+		return AvailablePlugins_;
+	}
+
 	QObjectList PluginManager::GetAllPlugins () const
 	{
-		QObjectList result = PluginTreeBuilder_->GetResult ();
-		std::sort (result.begin (), result.end (),
-				[] (QObject *p1, QObject *p2)
-					{ return qobject_cast<IInfo*> (p1)->GetName () < qobject_cast<IInfo*> (p2)->GetName (); });
-		return result;
+		if (!CacheValid_)
+		{
+			CacheValid_ = true;
+			SortedCache_ = PluginTreeBuilder_->GetResult ();
+			std::sort (SortedCache_.begin (), SortedCache_.end (),
+					[] (QObject *p1, QObject *p2)
+						{ return qobject_cast<IInfo*> (p1)->GetName () < qobject_cast<IInfo*> (p2)->GetName (); });
+		}
+		return SortedCache_;
 	}
 
 	QString PluginManager::GetPluginLibraryPath (const QObject *object) const
@@ -560,6 +573,25 @@ namespace LeechCraft
 				<< "failed to release the unloading object"
 				<< object;
 		}
+	}
+
+	void PluginManager::SetAllPlugins (Qt::CheckState state)
+	{
+		QSettings settings (QCoreApplication::organizationName (),
+				QCoreApplication::applicationName () + "-pg");
+		settings.beginGroup ("Plugins");
+
+		for (int i = 0; i < AvailablePlugins_.size (); ++i)
+		{
+			QPluginLoader_ptr dl = AvailablePlugins_.at (i);
+			settings.beginGroup (dl->fileName ());
+			settings.setValue ("AllowLoad", state == Qt::Checked);
+			settings.endGroup ();
+			const QModelIndex& dIdx = createIndex (i, 0);
+			emit dataChanged (dIdx, dIdx);
+		}
+
+		settings.endGroup ();
 	}
 
 	QObject* PluginManager::GetObject ()

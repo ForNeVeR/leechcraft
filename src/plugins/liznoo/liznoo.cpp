@@ -18,6 +18,7 @@
 
 #include "liznoo.h"
 #include <cmath>
+#include <limits>
 #include <QIcon>
 #include <QAction>
 #include <QTimer>
@@ -186,19 +187,20 @@ namespace Liznoo
 		tooltip += tr ("Battery technology: %1")
 				.arg (info.Technology_);
 		tooltip += "<br />";
-		if (info.EnergyRate_)
+		auto isNotNull = [] (double val) { return std::fabs (val) > std::numeric_limits<double>::epsilon (); };
+		if (isNotNull (info.EnergyRate_))
 		{
 			tooltip += tr ("Energy rate: %1 W")
 					.arg (std::abs (info.EnergyRate_));
 			tooltip += "<br />";
 		}
-		if (info.Energy_)
+		if (isNotNull (info.Energy_))
 		{
 			tooltip += tr ("Remaining energy: %1 Wh")
 					.arg (info.Energy_);
 			tooltip += "<br />";
 		}
-		if (info.EnergyFull_)
+		if (isNotNull (info.EnergyFull_))
 		{
 			tooltip += tr ("Full energy capacity: %1 Wh")
 					.arg (info.EnergyFull_);
@@ -262,7 +264,7 @@ namespace Liznoo
 			act->setProperty ("Action/Class", GetUniqueID () + "/BatteryAction");
 			act->setProperty ("Action/ID", GetUniqueID () + "/" + info.ID_);
 
-			emit gotActions (QList<QAction*> () << act, AEPLCTray);
+			emit gotActions (QList<QAction*> () << act, ActionsEmbedPlace::LCTray);
 			Battery2Action_ [info.ID_] = act;
 
 			connect (act,
@@ -297,7 +299,11 @@ namespace Liznoo
 				property ("Liznoo/BatteryID").toString ();
 		if (!Battery2History_.contains (id) ||
 				Battery2Dialog_.contains (id))
+		{
+			auto dia = static_cast<BatteryHistoryDialog*> (Battery2Dialog_.value (id));
+			dia->close ();
 			return;
+		}
 
 		auto dialog = new BatteryHistoryDialog (HistSize);
 		dialog->UpdateHistory (Battery2History_ [id]);
@@ -308,6 +314,8 @@ namespace Liznoo
 				this,
 				SLOT (handleBatteryDialogDestroyed ()));
 		dialog->show ();
+		dialog->activateWindow ();
+		dialog->raise ();
 	}
 
 	void Plugin::handleBatteryDialogDestroyed ()

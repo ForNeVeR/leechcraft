@@ -17,7 +17,7 @@ set SPEEX_DIR=C:\Project\speex-1.2rc1
 rem Go to http://wiki.videolan.org/GenerateLibFromDll first!
 rem Generate libs into this folder
 set VLC_DIR=C:\Project\vlc-2.1.0-git-20120204-0003\
-set TAGLIB_DIR=C:\Project\taglib
+set TAGLIB_DIR=C:\Project\installed\taglib
 set QWT_DIR=C:\Project\qwt-6.0
 set POPPLER_QT4_DIR=C:\Project\poppler-qt4
 set OXYGENICONS_DIR=C:\Project\oxygen-icons-4.8.0
@@ -31,13 +31,13 @@ set CMAKE_GENERATOR="Visual Studio 10"
 
 rem == Collect variables ==
 
-set BUILD_TYPE=Release
+set BUILD_TYPE=Debug
 
 rem Set these variables to proper paths of your system:
 
-set BUILD_DIR_PREFIX=Release
+set BUILD_DIR_PREFIX="Release"
 if "%BUILD_TYPE%" == "Debug" (
-	set BUILD_DIR_PREFIX=Debug
+	set BUILD_DIR_PREFIX="Debug"
 )
 
 set BOOST_BIN_DIR="%BOOST_ROOT%\stage\lib"
@@ -46,7 +46,7 @@ set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\%BUILD_DIR_PREFIX%\boost-lin
 set OPENSSL_BIN_DIR="C:\Project\OpenSSL-Win32\"
 set QT_BIN_DIR="%QTDIR%\bin"
 set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\%BUILD_DIR_PREFIX%\"
-set TAGLIB_BIN_DIR="%TAGLIB_DIR%\build\taglib\%BUILD_DIR_PREFIX%\"
+set TAGLIB_BIN_DIR="%TAGLIB_DIR%\bin\"
 set POPPLER_QT4_BIN_DIR="%POPPLER_QT4_DIR%\bin"
 set HUNSPELL_BIN_DIR="%HUNSPELL_DIR%\src\win_api\%BUILD_DIR_PREFIX%_dll\libhunspell"
 

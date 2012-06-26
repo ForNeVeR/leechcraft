@@ -31,7 +31,7 @@ namespace Media
 	public:
 		virtual ~IRadioStationProvider () {}
 
-		enum class Type
+		enum Type
 		{
 			SimilarArtists,
 			GlobalTag

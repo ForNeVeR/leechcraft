@@ -25,7 +25,7 @@ rem Be sure that cmake executable is in your system %PATH%.
 if exist build32 rmdir /s /q build32
 if not exist build32 mkdir build32
 cd build32
-cmake ../../../src  ^
+cmake "../../../src"  ^
 	-G %CMAKE_GENERATOR% ^
 	-DCMAKE_INSTALL_PREFIX:PATH=%INSTALL_DIR% ^
 	-DENABLE_FTP=False %BTYPE% -DENABLE_DBUSMANAGER=False -DENABLE_ANHERO=False ^
@@ -41,6 +41,7 @@ cmake ../../../src  ^
 	-DENABLE_KBSWITCH=True ^
 	-DENABLE_DOLOZHEE=True ^
 	-DENABLE_OTLOZHU=True ^
+	-DENABLE_VROOBY_UDISKS=False ^
 	-DRBTorrent_DIR=%TORRENT_DIR% ^
 	-DQXMPP_LOCAL=%QXMPP_LOCAL% ^
 	-DQJSON_DIR=%QJSON_DIR% ^

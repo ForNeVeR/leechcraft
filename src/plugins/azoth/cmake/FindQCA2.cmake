@@ -28,16 +28,27 @@ else (QCA2_INCLUDE_DIR AND QCA2_LIBRARIES)
     find_package(PkgConfig)
     pkg_check_modules(PC_QCA2 QUIET qca2)
     set(QCA2_DEFINITIONS ${PC_QCA2_CFLAGS_OTHER})
+  else (NOT WIN32)
+	IF (NOT DEFINED QCA_DIR)
+			IF (QCA2_FIND_REQUIRED)
+				MESSAGE (FATAL_ERROR "Please set QCA_DIR variable")
+			ELSE (QCA2_FIND_REQUIRED)
+				MESSAGE (STATUS "Please set QCA_DIR variable for QCA2 support")
+			ENDIF (QCA2_FIND_REQUIRED)
+	ENDIF (NOT DEFINED QCA_DIR)
+    # on Windows we are looking for installed QCA in QCA_DIR variable
+    set(QCA2_LIB_WIN32 ${QCA_DIR}/lib)
+	set(QCA2_INCLUDE_WIN32 ${QCA_DIR}/include)
   endif (NOT WIN32)
 
   find_library_with_debug(QCA2_LIBRARIES
                   WIN32_DEBUG_POSTFIX d
                   NAMES qca
-                  HINTS ${PC_QCA2_LIBDIR} ${PC_QCA2_LIBRARY_DIRS}
+                  HINTS ${PC_QCA2_LIBDIR} ${PC_QCA2_LIBRARY_DIRS} ${QCA2_LIB_WIN32}
                   )
 
   find_path(QCA2_INCLUDE_DIR QtCrypto
-            HINTS ${PC_QCA2_INCLUDEDIR} ${PC_QCA2_INCLUDE_DIRS}
+            HINTS ${PC_QCA2_INCLUDEDIR} ${PC_QCA2_INCLUDE_DIRS} ${QCA2_INCLUDE_WIN32}
             PATH_SUFFIXES QtCrypto)
 
   include(FindPackageHandleStandardArgs)

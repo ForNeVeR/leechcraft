@@ -22,6 +22,7 @@ set QWT_DIR=C:\Project\qwt-6.0
 set POPPLER_QT4_DIR=C:\Project\poppler-qt4
 set OXYGENICONS_DIR=C:\Project\oxygen-icons-4.8.0
 set HUNSPELL_DIR=C:\Project\hunspell-1.3.2
+set QCA_DIR=C:\\Project\\installed\\QCA
 
 rem 7za.exe, gunzip.exe, vcredist_x86.exe, myspell dicts
 set TOOLS_DIR=C:\Project\tools
@@ -49,6 +50,7 @@ set QJSON_BIN_DIR="%QJSON_DIR%\build\lib\%BUILD_DIR_PREFIX%\"
 set TAGLIB_BIN_DIR="%TAGLIB_DIR%\bin\"
 set POPPLER_QT4_BIN_DIR="%POPPLER_QT4_DIR%\bin"
 set HUNSPELL_BIN_DIR="%HUNSPELL_DIR%\src\win_api\%BUILD_DIR_PREFIX%_dll\libhunspell"
+set QCA_BIN_DIR="%QCA_DIR%\bin"
 
 set LEECHCRAFT_ROOT_DIR="..\.."
 set LEECHCRAFT_BUILD_DIR="build32"

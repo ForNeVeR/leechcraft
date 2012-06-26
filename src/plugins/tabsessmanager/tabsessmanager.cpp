@@ -225,14 +225,12 @@ namespace TabSessManager
 		if (recoverData.isEmpty ())
 			return;
 
-		const TabUncloseInfo& info =
-		{
-			{
-				recoverData,
-				GetSessionProps (widget)
-			},
-			qobject_cast<IHaveRecoverableTabs*> (tab->ParentMultiTabs ())
-		};
+		TabRecoverInfo recinfo;
+		recinfo.Data_ = recoverData;
+		recinfo.DynProperties_ = GetSessionProps (widget);
+		TabUncloseInfo info;
+		info.RecInfo_ = recinfo;
+		info.Plugin_ = qobject_cast<IHaveRecoverableTabs*> (tab->ParentMultiTabs ());
 
 		const auto pos = std::find_if (UncloseAct2Data_.begin (), UncloseAct2Data_.end (),
 				[&info] (const TabUncloseInfo& that) { return that.RecInfo_.Data_ == info.RecInfo_.Data_; });

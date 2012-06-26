@@ -50,44 +50,34 @@ else(TAGLIBCONFIG_EXECUTABLE)
 
   include(FindPackageHandleStandardArgs)
 
-  IF (WIN32)
-	IF (MSVC)
+  if(WIN32)
+	if(MSVC)
 		#MSVS 2010
-		IF (MSVC_VERSION LESS 1600)
+		if(MSVC_VERSION LESS 1600)
 			MESSAGE(FATAL_ERROR "We currently support only MSVC 2010 version")
-		ENDIF (MSVC_VERSION LESS 1600)
-	ENDIF (MSVC)
-	IF (NOT DEFINED TAGLIB_DIR)
-		IF (TAGLIB_FIND_REQUIRED)
+		endif(MSVC_VERSION LESS 1600)
+	endif(MSVC)
+	if(NOT DEFINED TAGLIB_DIR)
+		if(TAGLIB_FIND_REQUIRED)
 			MESSAGE(FATAL_ERROR "Please set TAGLIB_DIR variable")
-		ELSE (TAGLIB_FIND_REQUIRED)
+		else(TAGLIB_FIND_REQUIRED)
 			MESSAGE(STATUS "Please set TAGLIB_DIR variable for taglib support")
-		ENDIF (TAGLIB_FIND_REQUIRED)
-	ENDIF (NOT DEFINED TAGLIB_DIR)
-	SET (TAGLIB_INCLUDE_WIN32 ${TAGLIB_DIR})
-
-    SET (PROBE_DIR_Debug
-		${TAGLIB_DIR}/build/taglib/Debug)
-	SET (PROBE_DIR_Release
-		${TAGLIB_DIR}/build/taglib/MinSizeRel ${TAGLIB_DIR}/build/taglib/Release)
-
-	FIND_LIBRARY (TAGLIB_LIBRARY_DEBUG NAMES tag.lib PATHS ${PROBE_DIR_Debug})
-	FIND_LIBRARY (TAGLIB_LIBRARY_RELEASE NAMES tag.lib PATHS ${PROBE_DIR_Release})
-	win32_tune_libs_names (TAGLIB)
-  ELSE (WIN32)
-    include(FindLibraryWithDebug)
-  
+		endif(TAGLIB_FIND_REQUIRED)
+	endif(NOT DEFINED TAGLIB_DIR)
+	set(TAGLIB_INCLUDE_WIN32 ${TAGLIB_DIR}/include)
+	find_library(TAGLIB_LIBRARIES NAMES tag.lib PATHS ${TAGLIB_DIR}/lib)
+  else (WIN32)
     find_library(TAGLIB_LIBRARIES
       NAMES tag
       PATHS
       ${KDE4_LIB_DIR}
       ${LIB_INSTALL_DIR}
     )
-  ENDIF (WIN32)
+  endif(WIN32)
   
   find_path(TAGLIB_INCLUDES
     NAMES
-    tag.h
+    taglib/tag.h
     PATH_SUFFIXES taglib
     PATHS
     ${KDE4_INCLUDE_DIR}

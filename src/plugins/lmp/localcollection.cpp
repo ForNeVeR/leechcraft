@@ -431,8 +431,8 @@ namespace LMP
 					{
 						item->setIcon (ArtistIcon_);
 						item->setText (artist.Name_);
-						item->setData (artist.Name_, Role::ArtistName);
-						item->setData (NodeType::Artist, Role::Node);
+						item->setData (artist.Name_, LocalCollection::Role::ArtistName);
+						item->setData (LocalCollection::NodeType::Artist, LocalCollection::Role::Node);
 					},
 					CollectionModel_);
 			Q_FOREACH (auto album, artist.Albums_)
@@ -448,11 +448,11 @@ namespace LMP
 							item->setText (QString::fromUtf8 ("%1 — %2")
 									.arg (album->Year_)
 									.arg (album->Name_));
-							item->setData (album->Year_, Role::AlbumYear);
-							item->setData (album->Name_, Role::AlbumName);
-							item->setData (NodeType::Album, Role::Node);
+							item->setData (album->Year_, LocalCollection::Role::AlbumYear);
+							item->setData (album->Name_, LocalCollection::Role::AlbumName);
+							item->setData (LocalCollection::NodeType::Album, LocalCollection::Role::Node);
 							if (!album->CoverPath_.isEmpty ())
-								item->setData (album->CoverPath_, Role::AlbumArt);
+								item->setData (album->CoverPath_, LocalCollection::Role::AlbumArt);
 						},
 						artistItem);
 
@@ -673,7 +673,7 @@ namespace LMP
 			AddRootPaths (QStringList (path));
 
 		emit scanStarted (paths.size ());
-		auto worker = [resolver] (const QString& path)
+		auto worker = [resolver] (const QString& path) -> MediaInfo
 		{
 			try
 			{

@@ -307,6 +307,10 @@ namespace LMP
 
 		CurrentStation_ = station;
 
+#ifdef GetObject
+#undef GetObject
+#endif
+
 		connect (CurrentStation_->GetObject (),
 				SIGNAL (gotError (const QString&)),
 				this,
@@ -386,7 +390,7 @@ namespace LMP
 		{
 			auto vals = Items_.values ();
 			auto curSrcPos = std::find_if (vals.begin (), vals.end (),
-					[] (decltype (vals.front ()) item) { return item->data (Role::IsCurrent).toBool (); });
+					[] (decltype (vals.front ()) item) { return item->data (Player::Role::IsCurrent).toBool (); });
 			const auto& currentSource = curSrcPos != vals.end () ?
 					(*curSrcPos)->data (Role::Source).value<Phonon::MediaSource> () :
 					Phonon::MediaSource ();

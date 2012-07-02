@@ -27,6 +27,7 @@ mkdir %TARGET_DIR%\translations
 mkdir %TARGET_DIR%\leechcraft
 mkdir %TARGET_DIR%\leechcraft\themes
 mkdir %TARGET_DIR%\icons
+mkdir %TARGET_DIR%\certs
 
 rem === SHARED COMPONENTS ===
 
@@ -93,6 +94,10 @@ copy %POPPLER_QT4_BIN_DIR%\poppler-qt4.dll %TARGET_DIR%
 
 rem - Hunspell -
 copy %HUNSPELL_BIN_DIR%\libhunspell.dll %TARGET_DIR%
+
+rem - QCA2 -
+copy %QCA_BIN_DIR%\qca.dll %TARGET_DIR%
+copy %QCA_DIR%\certs\rootcerts.pem %TARGET_DIR%\certs
 
 rem === LEECHCRAFT FILES ===
 

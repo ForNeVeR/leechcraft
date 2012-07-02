@@ -139,6 +139,12 @@ SectionGroup "Plugins"
 
         SetOutPath $INSTDIR\share\azoth
         File /r share\azoth\*
+		
+		# QCA & GnuPG message encryption
+		SetOutPath $INSTDIR
+        File qca.dll
+		SetOutPath $INSTDIR\plugins\crypto
+        File \plugins\crypto\qca-gnupg.dll
 
         SectionIn 1
     SectionEnd

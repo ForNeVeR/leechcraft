@@ -16,39 +16,43 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "logtoolbox.h"
-#include "xmlsettingsmanager.h"
+#pragma once
 
-using namespace LeechCraft;
+#include <QWidget>
+#include "ui_devicesbrowserwidget.h"
 
-LeechCraft::LogToolBox::LogToolBox (QWidget *parent)
-: QDialog (parent, Qt::Tool)
+class IRemovableDevManager;
+
+namespace LeechCraft
 {
-	Ui_.setupUi (this);
-
-	XmlSettingsManager::Instance ()->RegisterObject ("MaxLogLines",
-			this, "handleMaxLogLines");
-	handleMaxLogLines ();
-}
-
-LeechCraft::LogToolBox::~LogToolBox ()
+namespace LMP
 {
-}
+	class ISyncPlugin;
+	class DevicesUploadModel;
 
-void LeechCraft::LogToolBox::log (const QString& message)
-{
-	Ui_.Logger_->append (message.trimmed ());
-}
+	class DevicesBrowserWidget : public QWidget
+	{
+		Q_OBJECT
 
-void LeechCraft::LogToolBox::handleMaxLogLines ()
-{
-	Ui_.Logger_->document ()->
-		setMaximumBlockCount (XmlSettingsManager::Instance ()->
-				property ("MaxLogLines").toInt ());
-}
+		Ui::DevicesBrowserWidget Ui_;
+		IRemovableDevManager *DevMgr_;
+		DevicesUploadModel *DevUploadModel_;
 
-void LeechCraft::LogToolBox::on_Clear__released ()
-{
-	Ui_.Logger_->clear ();
-}
+		ISyncPlugin *CurrentSyncer_;
+	public:
+		DevicesBrowserWidget (QWidget* = 0);
 
+		void InitializeDevices ();
+	private slots:
+		void handleDevDataChanged (const QModelIndex&, const QModelIndex&);
+		void on_UploadButton__released ();
+		void on_DevicesSelector__activated (int);
+		void on_MountButton__released ();
+
+		void appendUpLog (QString);
+
+		void handleTranscodingProgress (int, int);
+		void handleUploadProgress (int, int);
+	};
+}
+}

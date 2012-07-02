@@ -16,27 +16,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef LOGTOOLBOX_H
-#define LOGTOOLBOX_H
-#include "ui_logtoolbox.h"
+#pragma once
+
+#include <QtPlugin>
+#include <QFile>
 
 namespace LeechCraft
 {
-	class LogToolBox : public QDialog
+namespace LMP
+{
+	enum class SyncConfLevel
 	{
-		Q_OBJECT
-		
-		Ui::LogToolBox Ui_;
-	public:
-		LogToolBox (QWidget* = 0);
-		virtual ~LogToolBox ();
-	public slots:
-		void log (const QString&);
-		void handleMaxLogLines ();
-	private slots:
-		void on_Clear__released ();
+		None,
+		Medium,
+		High
 	};
-};
 
-#endif
+	class ISyncPlugin
+	{
+	public:
+		virtual ~ISyncPlugin () {}
 
+		virtual QObject* GetObject () = 0;
+
+		virtual QString GetSyncSystemName () const = 0;
+
+		virtual SyncConfLevel CouldSync (const QString& path) = 0;
+
+		virtual void Upload (const QString& localPath,
+				const QString& to, const QString& relPath) = 0;
+	protected:
+		virtual void uploadFinished (const QString& localPath,
+				QFile::FileError error, const QString& errorStr) = 0;
+	};
+}
+}
+
+Q_DECLARE_INTERFACE (LeechCraft::LMP::ISyncPlugin, "org.LeechCraft.LMP.ISyncPlugin/1.0");

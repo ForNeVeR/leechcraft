@@ -20,7 +20,9 @@
 
 #include <memory>
 #include <QObject>
-#include "interfaces/blogique/iaccount.h"
+#include <QSet>
+#include <interfaces/blogique/iaccount.h>
+#include "profiletypes.h"
 
 namespace LeechCraft
 {
@@ -28,14 +30,14 @@ namespace Blogique
 {
 namespace Metida
 {
-
+	class LJFriendEntry;
 	class LJAccountConfigurationWidget;
 	class LJBloggingPlatform;
 	class LJXmlRPC;
 	class LJProfile;
 
 	class LJAccount : public QObject
-							, public IAccount
+					, public IAccount
 	{
 		Q_OBJECT
 		Q_INTERFACES (LeechCraft::Blogique::IAccount)
@@ -57,6 +59,7 @@ namespace Metida
 		QByteArray GetAccountID () const;
 		void OpenConfigurationDialog ();
 		bool IsValidated () const;
+
 		QObject* GetProfile ();
 
 		void FillSettings (LJAccountConfigurationWidget *widget);
@@ -67,10 +70,10 @@ namespace Metida
 		void Validate ();
 		void Init ();
 
+		void AddFriends (const QSet<std::shared_ptr<LJFriendEntry>>& friends);
 	public slots:
 		void handleValidatingFinished (bool success);
 		void handleXmlRpcError (int errorCode, const QString& msgInEng);
-
 	signals:
 		void accountRenamed (const QString& newName);
 		void accountSettingsChanged ();

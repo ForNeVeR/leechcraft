@@ -77,7 +77,9 @@
          <number>1</number>
         </property>
         <item>
-         <widget class="LeechCraft::LMP::NowPlayingWidget" name="NPWidget_" native="true"/>
+         <widget class="LeechCraft::LMP::NowPlayingWidget" name="NPWidget_" native="true">
+          <zorder>Playlist_</zorder>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -216,42 +218,21 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="DevicesTab_">
+       <attribute name="title">
+        <string>Devices</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_10">
+        <property name="margin">
+         <number>1</number>
+        </property>
+        <item>
+         <widget class="LeechCraft::LMP::DevicesBrowserWidget" name="DevicesBrowser_" native="true"/>
+        </item>
+       </layout>
+      </widget>
      </widget>
-     <widget class="QWidget" name="verticalLayoutWidget">
-      <layout class="QVBoxLayout" name="PlaylistLayout_">
-       <item>
-        <widget class="QTreeView" name="Playlist_">
-         <property name="contextMenuPolicy">
-          <enum>Qt::ActionsContextMenu</enum>
-         </property>
-         <property name="acceptDrops">
-          <bool>true</bool>
-         </property>
-         <property name="defaultDropAction">
-          <enum>Qt::CopyAction</enum>
-         </property>
-         <property name="alternatingRowColors">
-          <bool>true</bool>
-         </property>
-         <property name="selectionMode">
-          <enum>QAbstractItemView::ExtendedSelection</enum>
-         </property>
-         <property name="verticalScrollMode">
-          <enum>QAbstractItemView::ScrollPerPixel</enum>
-         </property>
-         <property name="indentation">
-          <number>0</number>
-         </property>
-         <property name="rootIsDecorated">
-          <bool>false</bool>
-         </property>
-         <property name="itemsExpandable">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
+	 <widget class="LeechCraft::LMP::PlaylistWidget" name="Playlist_"/>
     </widget>
    </item>
   </layout>
@@ -285,6 +266,18 @@
    <class>LeechCraft::LMP::ReleasesWidget</class>
    <extends>QWidget</extends>
    <header>releaseswidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>LeechCraft::LMP::DevicesBrowserWidget</class>
+   <extends>QWidget</extends>
+   <header>devicesbrowserwidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>LeechCraft::LMP::PlaylistWidget</class>
+   <extends>QWidget</extends>
+   <header>playlistwidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

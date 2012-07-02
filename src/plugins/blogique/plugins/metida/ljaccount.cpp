@@ -27,7 +27,9 @@
 #include "ljbloggingplatform.h"
 #include "ljprofile.h"
 #include "ljxmlrpc.h"
+#include "profilewidget.h"
 #include "utils.h"
+#include "ljfriendentry.h"
 
 namespace LeechCraft
 {
@@ -38,11 +40,15 @@ namespace Metida
 	LJAccount::LJAccount (const QString& name, QObject *parent)
 	: QObject (parent)
 	, ParentBloggingPlatform_ (qobject_cast<LJBloggingPlatform*> (parent))
-	, LJXmlRpc_ (new LJXmlRPC (this))
+	, LJXmlRpc_ (new LJXmlRPC (this, this))
 	, Name_ (name)
 	, IsValidated_ (false)
 	, LJProfile_ (std::make_shared<LJProfile> (this))
 	{
+		qRegisterMetaType<LJProfileData> ("LJProfileData");
+		qRegisterMetaTypeStreamOperators<QList<LJFriendGroup>> ("QList<LJFriendGroup>");
+		qRegisterMetaTypeStreamOperators<QList<LJMood>> ("QList<LJMood>");
+
 		connect (LJXmlRpc_,
 				SIGNAL (validatingFinished (bool)),
 				this,
@@ -51,6 +57,10 @@ namespace Metida
 				SIGNAL (error (int, const QString&)),
 				this,
 				SLOT (handleXmlRpcError (int, const QString&)));
+		connect (LJXmlRpc_,
+				SIGNAL (profileUpdated (const LJProfileData&)),
+				LJProfile_.get (),
+				SLOT (handleProfileUpdate (const LJProfileData&)));
 	}
 
 	QObject* LJAccount::GetObject ()
@@ -110,8 +120,7 @@ namespace Metida
 
 	QObject* LJAccount::GetProfile ()
 	{
-		//TODO
-		return 0;
+		return LJProfile_.get ();
 	}
 
 	void LJAccount::FillSettings (LJAccountConfigurationWidget *widget)
@@ -129,14 +138,15 @@ namespace Metida
 
 	QByteArray LJAccount::Serialize () const
 	{
-		quint16 ver = 1;
+		quint16 ver = 2;
 		QByteArray result;
 		{
 			QDataStream ostr (&result, QIODevice::WriteOnly);
 			ostr << ver
 					<< Name_
 					<< Login_
-					<< IsValidated_;
+					<< IsValidated_
+					<< LJProfile_->GetProfileData ();
 		}
 
 		return result;
@@ -148,7 +158,8 @@ namespace Metida
 		QDataStream in (data);
 		in >> ver;
 
-		if (ver != 1)
+		if (ver > 2 ||
+				ver < 1)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unknown version"
@@ -161,6 +172,13 @@ namespace Metida
 		LJAccount *result = new LJAccount (name, parent);
 		in >> result->Login_
 				>> result->IsValidated_;
+
+		if (ver == 2)
+		{
+			LJProfileData profile;
+			in >> profile;
+			result->LJProfile_->handleProfileUpdate (profile);
+		}
 
 		return result;
 	}
@@ -186,6 +204,11 @@ namespace Metida
 				SIGNAL (accountSettingsChanged ()),
 				ParentBloggingPlatform_,
 				SLOT (saveAccounts ()));
+	}
+
+	void LJAccount::AddFriends (const QSet<std::shared_ptr<LJFriendEntry>>& friends)
+	{
+		LJProfile_->AddFriends (friends);
 	}
 
 	void LJAccount::handleValidatingFinished (bool success)

@@ -24,18 +24,24 @@
 
 namespace LeechCraft
 {
-	namespace Blogique
+namespace Blogique
+{
+	/** @brief Interface representing an account's profile.
+		*
+		* This interface represents an account's profile.
+		**/
+	class IProfile
 	{
-		/** @brief Interface representing an account's profile.
-		 *
-		 * This interface represents an account's profile.
-		 **/
-		class IProfile
-		{
-		public:
-			virtual ~IProfile () {}
-		};
-	}
+	public:
+		virtual ~IProfile () {}
+
+		virtual QWidget* GetProfileWidget () = 0;
+
+	protected:
+		virtual void profileUpdated () = 0;
+
+	};
+}
 }
 
 Q_DECLARE_INTERFACE (LeechCraft::Blogique::IProfile,

@@ -17,10 +17,14 @@
  **********************************************************************/
 
 #include "core.h"
+#include <interfaces/iplugin2.h>
 #include "localfileresolver.h"
 #include "localcollection.h"
 #include "xmlsettingsmanager.h"
 #include "playlistmanager.h"
+#include "devsync/syncmanager.h"
+#include "interfaces/lmp/ilmpplugin.h"
+#include "interfaces/lmp/isyncplugin.h"
 
 namespace LeechCraft
 {
@@ -30,6 +34,7 @@ namespace LMP
 	: Resolver_ (new LocalFileResolver)
 	, Collection_ (new LocalCollection)
 	, PLManager_ (new PlaylistManager)
+	, SyncManager_ (new SyncManager)
 	{
 	}
 
@@ -59,6 +64,30 @@ namespace LMP
 		Collection_->FinalizeInit ();
 	}
 
+	void Core::AddPlugin (QObject *pluginObj)
+	{
+		auto ip2 = qobject_cast<IPlugin2*> (pluginObj);
+		auto ilmpPlug = qobject_cast<ILMPPlugin*> (pluginObj);
+
+		if (!ilmpPlug)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< pluginObj
+					<< "doesn't implement ILMPPlugin";
+			return;
+		}
+
+		const auto& classes = ip2->GetPluginClasses ();
+		if (classes.contains ("org.LeechCraft.LMP.CollectionSync") &&
+			qobject_cast<ISyncPlugin*> (pluginObj))
+			SyncPlugins_ << pluginObj;
+	}
+
+	QList<QObject*> Core::GetSyncPlugins () const
+	{
+		return SyncPlugins_;
+	}
+
 	LocalFileResolver* Core::GetLocalFileResolver () const
 	{
 		return Resolver_;
@@ -72,6 +101,11 @@ namespace LMP
 	PlaylistManager* Core::GetPlaylistManager () const
 	{
 		return PLManager_;
+	}
+
+	SyncManager* Core::GetSyncManager () const
+	{
+		return SyncManager_;
 	}
 
 	void Core::rescan ()

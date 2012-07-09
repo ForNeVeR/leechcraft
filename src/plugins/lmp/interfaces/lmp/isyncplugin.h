@@ -25,7 +25,7 @@ namespace LeechCraft
 {
 namespace LMP
 {
-	enum class SyncConfLevel
+	enum SyncConfLevel
 	{
 		None,
 		Medium,

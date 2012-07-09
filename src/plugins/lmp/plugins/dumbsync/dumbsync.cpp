@@ -124,7 +124,7 @@ namespace DumbSync
 				this,
 				SLOT (handleCopyFinished ()));
 
-		std::function<QFile_ptr (void)> copier = [target, localPath] ()
+		std::function<QFile_ptr (void)> copier = [target, localPath] () -> QFile_ptr
 				{
 					QFile_ptr file (new QFile (localPath));
 					file->copy (target);

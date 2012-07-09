@@ -62,7 +62,12 @@ namespace LMP
 
 		std::for_each (files.begin (), files.end (),
 				[this, syncer, &mount] (decltype (files.front ()) file)
-					{ Source2Params_ [file] = { syncer, mount }; });
+					{
+						SyncTo syncTo;
+						syncTo.MountPath_ = mount;
+						syncTo.Syncer_ = syncer;
+						Source2Params_ [file] = syncTo;
+					});
 
 		emit transcodingProgress (TranscodedCount_, TotalTCCount_);
 		emit uploadProgress (CopiedCount_, TotalCopyCount_);
@@ -185,7 +190,13 @@ namespace LMP
 
 		if (!Mount2Copiers_.contains (syncTo.MountPath_))
 			CreateSyncer (syncTo.MountPath_);
-		Mount2Copiers_ [syncTo.MountPath_]->Copy ({ syncTo.Syncer_, transcoded, from != transcoded, syncTo.MountPath_, mask });
+		CopyManager::CopyJob job;
+		job.Syncer_ = syncTo.Syncer_;
+		job.From_ = transcoded;
+		job.RemoveOnFinish_ = from != transcoded;
+		job.MountPoint_ = syncTo.MountPath_;
+		job.Filename_ = mask;
+		Mount2Copiers_ [syncTo.MountPath_]->Copy (job);
 	}
 
 	void SyncManager::handleFileTCFailed (const QString& file)

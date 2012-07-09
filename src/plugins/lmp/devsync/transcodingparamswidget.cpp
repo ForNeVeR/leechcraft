@@ -42,13 +42,12 @@ namespace LMP
 	TranscodingParams TranscodingParamsWidget::GetParams () const
 	{
 		const bool transcode = Ui_.TranscodingBox_->isChecked ();
-		return
-		{
-			Ui_.FilenameMask_->text (),
-			transcode ? Ui_.TranscodingFormat_->currentText () : QString (),
-			Ui_.QualitySlider_->value (),
-			Ui_.ThreadsSlider_->value ()
-		};
+		TranscodingParams params;
+		params.FilePattern_ = Ui_.FilenameMask_->text ();
+		params.Format_ = transcode ? Ui_.TranscodingFormat_->currentText () : QString ();
+		params.NumThreads_ = Ui_.ThreadsSlider_->value ();
+		params.Quality_ = Ui_.QualitySlider_->value ();
+		return params;
 	}
 }
 }

@@ -19,7 +19,7 @@
 #pragma once
 
 #include <QObject>
-#include <lastfm/Track>
+#include "lastfmheaders.h"
 
 class QNetworkAccessManager;
 

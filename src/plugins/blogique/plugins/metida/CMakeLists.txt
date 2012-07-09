@@ -15,7 +15,9 @@ INCLUDE_DIRECTORIES (${BLOGIQUE_INCLUDE_DIR}
 	)
 
 SET (METIDA_SRCS
+	addeditentrydialog.cpp
 	core.cpp
+	frienditemdelegate.cpp
 	ljaccount.cpp
 	ljaccountconfigurationdialog.cpp
 	ljaccountconfigurationwidget.cpp
@@ -31,7 +33,9 @@ SET (METIDA_SRCS
 	)
 
 SET (METIDA_HEADERS
+	addeditentrydialog.h
 	core.h
+	frienditemdelegate.h
 	ljaccount.h
 	ljaccountconfigurationdialog.h
 	ljaccountconfigurationwidget.h
@@ -47,6 +51,7 @@ SET (METIDA_HEADERS
 	)
 
 SET (METIDA_FORMS
+	addeditentrydialog.ui
 	ljaccountconfigurationdialog.ui
 	ljaccountconfigurationwidget.ui
 	profilewidget.ui

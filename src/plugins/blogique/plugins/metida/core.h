@@ -50,6 +50,7 @@ namespace Metida
 		static Core& Instance ();
 
 		void SecondInit ();
+		void Release ();
 
 		void CreateBloggingPlatfroms (QObject *parentPlatform);
 		void SetCoreProxy (ICoreProxy_ptr proxy);
@@ -61,8 +62,6 @@ namespace Metida
 		IPluginProxy* GetPluginProxy ();
 
 		void SendEntity (const Entity& e);
-	private:
-		void InitErrorMessages ();
 
 	signals:
 		void gotEntity (LeechCraft::Entity e);

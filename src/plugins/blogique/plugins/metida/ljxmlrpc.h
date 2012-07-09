@@ -46,6 +46,15 @@ namespace Metida
 		LJXmlRPC (LJAccount *acc, QObject *parent = 0);
 
 		void Validate (const QString& login, const QString& pass);
+
+		void AddNewFriend (const QString& username,
+				const QString& bgcolor, const QString& fgcolor, uint groupId);
+		void DeleteFriend (const QString& username);
+
+		void AddGroup (const QString& name, bool isPublic, int id);
+		void DeleteGroup (int id);
+
+		void UpdateProfileInfo ();
 	private:
 		void GenerateChallenge () const;
 		void ValidateAccountData (const QString& login,
@@ -54,10 +63,22 @@ namespace Metida
 				const QString& pass, const QString& challenge);
 		void ParseForError (const QByteArray& content);
 		void ParseFriends (const QDomDocument& doc);
+
+		void AddNewFriendRequest (const QString& username,
+				const QString& bgcolor, const QString& fgcolor,
+				int groupId, const QString& challenge);
+		void DeleteFriendRequest (const QString& usernames,
+				const QString& challenge);
+
+		void AddGroupRequest (const QString& name, bool isPublic, int id,
+				const QString& challenge);
+		void DeleteGroupRequest (int id, const QString& challenge);
 	private slots:
 		void handleChallengeReplyFinished ();
 		void handleValidateReplyFinished ();
-		void handleRequestFriendsInfoyFinished ();
+		void handleRequestFriendsInfoFinished ();
+		void handleAddNewFriendReplyFinished ();
+		void handleReplyWithProfileUpdate ();
 	signals:
 		void validatingFinished (bool success);
 		void profileUpdated (const LJProfileData& profile);

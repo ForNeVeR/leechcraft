@@ -26,7 +26,6 @@
 #include <interfaces/blogique/iaccount.h>
 #include "core.h"
 #include "profilewidget.h"
-#include "ljfriendentry.h"
 
 namespace LeechCraft
 {
@@ -55,15 +54,55 @@ namespace Metida
 		return ParentAccount_;
 	}
 
-	void LJProfile::AddFriends (const QSet<std::shared_ptr<LJFriendEntry>>& friends)
+	namespace
 	{
-		Friends_.unite (friends);
+		bool CompareFriends (const LJFriendEntry_ptr& fr1, const LJFriendEntry_ptr& fr2)
+		{
+			return fr1->GetUserName () < fr2->GetUserName ();
+		}
+	}
+	void LJProfile::AddFriends (const QList<LJFriendEntry_ptr>& friends)
+	{
+		ProfileData_.Friends_ << friends;
+		std::sort (ProfileData_.Friends_.begin (), ProfileData_.Friends_.end (), CompareFriends);
+		ProfileData_.Friends_.erase (std::unique (ProfileData_.Friends_.begin (), ProfileData_.Friends_.end (),
+				[] (decltype (ProfileData_.Friends_.front ()) fr1,
+						decltype (ProfileData_.Friends_.front ()) fr2)
+				{
+					return fr1->GetUserName () == fr2->GetUserName ();
+				}), ProfileData_.Friends_.end ());
+
 		emit profileUpdated ();
 	}
 
-	QSet<std::shared_ptr<LJFriendEntry>> LJProfile::GetFriends () const
+	QList<LJFriendEntry_ptr> LJProfile::GetFriends () const
 	{
-		return Friends_;
+		return ProfileData_.Friends_;
+	}
+
+	QList<LJFriendGroup> LJProfile::GetFriendGroups () const
+	{
+		return ProfileData_.FriendGroups_;
+	}
+
+	int LJProfile::GetFreeGroupId () const
+	{
+		QVector<int> baseVector (30);
+		int current = 0;
+		std::generate (baseVector.begin (), baseVector.end (),
+				[&current] () { return ++current; });
+
+		QVector<int> existingIds;
+		for (const auto& group : ProfileData_.FriendGroups_)
+			existingIds.append (group.Id_);
+
+		std::sort (existingIds.begin (), existingIds.end ());
+		QVector<int> result;
+		auto it = std::set_difference (baseVector.begin (), baseVector.end (),
+				existingIds.begin (), existingIds.end (),
+				std::back_inserter (result));
+
+		return result.value (0, -1);
 	}
 
 	void LJProfile::SaveAvatar (QUrl avatarUrl)
@@ -86,6 +125,7 @@ namespace Metida
 	{
 		ProfileData_ = profile;
 		SaveAvatar ();
+		emit profileUpdated ();
 	}
 
 	void LJProfile::handleAvatarDownloadFinished ()

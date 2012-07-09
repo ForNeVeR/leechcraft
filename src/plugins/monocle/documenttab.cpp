@@ -40,6 +40,7 @@
 #include "filewatcher.h"
 #include "tocwidget.h"
 #include "presenterwidget.h"
+#include "recentlyopenedmanager.h"
 
 namespace LeechCraft
 {
@@ -208,6 +209,8 @@ namespace Monocle
 			return false;
 		}
 
+		Core::Instance ().GetROManager ()->RecordOpened (path);
+
 		Scene_.clear ();
 		Pages_.clear ();
 
@@ -262,7 +265,18 @@ namespace Monocle
 				SIGNAL (triggered ()),
 				this,
 				SLOT (selectFile ()));
-		Toolbar_->addAction (open);
+
+		auto roMenu = Core::Instance ().GetROManager ()->CreateOpenMenu (this);
+		connect (roMenu,
+				SIGNAL (triggered (QAction*)),
+				this,
+				SLOT (handleRecentOpenAction (QAction*)));
+
+		auto openButton = new QToolButton ();
+		openButton->setDefaultAction (open);
+		openButton->setMenu (roMenu);
+		openButton->setPopupMode (QToolButton::MenuButtonPopup);
+		Toolbar_->addWidget (openButton);
 
 		auto print = new QAction (tr ("Print..."), this);
 		print->setProperty ("ActionIcon", "document-print");
@@ -512,6 +526,22 @@ namespace Monocle
 			const auto& mapped = page->mapToScene (size.width () * x, size.height () * y);
 			Ui_.PagesView_->centerOn (mapped.x (), mapped.y ());
 		}
+	}
+
+	void DocumentTab::handleRecentOpenAction (QAction *action)
+	{
+		const auto& path = action->property ("Path").toString ();
+		const QFileInfo fi (path);
+		if (!fi.exists ())
+		{
+			QMessageBox::warning (0,
+					"LeechCraft",
+					tr ("Seems like file %1 doesn't exist anymore.")
+						.arg ("<em>" + fi.fileName () + "</em>"));
+			return;
+		}
+
+		SetDoc (path);
 	}
 
 	void DocumentTab::selectFile ()

@@ -21,6 +21,7 @@
 #include <memory>
 #include <QObject>
 #include <QUrl>
+#include <QDateTime>
 #include <QColor>
 
 namespace LeechCraft
@@ -29,6 +30,9 @@ namespace Blogique
 {
 namespace Metida
 {
+	class LJFriendEntry;
+	typedef std::shared_ptr<LJFriendEntry> LJFriendEntry_ptr;
+
 	class LJFriendEntry : public QObject
 	{
 		Q_OBJECT
@@ -36,9 +40,11 @@ namespace Metida
 		QUrl AvatarUrl_;
 		QString FullName_;
 		QString UserName_;
-		int GroupMask_;
+		uint GroupMask_;
 		QColor BGColor_;
 		QColor FGColor_;
+		QString Birthday_;
+		bool FriendOf_;
 	public:
 		LJFriendEntry (QObject *parent = 0);
 
@@ -49,14 +55,19 @@ namespace Metida
 		void SetUserName (const QString& userName);
 		QString GetUserName () const;
 		void SetGroupMask (int groupmask);
-		int GetGroupMask () const;
+		uint GetGroupMask () const;
 		void SetBGColor (const QString& name);
 		QColor GetBGColor () const;
 		void SetFGColor (const QString& name);
 		QColor GetFGColor () const;
-	};
+		void SetBirthday (const QString& date);
+		QString GetBirthday () const;
+		void SetFriendOf (bool friendOf);
+		bool GetFriendOf () const;
 
-	uint qHash (const std::shared_ptr<LJFriendEntry>& fr);
+		QByteArray Serialize () const;
+		static LJFriendEntry_ptr Deserialize (const QByteArray& data);
+	};
 }
 }
 }

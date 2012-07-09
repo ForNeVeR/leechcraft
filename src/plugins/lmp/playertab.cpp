@@ -114,7 +114,6 @@ namespace LMP
 				Ui_.ScanProgress_,
 				SLOT (hide ()));
 		Ui_.ScanProgress_->hide ();
-		handleSongChanged (MediaInfo ());
 
 		TrayIcon_ = new LMPSystemTrayIcon (QIcon (":/lmp/resources/images/lmp.svg"), this);
 		connect (Player_,
@@ -178,6 +177,7 @@ namespace LMP
 
 	void PlayerTab::InitWithOtherPlugins ()
 	{
+		handleSongChanged (MediaInfo ());
 		Ui_.DevicesBrowser_->InitializeDevices ();
 	}
 

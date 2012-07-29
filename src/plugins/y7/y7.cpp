@@ -38,7 +38,7 @@ namespace Y7
 		auto taskbarPtr = reinterpret_cast<LPVOID *> (&Taskbar_);
 		if (CoCreateInstance (CLSID_TaskbarList, nullptr, CLSCTX_ALL, IID_ITaskbarList3, taskbarPtr) != S_OK)
 		{
-			qDebug() << "Cannot create TaskbarList";
+			qDebug () << "Cannot create TaskbarList";
 			return;
 		}
 
@@ -78,15 +78,22 @@ namespace Y7
 
 	void Plugin::initProgress ()
 	{
-		auto pluginList = Proxy_->GetPluginsManager ()->GetAllCastableTo<IJobHolder *> ();
-		QString plugins;
+		auto pluginList = Proxy_->GetPluginsManager ()->GetAllCastableRoots<IJobHolder*> ();
+
+		QString message("Traceable plugins detected:\n");
 		Q_FOREACH(auto plugin, pluginList)
 		{
-			auto pluginInfo = reinterpret_cast<IInfo *> (plugin);
-			plugins.append(pluginInfo->GetName ());
+			auto pluginInfo = qobject_cast<IInfo*> (plugin);
+			if (pluginInfo == nullptr)
+			{
+				qDebug () << "pluginInfo == nullptr";
+				continue;
+			}
+
+			message.append(pluginInfo->GetName () + "\n");
 		}
 
-		QMessageBox::information (nullptr, "Y7", plugins);
+		QMessageBox::information (nullptr, "Y7", message);
 	}
 
 	void Plugin::setProgress ()

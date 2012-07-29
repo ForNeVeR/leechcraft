@@ -21,8 +21,11 @@
 #include <QIcon>
 #include <QMainWindow>
 #include <QMessageBox>
+#include <QModelIndex> // compiler complains without it
 #include <QTimer>
 #include <interfaces/core/icoreproxy.h>
+#include <interfaces/core/ipluginsmanager.h>
+#include <interfaces/ijobholder.h>
 
 namespace LeechCraft
 {
@@ -44,7 +47,7 @@ namespace Y7
 
 	void Plugin::SecondInit ()
 	{
-		QTimer::singleShot (5000, this, SLOT(progress ()));
+		QTimer::singleShot (5000, this, SLOT(initProgress ()));
 	}
 
 	QByteArray Plugin::GetUniqueID () const
@@ -73,7 +76,20 @@ namespace Y7
 		return QIcon ();
 	}
 
-	void Plugin::progress ()
+	void Plugin::initProgress ()
+	{
+		auto pluginList = Proxy_->GetPluginsManager ()->GetAllCastableTo<IJobHolder *> ();
+		QString plugins;
+		Q_FOREACH(auto plugin, pluginList)
+		{
+			auto pluginInfo = reinterpret_cast<IInfo *> (plugin);
+			plugins.append(pluginInfo->GetName ());
+		}
+
+		QMessageBox::information (nullptr, "Y7", plugins);
+	}
+
+	void Plugin::setProgress ()
 	{
 		auto handle = Proxy_->GetMainWindow ()->winId ();
 
@@ -85,4 +101,3 @@ namespace Y7
 }
 
 LC_EXPORT_PLUGIN (leechcraft_y7, LeechCraft::Y7::Plugin);
-

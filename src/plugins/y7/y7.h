@@ -44,7 +44,8 @@ namespace Y7
 		QIcon GetIcon () const;
 
 	public slots:
-		void progress ();
+		void initProgress ();
+		void setProgress ();
 
 	private:
 		ICoreProxy_ptr Proxy_;
@@ -52,4 +53,3 @@ namespace Y7
 	};
 }
 }
-

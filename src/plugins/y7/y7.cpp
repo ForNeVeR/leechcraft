@@ -21,7 +21,7 @@
 #include <QIcon>
 #include <QMainWindow>
 #include <QMessageBox>
-#include <QModelIndex> // compiler complains without it
+#include <QModelIndex>
 #include <QTimer>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
@@ -34,6 +34,7 @@ namespace Y7
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
 		Proxy_ = proxy;
+		ProgressModel_ = nullptr;
 
 		auto taskbarPtr = reinterpret_cast<LPVOID *> (&Taskbar_);
 		if (CoCreateInstance (CLSID_TaskbarList, nullptr, CLSCTX_ALL, IID_ITaskbarList3, taskbarPtr) != S_OK)
@@ -78,6 +79,8 @@ namespace Y7
 
 	void Plugin::initProgress ()
 	{
+		QMessageBox::information (nullptr, "Y7", "Start init progress");
+
 		auto pluginList = Proxy_->GetPluginsManager ()->GetAllCastableRoots<IJobHolder*> ();
 
 		QString message("Traceable plugins detected:\n");
@@ -86,11 +89,42 @@ namespace Y7
 			auto pluginInfo = qobject_cast<IInfo*> (plugin);
 			auto jobHolder = qobject_cast<IJobHolder*> (plugin);
 
+			QMessageBox::information (nullptr, "Y7", pluginInfo->GetName ());
+
 			message.append(pluginInfo->GetName () + "\n");
 			JobHolders_.append(jobHolder);
 		}
 
 		QMessageBox::information (nullptr, "Y7", message);
+		
+		if (!pluginList.empty())
+		{
+			auto currentPlugin = qobject_cast<IJobHolder*> (pluginList.first());
+			ProgressModel_ = currentPlugin->GetRepresentation ();
+			initProgressModel ();
+		}
+	}
+
+	void Plugin::initProgressModel ()
+	{
+		connect (ProgressModel_, SIGNAL (rowsInserted(const QModelIndex &, int, int)),
+			SLOT (progressRowsInserted (const QModelIndex &, int, int)));
+	}
+
+	void Plugin::progressRowsInserted (const QModelIndex &parent, int start, int end)
+	{
+		for (auto index = start; index < end; ++index)
+		{
+			auto modelIndex = parent.child (index, 0);
+			auto rowRole = modelIndex.data (CustomDataRoles::RoleJobHolderRow).value<JobHolderRow> ();
+			if (rowRole == JobHolderRow::DownloadProgress ||
+				rowRole == JobHolderRow::ProcessProgress)
+			{
+				qlonglong done = modelIndex.data (ProcessState::Done).toLongLong ();
+				qlonglong total = modelIndex.data (ProcessState::Total).toLongLong ();
+				QMessageBox::information (nullptr, "Y7", QString("%s / %s").arg(done).arg(total));
+			}
+		}		
 	}
 
 	void Plugin::setProgress ()

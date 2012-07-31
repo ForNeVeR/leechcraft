@@ -26,6 +26,8 @@
 
 #include <interfaces/iinfo.h>
 
+class QAbstractItemModel;
+class QModelIndex;
 class IJobHolder;
 
 namespace LeechCraft
@@ -46,14 +48,19 @@ namespace Y7
 		QString GetInfo () const;
 		QIcon GetIcon () const;
 
-	public slots:
-		void initProgress ();
+		void initProgressModel ();
+
 		void setProgress ();
+
+	public slots:		
+		void progressRowsInserted (const QModelIndex &parent, int start, int end);		
+		void initProgress ();
 
 	private:
 		ICoreProxy_ptr Proxy_;
 		ITaskbarList3 *Taskbar_;
-		QList<IJobHolder *> JobHolders_;
+		QList<IJobHolder*> JobHolders_;
+		QAbstractItemModel *ProgressModel_;
 	};
 }
 }

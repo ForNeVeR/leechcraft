@@ -84,13 +84,10 @@ namespace Y7
 		Q_FOREACH(auto plugin, pluginList)
 		{
 			auto pluginInfo = qobject_cast<IInfo*> (plugin);
-			if (pluginInfo == nullptr)
-			{
-				qDebug () << "pluginInfo == nullptr";
-				continue;
-			}
+			auto jobHolder = qobject_cast<IJobHolder*> (plugin);
 
 			message.append(pluginInfo->GetName () + "\n");
+			JobHolders_.append(jobHolder);
 		}
 
 		QMessageBox::information (nullptr, "Y7", message);

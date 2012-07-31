@@ -18,12 +18,15 @@
 
 #pragma once
 
+#include <QList>
 #include <QObject>
 
 #include <ShObjIdl.h>
 #include <Windows.h>
 
 #include <interfaces/iinfo.h>
+
+class IJobHolder;
 
 namespace LeechCraft
 {
@@ -50,6 +53,7 @@ namespace Y7
 	private:
 		ICoreProxy_ptr Proxy_;
 		ITaskbarList3 *Taskbar_;
+		QList<IJobHolder *> JobHolders_;
 	};
 }
 }

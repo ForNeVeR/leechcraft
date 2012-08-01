@@ -115,9 +115,13 @@ namespace Y7
 
 	void Plugin::progressRowsInserted (const QModelIndex &parent, int start, int end)
 	{
+		const QModelIndex &model = parent.isValid ()
+			? parent
+			: qobject_cast<QAbstractItemModel*> (sender ())->index (start, 2, parent);
+
 		for (auto index = start; index <= end; ++index)
 		{
-			auto modelIndex = parent.child (index, 2);
+			auto modelIndex = model.child (index, 2);
 			auto rowRole = modelIndex.data (CustomDataRoles::RoleJobHolderRow).value<JobHolderRow> ();
 			qlonglong done = modelIndex.data (ProcessState::Done).toLongLong ();
 			qlonglong total = modelIndex.data (ProcessState::Total).toLongLong ();

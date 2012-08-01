@@ -107,24 +107,34 @@ namespace Y7
 
 	void Plugin::initProgressModel ()
 	{
-		connect (ProgressModel_, SIGNAL (rowsInserted(const QModelIndex &, int, int)),
+		connect (ProgressModel_, SIGNAL (rowsInserted (const QModelIndex &, int, int)),
 			SLOT (progressRowsInserted (const QModelIndex &, int, int)));
+		connect (ProgressModel_, SIGNAL (dataChanged (const QModelIndex &, const QModelIndex &)),
+			SLOT (progressDataChanged (const QModelIndex &, const QModelIndex &)));
 	}
 
 	void Plugin::progressRowsInserted (const QModelIndex &parent, int start, int end)
 	{
-		for (auto index = start; index < end; ++index)
+		for (auto index = start; index <= end; ++index)
 		{
-			auto modelIndex = parent.child (index, 0);
+			auto modelIndex = parent.child (index, 2);
 			auto rowRole = modelIndex.data (CustomDataRoles::RoleJobHolderRow).value<JobHolderRow> ();
-			if (rowRole == JobHolderRow::DownloadProgress ||
-				rowRole == JobHolderRow::ProcessProgress)
-			{
-				qlonglong done = modelIndex.data (ProcessState::Done).toLongLong ();
-				qlonglong total = modelIndex.data (ProcessState::Total).toLongLong ();
-				QMessageBox::information (nullptr, "Y7", QString("%s / %s").arg(done).arg(total));
-			}
-		}		
+			qlonglong done = modelIndex.data (ProcessState::Done).toLongLong ();
+			qlonglong total = modelIndex.data (ProcessState::Total).toLongLong ();
+			QMessageBox::information (nullptr, "Y7", QString("%1 / %2").arg(done).arg(total));
+		}
+	}
+
+	void Plugin::progressDataChanged (const QModelIndex &topLeft, const QModelIndex &bottomRight)
+	{
+		for (auto index = topLeft.row(); index <= bottomRight.row(); ++index)
+		{
+			auto modelIndex = topLeft.child (index, 2);
+			auto rowRole = modelIndex.data (CustomDataRoles::RoleJobHolderRow).value<JobHolderRow> ();
+			qlonglong done = modelIndex.data (ProcessState::Done).toLongLong ();
+			qlonglong total = modelIndex.data (ProcessState::Total).toLongLong ();
+			QMessageBox::information (nullptr, "Y7", QString("%1 / %2").arg(done).arg(total));
+		}	
 	}
 
 	void Plugin::setProgress ()

@@ -53,8 +53,10 @@ namespace Y7
 		void setProgress ();
 
 	public slots:		
-		void progressRowsInserted (const QModelIndex &parent, int start, int end);		
 		void initProgress ();
+		void progressRowsInserted (const QModelIndex &parent, int start, int end);
+		void progressDataChanged (const QModelIndex &topLeft, const QModelIndex &bottomRight);
+		
 
 	private:
 		ICoreProxy_ptr Proxy_;

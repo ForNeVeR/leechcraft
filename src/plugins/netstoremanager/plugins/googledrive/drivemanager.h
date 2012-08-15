@@ -54,7 +54,7 @@ namespace GoogleDrive
 		};
 		Q_DECLARE_FLAGS (ItemLabels, ItemLabel);
 
-		enum class Roles
+		enum Roles
 		{
 			Owner,
 			Writer,
@@ -68,7 +68,7 @@ namespace GoogleDrive
 		};
 		Q_DECLARE_FLAGS (AdditionalRoles, AdditionalRole);
 
-		enum class PermissionTypes
+		enum PermissionTypes
 		{
 			User,
 			Group,

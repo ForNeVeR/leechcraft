@@ -128,7 +128,7 @@ namespace GoogleDrive
 
 	void Account::EmptyTrash (const QList<QStringList>& ids)
 	{
-		for (const auto& id : ids)
+		Q_FOREACH (const auto& id, ids)
 			DriveManager_->RemoveEntry (id [0]);
 	}
 
@@ -266,7 +266,7 @@ namespace GoogleDrive
 				row [0]->setData (item.IsFolder_, ListingRole::Directory);
 			}
 
-			for (const auto& rowItem : row)
+			Q_FOREACH (const auto& rowItem, row)
 				rowItem->setEditable (false);
 
 			return row;
@@ -294,7 +294,7 @@ namespace GoogleDrive
 		QHash<QString, QList<QStandardItem*>> id2Item;
 		QHash<QString, QList<QStandardItem*>> trashedId2Item;
 
-		for (const auto& item : items)
+		Q_FOREACH (const auto& item, items)
 		{
 			if (item.Labels_ & DriveItem::ILRemoved)
 			{
@@ -310,7 +310,7 @@ namespace GoogleDrive
 
 		const QStringList& keys = id2DriveItem.keys ();
 		const auto& values = id2DriveItem.values ();
-		for (const auto& item : values)
+		Q_FOREACH (const auto& item, values)
 		{
 			if (keys.contains (item.ParentId_))
 				CreateChildItem (id2Item, id2DriveItem [item.ParentId_], item);
@@ -320,18 +320,18 @@ namespace GoogleDrive
 
 		const QStringList& trashedKeys = trashedItems.keys ();
 		const auto& trashedValues = trashedItems.values ();
-		for (const auto& item : trashedValues)
+		Q_FOREACH (const auto& item, trashedValues)
 			if (!trashedKeys.contains (item.ParentId_))
 				treeItems << CreateItem (trashedId2Item, item);
 
-		for (const auto& item : trashedValues)
+		Q_FOREACH (const auto& item, trashedValues)
 			if (trashedKeys.contains (item.ParentId_))
 				CreateChildItem (trashedId2Item, trashedItems [item.ParentId_], item);
 
 		treeItems.removeAll (QList<QStandardItem*> ());
 
 		std::sort (treeItems.begin (), treeItems.end (),
-				[] (const QList<QStandardItem*>& leftItem, const QList<QStandardItem*>& rightItem)
+				[] (const QList<QStandardItem*>& leftItem, const QList<QStandardItem*>& rightItem) -> bool
 				{
 					if (leftItem [0]->data (ListingRole::Directory).toBool () &&
 							!rightItem [0]->data (ListingRole::Directory).toBool ())

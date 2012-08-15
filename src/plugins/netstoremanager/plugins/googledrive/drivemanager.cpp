@@ -450,7 +450,7 @@ namespace GoogleDrive
 			driveItem.Md5_ = map ["md5Checksum"].toString ();
 			driveItem.FileSize_ = map ["fileSize"].toLongLong ();
 
-			for (const auto& ownerName : map ["ownerNames"].toList ())
+			Q_FOREACH(const auto& ownerName, map ["ownerNames"].toList ())
 				driveItem.OwnerNames_ << ownerName.toString ();
 
 			driveItem.LastModifiedBy_ = map ["lastModifyingUserName"].toString ();

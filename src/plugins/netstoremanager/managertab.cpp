@@ -455,14 +455,20 @@ namespace NetStoreManager
 			const bool isTrashItem = index.data (ListingRole::ID).toString () == "netstoremanager.item_trash";
 			isTrashItem ?
 				menu->addAction (EmptyTrash_) :
-				menu->addActions ({ CopyURL_, MoveToTrash_, UntrashFile_,  DeleteFile_ });
+				menu->addActions (QList<QAction*> ()
+									<< CopyURL_
+									<< MoveToTrash_
+									<< UntrashFile_
+									<< DeleteFile_);
 
 			if (!inTrash &&
 					!isTrashItem)
 			{
 				menu->insertAction (MoveToTrash_, CreateDir_);
 				if (index.data (ListingRole::Directory).toBool ())
-					menu->addActions ({ menu->addSeparator (), UploadInCurrentDir_ });
+					menu->addActions (QList<QAction*> ()
+										<< menu->addSeparator ()
+										<< UploadInCurrentDir_);
 			}
 		}
 		else

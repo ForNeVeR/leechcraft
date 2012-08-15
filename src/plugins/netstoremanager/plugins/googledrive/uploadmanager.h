@@ -33,7 +33,7 @@ namespace GoogleDrive
 	class Account;
 	class DriveManager;
 
-	enum class UploadType
+	enum UploadType
 	{
 		Upload,
 		Update

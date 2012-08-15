@@ -164,6 +164,9 @@ IF (MSVC)
 	# be unsafe..."
 	add_definitions(/w44996)
 	
+	# Hide warning C4482: "nonstandard extension used: enum 'xxx' used in qualified name"
+	add_definitions(/wd4482)
+	
 	SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 	INCLUDE (LibHelperWin32Macros)
 ENDIF (MSVC)

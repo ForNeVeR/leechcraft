@@ -19,28 +19,68 @@
 #include "radiostation.h"
 #include <QtDebug>
 #include <interfaces/media/audiostructs.h>
+#include "xmlsettingsmanager.h"
 #include "radiotuner.h"
 
 namespace LeechCraft
 {
 namespace Lastfmscrobble
 {
+	QMap<QByteArray, QString> RadioStation::GetPredefinedStations ()
+	{
+		const auto& login = XmlSettingsManager::Instance ().property ("lastfm.login").toString ();
+
+		QMap<QByteArray, QString> result;
+		if (!login.isEmpty ())
+		{
+			result ["library"] = tr ("Library");
+			result ["recommendations"] = tr ("Recommendations");
+			result ["loved"] = tr ("Loved tracks");
+			result ["neighbourhood"] = tr ("Neighbourhood");
+		}
+		return result;
+	}
+
 	RadioStation::RadioStation (QNetworkAccessManager *nam,
-			Media::IRadioStationProvider::Type type, const QString& param)
+			Media::RadioType type, const QString& param, const QString& visibleName)
 	{
 		lastfm::RadioStation station;
 		switch (type)
 		{
-		case Media::IRadioStationProvider::Type::SimilarArtists:
+		case Media::RadioType::SimilarArtists:
 			station = lastfm::RadioStation::similar (lastfm::Artist (param));
+			RadioName_ = tr ("Similar to \"%1\" radio").arg (param);
 			break;
-		case Media::IRadioStationProvider::Type::GlobalTag:
+		case Media::RadioType::GlobalTag:
 #if LASTFM_MAJOR_VERSION < 1
 			station = lastfm::RadioStation::globalTag (lastfm::Tag (param));
 #else
 			station = lastfm::RadioStation::tag (lastfm::Tag (param));
 #endif
+			RadioName_ = tr ("Tag \"%1\" radio").arg (param);
 			break;
+		case Media::RadioType::Predefined:
+		{
+			const auto& login = XmlSettingsManager::Instance ().property ("lastfm.login").toString ();
+			const lastfm::User user (login);
+
+			if (param == "library")
+				station = lastfm::RadioStation::library (user);
+			else if (param == "recommendations")
+				station = lastfm::RadioStation::recommendations (user);
+			else if (param == "loved")
+#if LASTFM_MAJOR_VERSION < 1
+				station = lastfm::RadioStation::lovedTracks (user);
+#else
+				station = lastfm::RadioStation::mix (user);
+#endif
+			else if (param == "neighbourhood")
+				station = lastfm::RadioStation::neighbourhood (user);
+
+			RadioName_ = visibleName;
+
+			break;
+		}
 		default:
 			qWarning () << Q_FUNC_INFO
 					<< "unsupported type"
@@ -78,6 +118,11 @@ namespace Lastfmscrobble
 				SIGNAL (trackAvailable ()),
 				this,
 				SLOT (handleNextTrack ()));
+	}
+
+	QString RadioStation::GetRadioName () const
+	{
+		return RadioName_;
 	}
 
 	void RadioStation::EmitTrack (const lastfm::Track& track)

@@ -25,6 +25,8 @@
 #include <QSortFilterProxyModel>
 #include <QMenu>
 #include <QDialogButtonBox>
+#include <QListWidget>
+#include <QTabBar>
 #include <phonon/seekslider.h>
 #include <util/util.h>
 #include <interfaces/core/ipluginsmanager.h>
@@ -40,6 +42,7 @@
 #include "collectiondelegate.h"
 #include "xmlsettingsmanager.h"
 #include "playlistmanager.h"
+#include "aalabeleventfilter.h"
 
 #ifdef ENABLE_MPRIS
 #include "mpris/instance.h"
@@ -95,7 +98,12 @@ namespace LMP
 		Ui_.MainSplitter_->setStretchFactor (1, 1);
 		Ui_.RadioWidget_->SetPlayer (Player_);
 
+		SetupNavButtons ();
+
 		Ui_.FSBrowser_->AssociatePlayer (Player_);
+
+		auto coverGetter = [this] () { return Ui_.NPArt_->property ("LMP/CoverPath").toString (); };
+		Ui_.NPArt_->installEventFilter (new AALabelEventFilter (coverGetter, this));
 
 		connect (Player_,
 				SIGNAL (songChanged (MediaInfo)),
@@ -130,9 +138,19 @@ namespace LMP
 				this, "handleShowTrayIcon");
 		handleShowTrayIcon ();
 
+		XmlSettingsManager::Instance ().RegisterObject ("UseNavTabBar",
+				this, "handleUseNavTabBar");
+		handleUseNavTabBar ();
+
 #ifdef ENABLE_MPRIS
 		new MPRIS::Instance (this, Player_);
 #endif
+	}
+
+	PlayerTab::~PlayerTab ()
+	{
+		delete NavBar_;
+		delete NavButtons_;
 	}
 
 	TabClassInfo PlayerTab::GetTabClassInfo () const
@@ -179,6 +197,65 @@ namespace LMP
 	{
 		handleSongChanged (MediaInfo ());
 		Ui_.DevicesBrowser_->InitializeDevices ();
+		Ui_.RadioWidget_->InitializeProviders ();
+	}
+
+	void PlayerTab::SetupNavButtons ()
+	{
+		NavBar_ = new QTabBar ();
+		NavBar_->setShape (QTabBar::RoundedWest);
+		NavBar_->hide ();
+
+		NavButtons_ = new QListWidget ();
+		NavButtons_->hide ();
+		NavButtons_->setSizePolicy (QSizePolicy::Fixed, QSizePolicy::Expanding);
+		NavButtons_->setFixedWidth (70);
+		NavButtons_->setStyleSheet ("background-color: palette(window);");
+		NavButtons_->setVerticalScrollBarPolicy (Qt::ScrollBarAlwaysOff);
+		NavButtons_->setFrameShape (QFrame::NoFrame);
+		NavButtons_->setFrameShadow (QFrame::Plain);
+		NavButtons_->setIconSize (QSize (24, 24));
+		NavButtons_->setViewMode (QListView::IconMode);
+		NavButtons_->setWordWrap (true);
+		NavButtons_->setGridSize (QSize (70, 65));
+		NavButtons_->setMovement (QListView::Static);
+		NavButtons_->setFlow (QListView::TopToBottom);
+
+		auto mkButton = [this] (const QString& title, const QString& iconName)
+		{
+			const auto& icon = Core::Instance ().GetProxy ()->GetIcon (iconName);
+
+			auto but = new QListWidgetItem (title);
+			NavButtons_->addItem (but);
+			but->setToolTip (title);
+			but->setSizeHint (NavButtons_->gridSize ());
+			but->setTextAlignment (Qt::AlignCenter);
+			but->setIcon (icon);
+
+			NavBar_->addTab (icon, title);
+		};
+
+		mkButton (tr ("Current song"), "view-media-lyrics");
+		mkButton (tr ("Collection"), "folder-sound");
+		mkButton (tr ("Playlists"), "view-media-playlist");
+		mkButton (tr ("Social"), "applications-internet");
+		mkButton (tr ("Filesystem"), "document-open");
+		mkButton (tr ("Devices"), "drive-removable-media-usb");
+
+		NavButtons_->setCurrentRow (0);
+
+		connect (NavBar_,
+				SIGNAL (currentChanged (int)),
+				Ui_.WidgetsStack_,
+				SLOT (setCurrentIndex (int)));
+		connect (NavButtons_,
+				SIGNAL (currentRowChanged (int)),
+				Ui_.WidgetsStack_,
+				SLOT (setCurrentIndex (int)));
+		connect (Ui_.WidgetsStack_,
+				SIGNAL (currentChanged (int)),
+				NavBar_,
+				SLOT (setCurrentIndex (int)));
 	}
 
 	void PlayerTab::SetupToolbar ()
@@ -345,8 +422,17 @@ namespace LMP
 
 			if (XmlSettingsManager::Instance ().property ("EnableNotifications").toBool ())
 			{
+				QPixmap notifyPx = px;
+				int width = notifyPx.width ();
+				if (width > 200)
+				{
+					while (width > 200)
+						width /= 2;
+					notifyPx = notifyPx.scaledToWidth (width);
+				}
+
 				Entity e = Util::MakeNotification ("LMP", text, PInfo_);
-				e.Additional_ ["NotificationPixmap"] = px;
+				e.Additional_ ["NotificationPixmap"] = notifyPx;
 				emit gotEntity (e);
 			}
 		}
@@ -446,14 +532,19 @@ namespace LMP
 
 	void PlayerTab::handleSongChanged (const MediaInfo& info)
 	{
-		QPixmap px = FindAlbumArt (info.LocalPath_);
+		const auto& coverPath = FindAlbumArtPath (info.LocalPath_);
+		QPixmap px;
+		if (!coverPath.isEmpty ())
+			px = QPixmap (coverPath);
 		if (px.isNull ())
 			px = QIcon::fromTheme ("media-optical").pixmap (128, 128);
 
 		Ui_.NPWidget_->SetAlbumArt (px);
 		const QPixmap& scaled = px.scaled (Ui_.NPArt_->minimumSize (),
 				Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
 		Ui_.NPArt_->setPixmap (scaled);
+		Ui_.NPArt_->setProperty ("LMP/CoverPath", coverPath);
 
 		Ui_.NPWidget_->SetTrackInfo (info);
 
@@ -622,6 +713,23 @@ namespace LMP
 	void PlayerTab::handleShowTrayIcon ()
 	{
 		TrayIcon_->setVisible (XmlSettingsManager::Instance ().property ("ShowTrayIcon").toBool ());
+	}
+
+	void PlayerTab::handleUseNavTabBar ()
+	{
+		if (Ui_.WidgetsLayout_->count () == 2)
+		{
+			auto item = Ui_.WidgetsLayout_->takeAt (0);
+			item->widget ()->hide ();
+			delete item;
+		}
+		const bool useTabs = XmlSettingsManager::Instance ().property ("UseNavTabBar").toBool ();
+		QWidget *widget = useTabs ?
+				static_cast<QWidget*> (NavBar_) :
+				static_cast<QWidget*> (NavButtons_);
+		Ui_.WidgetsLayout_->insertWidget (0, widget, 0,
+				useTabs ? Qt::AlignTop : Qt::Alignment ());
+		widget->show ();
 	}
 
 	void PlayerTab::handleChangedVolume (qreal delta)

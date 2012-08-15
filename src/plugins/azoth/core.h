@@ -157,7 +157,8 @@ namespace Azoth
 			CLRUnreadMsgCount,
 			CLRRole,
 			CLRAffiliation,
-			CLRNumOnline
+			CLRNumOnline,
+			CLRIsMUCCategory
 		};
 
 		enum CLEntryType
@@ -286,7 +287,7 @@ namespace Azoth
 		 * @return Entry's avatar scaled to the given size.
 		 */
 		QImage GetAvatar (ICLEntry *entry, int size);
-		QImage GetDefaultAvatar (int size);
+		QImage GetDefaultAvatar (int size) const;
 
 		ActionsManager* GetActionsManager () const;
 
@@ -479,7 +480,7 @@ namespace Azoth
 		 */
 		void handleEntryPermsChanged (ICLEntry *entry = 0);
 
-		void handleEntryGenerallyChanged ();
+		void remakeTooltipForSender ();
 
 		/** Handles the message receival from contact list entries.
 		 */

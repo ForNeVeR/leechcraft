@@ -17,6 +17,8 @@
  **********************************************************************/
 
 #include "radiowidget.h"
+#include <QStandardItemModel>
+#include <QInputDialog>
 #include <interfaces/core/ipluginsmanager.h>
 #include <interfaces/media/iradiostationprovider.h>
 #include "core.h"
@@ -29,18 +31,25 @@ namespace LMP
 	RadioWidget::RadioWidget (QWidget *parent)
 	: QWidget (parent)
 	, Player_ (0)
+	, StationsModel_ (new QStandardItemModel (this))
 	{
 		Ui_.setupUi (this);
+		Ui_.StationsView_->setModel (StationsModel_);
+	}
 
-		Providers_ = Core::Instance ().GetProxy ()->GetPluginsManager ()->
-				GetAllCastableTo<Media::IRadioStationProvider*> ();
-		Q_FOREACH (auto provider, Providers_)
-			Ui_.ProviderBox_->addItem (provider->GetRadioName ());
-
-		Ui_.ProviderBox_->setCurrentIndex (-1);
-
-		Ui_.StationType_->addItem (tr ("Similar"));
-		Ui_.StationType_->addItem (tr ("Tag"));
+	void RadioWidget::InitializeProviders ()
+	{
+		auto providerObjs = Core::Instance ().GetProxy ()->GetPluginsManager ()->
+				GetAllCastableRoots<Media::IRadioStationProvider*> ();
+		Q_FOREACH (auto provObj, providerObjs)
+		{
+			auto prov = qobject_cast<Media::IRadioStationProvider*> (provObj);
+			Q_FOREACH (auto item, prov->GetRadioListItems ())
+			{
+				StationsModel_->appendRow (item);
+				Root2Prov_ [item] = prov;
+			}
+		}
 	}
 
 	void RadioWidget::SetPlayer (Player *player)
@@ -48,14 +57,42 @@ namespace LMP
 		Player_ = player;
 	}
 
-	void RadioWidget::on_PlayButton__released ()
+	void RadioWidget::on_StationsView__doubleClicked (const QModelIndex& index)
 	{
-		const int idx = Ui_.ProviderBox_->currentIndex ();
-		if (idx < 0)
+		const auto item = StationsModel_->itemFromIndex (index);
+		auto root = item;
+		while (auto parent = root->parent ())
+			root = parent;
+		if (!Root2Prov_.contains (root))
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unknown provider for index"
+					<< index;
 			return;
+		}
 
-		auto prov = Providers_.at (idx);
-		auto station = prov->GetRadioStation (static_cast<Media::IRadioStationProvider::Type> (idx), Ui_.Param_->text ());
+		QString param;
+		switch (item->data (Media::RadioItemRole::ItemType).toInt ())
+		{
+		case Media::RadioType::Predefined:
+			break;
+		case Media::RadioType::SimilarArtists:
+			param = QInputDialog::getText (this,
+					tr ("Similar artists radio"),
+					tr ("Enter artist name for which to tune the similar artists radio station:"));
+			if (param.isEmpty ())
+				return;
+			break;
+		case Media::RadioType::GlobalTag:
+			param = QInputDialog::getText (this,
+					tr ("Global tag radio"),
+					tr ("Enter global tag name:"));
+			if (param.isEmpty ())
+				return;
+			break;
+		}
+
+		auto station = Root2Prov_ [root]->GetRadioStation (item, param);
 		Player_->SetRadioStation (station);
 	}
 }

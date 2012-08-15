@@ -37,7 +37,7 @@ namespace LMP
 
 	MediaInfo::operator Media::AudioInfo () const
 	{
-		const Media::AudioInfo aInfo =
+		Media::AudioInfo aInfo =
 		{
 			Artist_,
 			Album_,
@@ -48,7 +48,15 @@ namespace LMP
 			TrackNumber_,
 			QVariantMap ()
 		};
+		aInfo.Other_ ["URL"] = QUrl::fromLocalFile (LocalPath_);
 		return aInfo;
+	}
+
+	MediaInfo MediaInfo::FromAudioInfo (const Media::AudioInfo& info)
+	{
+		MediaInfo result;
+		result = info;
+		return result;
 	}
 }
 }

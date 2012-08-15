@@ -637,7 +637,9 @@ namespace LeechCraft
 		{
 			if (p.Entity_.toUrl ().isValid () &&
 					(p.Parameters_ & FromUserInitiated) &&
-					!(p.Parameters_ & OnlyDownload))
+					!(p.Parameters_ & OnlyDownload) &&
+					XmlSettingsManager::Instance ()->
+						property ("FallbackExternalHandlers").toBool ())
 			{
 				QDesktopServices::openUrl (p.Entity_.toUrl ());
 				return true;
@@ -864,11 +866,6 @@ namespace LeechCraft
 				SIGNAL (changeTabIcon (QWidget*, const QIcon&)),
 				TabManager_.get (),
 				SLOT (changeTabIcon (QWidget*, const QIcon&)),
-				Qt::UniqueConnection);
-		connect (plugin,
-				SIGNAL (changeTooltip (QWidget*, QWidget*)),
-				TabManager_.get (),
-				SLOT (changeTooltip (QWidget*, QWidget*)),
 				Qt::UniqueConnection);
 		connect (plugin,
 				SIGNAL (statusBarChanged (QWidget*, const QString&)),

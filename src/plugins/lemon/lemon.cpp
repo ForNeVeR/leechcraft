@@ -18,6 +18,7 @@
 
 #include "lemon.h"
 #include <QIcon>
+#include "core.h"
 #include "actionsmanager.h"
 
 namespace LeechCraft
@@ -26,6 +27,8 @@ namespace Lemon
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		Core::Instance ().SetProxy (proxy);
+
 		Manager_ = new ActionsManager (this);
 		connect (Manager_,
 				SIGNAL (gotActions (QList<QAction*>, LeechCraft::ActionsEmbedPlace)),

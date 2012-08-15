@@ -19,26 +19,37 @@
 #pragma once
 
 #include <memory>
+#include <QMap>
 #include <QtPlugin>
+
+class QStandardItem;
 
 namespace Media
 {
 	class IRadioStation;
 	typedef std::shared_ptr<IRadioStation> IRadioStation_ptr;
 
+	enum RadioType
+	{
+		SimilarArtists,
+		GlobalTag,
+		Predefined
+	};
+
+	enum RadioItemRole
+	{
+		ItemType = Qt::UserRole + 1,
+		RadioID
+	};
+
 	class IRadioStationProvider
 	{
 	public:
 		virtual ~IRadioStationProvider () {}
 
-		enum Type
-		{
-			SimilarArtists,
-			GlobalTag
-		};
+		virtual IRadioStation_ptr GetRadioStation (QStandardItem*, const QString&) = 0;
 
-		virtual QString GetRadioName () const = 0;
-		virtual IRadioStation_ptr GetRadioStation (Type, const QString&) = 0;
+		virtual QList<QStandardItem*> GetRadioListItems () const = 0;
 	};
 }
 

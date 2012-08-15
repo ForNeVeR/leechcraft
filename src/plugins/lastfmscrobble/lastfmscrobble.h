@@ -64,6 +64,8 @@ namespace Lastfmscrobble
 		LastFMSubmitter *LFSubmitter_;
 
 		ICoreProxy_ptr Proxy_;
+
+		QStandardItem *RadioRoot_;
 	public:
 		void Init (ICoreProxy_ptr proxy);
 		void SecondInit ();
@@ -87,8 +89,8 @@ namespace Lastfmscrobble
 
 		Media::IPendingSimilarArtists* RequestRecommended (int);
 
-		QString GetRadioName () const;
-		Media::IRadioStation_ptr GetRadioStation (Type, const QString&);
+		Media::IRadioStation_ptr GetRadioStation (QStandardItem*, const QString&);
+		QList<QStandardItem*> GetRadioListItems () const;
 
 		void RequestRecentReleases (int, bool);
 

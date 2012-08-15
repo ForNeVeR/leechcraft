@@ -104,6 +104,10 @@ namespace Azoth
 				this,
 				SLOT (updateCurrentTab (QObject*)));
 		connect (tab,
+				SIGNAL (entryLostCurrent (QObject*)),
+				this,
+				SIGNAL (entryLostCurrent (QObject*)));
+		connect (tab,
 				SIGNAL (changeTabName (QWidget*, const QString&)),
 				this,
 				SIGNAL (changeTabName (QWidget*, const QString&)));
@@ -215,10 +219,6 @@ namespace Azoth
 
 	void ChatTabsManager::ChatMadeCurrent (ChatTab *curTab)
 	{
-		Q_FOREACH (ChatTab_ptr tab, Entry2Tab_.values ())
-			if (tab != curTab)
-				tab->TabLostCurrent ();
-
 		ICLEntry *entry = qobject_cast<ICLEntry*> (curTab->GetCLEntry ());
 		if (!entry)
 		{
@@ -314,7 +314,9 @@ namespace Azoth
 	void ChatTabsManager::updateCurrentTab (QObject *entryObj)
 	{
 		auto entry = qobject_cast<ICLEntry*> (entryObj);
-		LastCurrentTab_ = Entry2Tab_.value (entry->GetEntryID ());
+		LastCurrentTab_ = entry ?
+				Entry2Tab_.value (entry->GetEntryID ()) :
+				0;
 	}
 
 	void ChatTabsManager::handleAddingCLEntryEnd (IHookProxy_ptr,

@@ -205,7 +205,7 @@ namespace Xoox
 		elem.setAttribute ("xmlns", NsArchive);
 
 		QXmppIq iq;
-		iq.setExtensions (elem);
+		iq.setExtensions (QXmppElementList () << elem);
 		client ()->sendPacket (iq);
 	}
 
@@ -231,7 +231,7 @@ namespace Xoox
 		pref.appendChild (def);
 
 		QXmppIq iq (QXmppIq::Set);
-		iq.setExtensions (pref);
+		iq.setExtensions (QXmppElementList () << pref);
 		client ()->sendPacket (iq);
 	}
 
@@ -254,7 +254,7 @@ namespace Xoox
 		}
 
 		QXmppIq iq (QXmppIq::Set);
-		iq.setExtensions (pref);
+		iq.setExtensions (QXmppElementList () << pref);
 		client ()->sendPacket (iq);
 	}
 

@@ -48,14 +48,24 @@ namespace LMP
 		QAction *ActionStopAfterSelected_;
 		QAction *ActionShowTrackProps_;
 		QAction *ActionShowAlbumArt_;
+		QAction *ActionMoveUp_;
+		QAction *ActionMoveDown_;
 	public:
 		PlaylistWidget (QWidget* = 0);
 
 		void SetPlayer (Player*);
+	private:
+		void InitToolbarActions ();
+		void SetPlayModeButton ();
+		void SetSortOrderButton ();
+		void InitViewActions ();
+		void SelectSources (const QList<Phonon::MediaSource>&);
 	private slots:
 		void on_Playlist__customContextMenuRequested (const QPoint&);
 		void handleChangePlayMode ();
 		void handlePlayModeChanged (Player::PlayMode);
+
+		void handleStdSort ();
 
 		void removeSelectedSongs ();
 		void setStopAfterSelected ();
@@ -63,8 +73,14 @@ namespace LMP
 
 		void showAlbumArt ();
 
+		void handleMoveUp ();
+		void handleMoveDown ();
+
 		void handleSavePlaylist ();
 		void loadFromDisk ();
+		void addURL ();
+
+		void updateStatsLabel ();
 	};
 }
 }

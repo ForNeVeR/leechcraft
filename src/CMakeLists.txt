@@ -291,8 +291,9 @@ OPTION (ENABLE_NETSTOREMANAGER "Build NetStoreManager for managing network data 
 OPTION (ENABLE_SHELLOPEN "Build ShellOpen, the plugin supporting handling entities via external applications" ${WITH_PLUGINS})
 OPTION (ENABLE_SIDEBAR "Build Sidebar, a nice side bar with quick launch, tabs and tray areas" ${WITH_PLUGINS})
 OPTION (ENABLE_SNAILS "Build Snails, LeechCraft mail client" OFF)
+OPTION (ENABLE_TWIFEE "Build Twifee, the Twitter client" OFF)
 OPTION (ENABLE_LASTFMSCROBBLE "Build Last.fm scrobbler" OFF)
-OPTION (ENABLE_LEMON "Build LeechCraft Network Monitor" ${WITH_PLUGINS})
+OPTION (ENABLE_LEMON "Build LeechCraft Network Monitor" OFF)
 OPTION (ENABLE_LHTR "Build LeechCraft HTML Text editoR" ${WITH_PLUGINS})
 OPTION (ENABLE_GACTS "Build Global Actions provider plugin" OFF)
 OPTION (ENABLE_CEMENTO "Build Cemento, LeechCraft common persistent storage" OFF)
@@ -507,13 +508,17 @@ IF (ENABLE_KNOWHOW)
 	ADD_SUBDIRECTORY (plugins/knowhow)
 ENDIF (ENABLE_KNOWHOW)
 
+IF (ENABLE_SIDEBAR)
+	ADD_SUBDIRECTORY (plugins/sidebar)
+ENDIF (ENABLE_SIDEBAR)
+
 IF (ENABLE_SNAILS)
 	ADD_SUBDIRECTORY (plugins/snails)
 ENDIF (ENABLE_SNAILS)
 
-IF (ENABLE_SIDEBAR)
-	ADD_SUBDIRECTORY (plugins/sidebar)
-ENDIF (ENABLE_SIDEBAR)
+IF (ENABLE_TWIFEE)
+	ADD_SUBDIRECTORY (plugins/twifee)
+ENDIF (ENABLE_TWIFEE)
 
 IF (ENABLE_LIZNOO)
 	ADD_SUBDIRECTORY (plugins/liznoo)
@@ -636,7 +641,6 @@ SET (leechcraft_SRCS
 	localsockethandler.cpp
 	toolbarguard.cpp
 	wizardtypechoicepage.cpp
-	3dparty/qxttooltip.cpp
 	newtabmenumanager.cpp
 	plugintreebuilder.cpp
 	coreinstanceobject.cpp
@@ -690,8 +694,6 @@ SET (leechcraft_HEADERS
 	coreplugin2manager.h
 	dockmanager.h
 	acceptlangwidget.h
-	3dparty/qxttooltip.h
-	3dparty/qxttooltip_p.h
 	interfaces/structures.h
 	)
 SET (leechcraft_FORMS
@@ -791,6 +793,8 @@ INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/leechcra
 
 INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/FindLeechCraft.cmake DESTINATION share/leechcraft/cmake/)
 INSTALL (FILES InitLCPlugin.cmake DESTINATION share/cmake/Modules)
+
+INSTALL (DIRECTORY share/ DESTINATION share)
 
 INSTALL (DIRECTORY freedesktop/icons/ DESTINATION share/icons/hicolor
 	PATTERN ".svn" EXCLUDE)

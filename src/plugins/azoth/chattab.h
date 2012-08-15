@@ -69,6 +69,7 @@ namespace Azoth
 		int LastSpacePosition_;
 		QString NickFirstPart_;
 
+		bool HadHighlight_;
 		int NumUnreadMsgs_;
 		int ScrollbackPos_;
 
@@ -211,6 +212,7 @@ namespace Azoth
 		void changeTabIcon (QWidget*, const QIcon&);
 		void needToClose (ChatTab*);
 		void entryMadeCurrent (QObject*);
+		void entryLostCurrent (QObject*);
 
 		void tabRecoverDataChanged ();
 

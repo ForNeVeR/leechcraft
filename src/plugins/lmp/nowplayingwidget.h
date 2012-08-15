@@ -37,6 +37,9 @@ namespace LMP
 
 		Media::SimilarityInfos_t LastInfos_;
 		MediaInfo CurrentInfo_;
+
+		QStringList PossibleLyrics_;
+		int LyricsVariantPos_;
 	public:
 		NowPlayingWidget (QWidget* = 0);
 
@@ -45,11 +48,12 @@ namespace LMP
 
 		void SetAlbumArt (const QPixmap&);
 		void SetTrackInfo (const MediaInfo&);
-	protected:
-		bool eventFilter (QObject*, QEvent*);
 	private:
 		void SetStatistics (const QString&);
 	private slots:
+		void on_PrevLyricsButton__released ();
+		void on_NextLyricsButton__released ();
+		void updateLyricsSwitcher ();
 		void resetSimilarArtists ();
 	};
 }

@@ -396,6 +396,11 @@ namespace Xoox
 		return new SDSession (this);
 	}
 
+	QString GlooxAccount::GetDefaultQuery () const
+	{
+		return GetDefaultReqHost ();
+	}
+
 	QObject* GlooxAccount::CreateSearchSession ()
 	{
 		return new JabberSearchSession (this);
@@ -403,13 +408,7 @@ namespace Xoox
 
 	QString GlooxAccount::GetDefaultSearchServer () const
 	{
-		if (!Host_.isEmpty ())
-			return Host_;
-
-		const QString& second = JID_
-				.split ('@', QString::SkipEmptyParts).value (1);
-		const int slIdx = second.indexOf ('/');
-		return slIdx >= 0 ? second.left (slIdx) : second;
+		return GetDefaultReqHost ();
 	}
 
 	IHaveConsole::PacketFormat GlooxAccount::GetPacketFormat () const
@@ -603,13 +602,27 @@ namespace Xoox
 
 	void GlooxAccount::SetBookmarkedMUCs (const QVariantList& datas)
 	{
+		QSet<QString> jids;
+
 		QList<QXmppBookmarkConference> mucs;
 		Q_FOREACH (const QVariant& var, datas)
 		{
 			const QVariantMap& map = var.toMap ();
 			QXmppBookmarkConference conf;
 			conf.setAutoJoin (map.value ("Autojoin").toBool ());
-			conf.setJid (map.value ("Room").toString () + '@' + map.value ("Server").toString ());
+
+			const auto& room = map.value ("Room").toString ();
+			const auto& server = map.value ("Server").toString ();
+			if (room.isEmpty () || server.isEmpty ())
+				continue;
+
+			const auto& jid = room + '@' + server;
+			if (jids.contains (jid))
+				continue;
+
+			jids << jid;
+
+			conf.setJid (jid);
 			conf.setNickName (map.value ("Nick").toString ());
 			conf.setName (map.value ("StoredName").toString ());
 			mucs << conf;
@@ -830,6 +843,18 @@ namespace Xoox
 			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/facebook.svg");
 		else if (JID_.contains ("vk.com"))
 			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/vk.svg");
+		else if (JID_.contains ("odnoklassniki"))
+			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/odnoklassniki.svg");
+	}
+
+	QString GlooxAccount::GetDefaultReqHost () const
+	{
+		if (!Host_.isEmpty ())
+			return Host_;
+
+		const auto& second = JID_.split ('@', QString::SkipEmptyParts).value (1);
+		const int slIdx = second.indexOf ('/');
+		return slIdx >= 0 ? second.left (slIdx) : second;
 	}
 
 	void GlooxAccount::handleEntryRemoved (QObject *entry)

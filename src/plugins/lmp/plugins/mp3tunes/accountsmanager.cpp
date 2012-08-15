@@ -32,7 +32,7 @@ namespace MP3Tunes
 	: QObject (parent)
 	, AccModel_ (new QStandardItemModel (this))
 	{
-		AccModel_->setHorizontalHeaderLabels ({ tr ("Account name") });
+		AccModel_->setHorizontalHeaderLabels (QStringList () << tr ("Account name"));
 		AccModel_->horizontalHeaderItem (0)->setData (DataSources::DataFieldType::String, DataSources::DataSourceRole::FieldType);
 
 		LoadAccounts ();
@@ -99,11 +99,11 @@ namespace MP3Tunes
 	void AccountsManager::removeRequested (const QString&, const QModelIndexList& indices)
 	{
 		QList<QStandardItem*> items;
-		for (const auto& idx : indices)
+		Q_FOREACH (const auto& idx, indices)
 			items << AccModel_->itemFromIndex (idx);
 		items.removeAll (0);
 
-		for (auto item : items)
+		Q_FOREACH (auto item, items)
 			AccModel_->removeRow (item->row ());
 
 		SaveAccounts ();

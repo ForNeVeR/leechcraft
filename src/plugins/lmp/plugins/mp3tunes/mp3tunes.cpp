@@ -124,7 +124,7 @@ namespace MP3Tunes
 
 	QStringList Plugin::GetSupportedFileFormats () const
 	{
-		return { "m4a", "mp3", "mp4", "ogg" };
+		return QStringList () << "m4a" << "mp3" << "mp4" << "ogg";
 	}
 
 	void Plugin::Upload (const QString& acc, const QString& localPath)

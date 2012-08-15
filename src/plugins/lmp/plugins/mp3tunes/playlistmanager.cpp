@@ -71,7 +71,7 @@ namespace MP3Tunes
 		Infos_.clear ();
 
 		const auto& accs = AccMgr_->GetAccounts ();
-		for (const auto& acc : accs)
+		Q_FOREACH (const auto& acc, accs)
 		{
 			auto item = new QStandardItem (acc);
 			item->setEditable (false);
@@ -184,7 +184,7 @@ namespace MP3Tunes
 				.firstChildElement ("item");
 		while (!trackItem.isNull ())
 		{
-			auto getText = [&trackItem] (const QString& elem)
+			auto getText = [&trackItem] (const QString& elem) -> QString
 			{
 				const auto& text = trackItem.firstChildElement (elem).text ();
 				return text.isEmpty () ? "unknown" : text;

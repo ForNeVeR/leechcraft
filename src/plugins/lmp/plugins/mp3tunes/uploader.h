@@ -28,7 +28,7 @@ struct Entity;
 
 namespace LMP
 {
-enum class CloudStorageError;
+enum CloudStorageError;
 
 namespace MP3Tunes
 {

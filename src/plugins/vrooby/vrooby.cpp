@@ -130,7 +130,7 @@ namespace Vrooby
 				SIGNAL (toggled (bool)),
 				this,
 				SLOT (showTrayView (bool)));
-		emit gotActions ({ ActionDevices_.get () }, ActionsEmbedPlace::LCTray);
+		emit gotActions (QList<QAction* >() << ActionDevices_.get (), ActionsEmbedPlace::LCTray);
 	}
 
 	void Plugin::showTrayView (bool show)

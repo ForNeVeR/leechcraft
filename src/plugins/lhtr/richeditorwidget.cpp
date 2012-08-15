@@ -298,7 +298,7 @@ namespace LHTR
 	{
 		QString ProcessWith (QString html, const IAdvancedHTMLEditor::Replacements_t& rxs)
 		{
-			for (const auto& rx : rxs)
+			Q_FOREACH (const auto& rx, rxs)
 				html.replace (rx.first, rx.second);
 			return html;
 		}

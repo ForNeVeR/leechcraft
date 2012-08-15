@@ -69,7 +69,7 @@ namespace LMP
 			RepeatWhole
 		};
 
-		enum class SortingCriteria
+		enum SortingCriteria
 		{
 			Artist,
 			Year,

@@ -119,7 +119,7 @@ namespace LMP
 		{
 			const auto& id = "LMP_Global_" + method;
 			const auto& seq = GlobAction2Entity_ [id].Additional_ ["Shortcut"].value<QKeySequence> ();
-			GlobAction2Info_ [id] = { userText, seq, proxy->GetIcon (icon) };
+			GlobAction2Info_ [id] = ActionInfo (userText, seq, proxy->GetIcon (icon));
 		};
 		setInfo (SLOT (togglePause ()), tr ("Play/pause"), "media-playback-start");
 		setInfo (SLOT (previousTrack ()), tr ("Previous track"), "media-skip-backward");

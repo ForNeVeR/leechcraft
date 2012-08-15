@@ -138,7 +138,7 @@ namespace LMP
 				if (action == Qt::MoveAction)
 					Q_FOREACH (const auto& src, sources)
 					{
-						auto pred = [&src] (decltype (existingQueue.front ()) item)
+						auto pred = [&src] (decltype (existingQueue.front ()) item) -> bool
 						{
 							if (src.type () != item.type ())
 								return false;
@@ -330,7 +330,7 @@ namespace LMP
 	{
 		auto vals = Items_.values ();
 		auto curSrcPos = std::find_if (vals.begin (), vals.end (),
-				[] (decltype (vals.front ()) item) { return item->data (Role::IsCurrent).toBool (); });
+				[] (decltype (vals.front ()) item) -> bool { return item->data (Player::Role::IsCurrent).toBool (); });
 		const auto& currentSource = curSrcPos != vals.end () ?
 				(*curSrcPos)->data (Role::Source).value<Phonon::MediaSource> () :
 				Phonon::MediaSource ();

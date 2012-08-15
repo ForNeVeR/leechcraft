@@ -28,7 +28,7 @@ namespace LeechCraft
 {
 namespace LMP
 {
-	enum class CloudStorageError
+	enum CloudStorageError
 	{
 		NoError,
 		LocalError,

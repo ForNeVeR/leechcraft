@@ -202,7 +202,7 @@ namespace LMP
 		auto menu = new QMenu (tr ("Sorting"));
 		sortButton->setMenu (menu);
 
-		auto getInts = [] (const QList<Player::SortingCriteria>& crit)
+		auto getInts = [] (const QList<Player::SortingCriteria>& crit) -> QVariantList
 		{
 			QVariantList result;
 			std::transform (crit.begin (), crit.end (), std::back_inserter (result),
@@ -214,22 +214,19 @@ namespace LMP
 		QList<SortPair_t> stdSorts;
 #if QT_VERSION >= 0x040800
 		stdSorts << SortPair_t (tr ("Artist / Year / Album / Track number"),
-					{
-						Player::SortingCriteria::Artist,
-						Player::SortingCriteria::Year,
-						Player::SortingCriteria::Album,
-						Player::SortingCriteria::TrackNumber
-					});
+					QList<Player::SortingCriteria> ()
+						<< Player::SortingCriteria::Artist
+						<< Player::SortingCriteria::Year
+						<< Player::SortingCriteria::Album
+						<< Player::SortingCriteria::TrackNumber);
 		stdSorts << SortPair_t (tr ("Artist / Track title"),
-					{
-						Player::SortingCriteria::Artist,
-						Player::SortingCriteria::TrackTitle
-					});
+					QList<Player::SortingCriteria> ()
+						<< Player::SortingCriteria::Artist
+						<< Player::SortingCriteria::TrackTitle);
 		stdSorts << SortPair_t (tr ("File path"),
-					{
-						Player::SortingCriteria::FilePath
-					});
-		stdSorts << SortPair_t (tr ("No sort"), {});
+					QList<Player::SortingCriteria> ()
+						<< Player::SortingCriteria::FilePath);
+		stdSorts << SortPair_t (tr ("No sort"), QList<Player::SortingCriteria> ());
 #endif
 
 		auto sortGroup = new QActionGroup (this);

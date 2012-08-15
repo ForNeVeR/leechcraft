@@ -18,6 +18,7 @@ if exist %TARGET_DIR% rmdir /s /q %TARGET_DIR%
 mkdir %TARGET_DIR%
 mkdir %TARGET_DIR%\plugins
 mkdir %TARGET_DIR%\plugins\bin
+mkdir %TARGET_DIR%\plugins\crypto
 mkdir %TARGET_DIR%\plugins\imageformats
 mkdir %TARGET_DIR%\plugins\sqldrivers
 mkdir %TARGET_DIR%\plugins\phonon_backend
@@ -98,6 +99,7 @@ copy %HUNSPELL_BIN_DIR%\libhunspell.dll %TARGET_DIR%
 rem - QCA2 -
 copy %QCA_BIN_DIR%\qca.dll %TARGET_DIR%
 copy %QCA_DIR%\certs\rootcerts.pem %TARGET_DIR%\certs
+copy %QT_BIN_DIR%\..\plugins\crypto\qca-gnupg.dll %TARGET_DIR%\plugins\crypto
 
 rem === LEECHCRAFT FILES ===
 

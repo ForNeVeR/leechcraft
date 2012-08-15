@@ -4,7 +4,7 @@
 !define VERSIONMAJOR 0
 !define VERSIONMINOR 5
 !define VERSIONBUILD 70
-!define VERSIONREVISION 0
+!define VERSIONREVISION 556
 
 OutFile ../leechcraft-installer-${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}.exe
 Name "LeechCraft ${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}"
@@ -51,7 +51,7 @@ SectionGroup "Core"
 		File lcutil.dll
 		File xmlsettingsdialog.dll
 		File leechcraft.exe
-		File boost_program_options-vc100-mt-1_48.dll
+		File boost_program_options-vc100-mt-1_49.dll
 		File /r icons
 		File /r leechcraft
 		File /r oxygen
@@ -144,17 +144,17 @@ SectionGroup "Plugins"
 		SetOutPath $INSTDIR
         File qca.dll
 		SetOutPath $INSTDIR\plugins\crypto
-        File \plugins\crypto\qca-gnupg.dll
+        File plugins\crypto\qca-gnupg.dll
 
         SectionIn 1
     SectionEnd
 	Section "BitTorrent" TORRENTPLUGIN
 		SetOutPath $INSTDIR
 		File torrent.dll
-		File boost_date_time-vc100-mt-1_48.dll
-		File boost_filesystem-vc100-mt-1_48.dll
-		File boost_system-vc100-mt-1_48.dll
-		File boost_thread-vc100-mt-1_48.dll
+		File boost_date_time-vc100-mt-1_49.dll
+		File boost_filesystem-vc100-mt-1_49.dll
+		File boost_system-vc100-mt-1_49.dll
+		File boost_thread-vc100-mt-1_49.dll
 		SetOutPath $INSTDIR\settings
 		File settings\torrentsettings.xml
 		SetOutPath $INSTDIR\plugins\bin
@@ -263,13 +263,13 @@ SectionGroup "Plugins"
 		File plugins\bin\leechcraft_poshuku_onlinebookmarks_*.dll
 		SectionIn 1
 	SectionEnd
-	Section "Poshuku WYFV" POSHUKUWYFVPLUGIN
-		SetOutPath $INSTDIR\settings
-		File settings\poshukuwyfvsettings.xml
-		SetOutPath $INSTDIR\plugins\bin
-		File plugins\bin\leechcraft_poshuku_wyfv.dll
-		SectionIn 1
-	SectionEnd
+#	Section "Poshuku WYFV" POSHUKUWYFVPLUGIN
+#		SetOutPath $INSTDIR\settings
+#		File settings\poshukuwyfvsettings.xml
+#		SetOutPath $INSTDIR\plugins\bin
+#		File plugins\bin\leechcraft_poshuku_wyfv.dll
+#		SectionIn 1
+#	SectionEnd
 	Section "SecMan" SECMANPLUGIN
 		SetOutPath $INSTDIR\plugins\bin
 		File plugins\bin\leechcraft_secman.dll
@@ -496,7 +496,7 @@ LangString DESC_POSHUKUPLUGIN ${LANG_ENGLISH} "Full-featured web browser."
 LangString DESC_POSHUKUCLEANWEBPLUGIN ${LANG_ENGLISH} "Ad blocker for the Poshuku compatible with Firefox's AdBlock lists."
 LangString DESC_POSHUKUFILESCHEMEPLUGIN ${LANG_ENGLISH} "Support of the file:// scheme for the Poshuku."
 LangString DESC_POSHUKUFUAPLUGIN ${LANG_ENGLISH} "Fake User Agent plugin for the Poshuku."
-LangString DESC_POSHUKUWYFVPLUGIN ${LANG_ENGLISH} "Alternate media player for YouTube and other similar sites."
+#LangString DESC_POSHUKUWYFVPLUGIN ${LANG_ENGLISH} "Alternate media player for YouTube and other similar sites."
 LangString DESC_DEADLYRICSPLUGIN ${LANG_ENGLISH} "Fetches lyrics from various sites."
 LangString DESC_SEEKTHRUPLUGIN ${LANG_ENGLISH} "Client for OpenSearch-aware search engines."
 LangString DESC_SUMMARYPLUGIN ${LANG_ENGLISH} "Summary tab with current downloads, events and status."
@@ -542,7 +542,7 @@ LangString DESC_POSHUKUPLUGIN ${LANG_RUSSIAN} "Полнофункциональный веб-браузер."
 LangString DESC_POSHUKUCLEANWEBPLUGIN ${LANG_RUSSIAN} "Блокировщик рекламы для Poshuku, совместимый с Firefox AdBlock."
 LangString DESC_POSHUKUFILESCHEMEPLUGIN ${LANG_RUSSIAN} "Поддержка file://-схемы для Poshuku."
 LangString DESC_POSHUKUFUAPLUGIN ${LANG_RUSSIAN} "Плагин для Poshuku, подделывающий идентификацию браузера."
-LangString DESC_POSHUKUWYFVPLUGIN ${LANG_RUSSIAN} "Альтернативный медиа-проигрыватель для Youtube и подобных сайтов."
+#LangString DESC_POSHUKUWYFVPLUGIN ${LANG_RUSSIAN} "Альтернативный медиа-проигрыватель для Youtube и подобных сайтов."
 LangString DESC_DEADLYRICSPLUGIN ${LANG_RUSSIAN} "Клиент для поиска текстов песен."
 LangString DESC_SEEKTHRUPLUGIN ${LANG_RUSSIAN} "Клиент для поисковиков, поддерживающих OpenSearch."
 LangString DESC_SUMMARYPLUGIN ${LANG_RUSSIAN} "Сводка с текущими закачками, событиями и статусом."
@@ -587,7 +587,7 @@ LangString DESC_OTLOZHUPLUGIN ${LANG_RUSSIAN} "Простой основанный на GTD менедже
 	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUFILESCHEMEPLUGIN} $(DESC_POSHUKUFILESCHEMEPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUFUAPLUGIN} $(DESC_POSHUKUFUAPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUCLEANWEBPLUGIN} $(DESC_POSHUKUCLEANWEBPLUGIN)
-	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUWYFVPLUGIN} $(DESC_POSHUKUWYFVPLUGIN)
+#	!insertmacro MUI_DESCRIPTION_TEXT ${POSHUKUWYFVPLUGIN} $(DESC_POSHUKUWYFVPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${DEADLYRICSPLUGIN} $(DESC_DEADLYRICSPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SEEKTHRUPLUGIN} $(DESC_SEEKTHRUPLUGIN)
 	!insertmacro MUI_DESCRIPTION_TEXT ${HISTORYHOLDERPLUGIN} $(DESC_HISTORYHOLDERPLUGIN)

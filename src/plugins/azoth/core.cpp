@@ -1803,7 +1803,7 @@ namespace Azoth
 	void Core::handleMucJoinRequested ()
 	{
 		auto accounts = GetAccountsPred (ProtocolPlugins_,
-				[] (IProtocol *proto) { return proto->GetFeatures () & IProtocol::PFMUCsJoinable; });
+				[] (IProtocol *proto) -> bool { return proto->GetFeatures () & IProtocol::PFMUCsJoinable; });
 
 		JoinConferenceDialog *dia = new JoinConferenceDialog (accounts, Proxy_->GetMainWindow ());
 		dia->show ();

@@ -156,16 +156,21 @@ IF (MSVC)
 	SET (CMAKE_CXX_FLAGS "/EHa /W3")
 	SET (CMAKE_CXX_FLAGS_RELEASE "/Ob2 /O2 /Ot /Oi /Oy /GT /GL /MD /MP /D NDEBUG")
 	SET (CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /GT /MDd /Gm")
-
-	# Change warning C4996 from level 1 to level 4. These are real and shouldn't
-	# be completely ignored, but they're pretty well checked out and will throw
-	# a run-time error if violated.
-	# "warning C4996: 'std::equal': Function call with parameters that may
-	# be unsafe..."
-	add_definitions(/w44996)
 	
-	# Hide warning C4482: "nonstandard extension used: enum 'xxx' used in qualified name"
-	add_definitions(/wd4482)
+	# enable warnings
+	ADD_DEFINITIONS( /w44996 )  # Change warning C4996 from level 1 to level 4. These are real and shouldn't
+	                            # be completely ignored, but they're pretty well checked out and will throw
+                                # a run-time error if violated.
+	                            # "warning C4996: 'std::equal': Function call with parameters that may
+	                            # be unsafe..."
+	# disable warnings
+	ADD_DEFINITIONS( /wd4482 )  # nonstandard extension used: enum 'xxx' used in qualified name
+    ADD_DEFINITIONS( /wd4100 )  # unused formal parameters
+    ADD_DEFINITIONS( /wd4127 )  # constant conditional expressions (used in Qt template classes)
+    ADD_DEFINITIONS( /wd4510 )  # default constructor could not be generated (sqlite3_index_info, QMap)
+    ADD_DEFINITIONS( /wd4512 )  # assignment operator could not be generated (sqlite3_index_info)
+    ADD_DEFINITIONS( /wd4610 )  # user defined constructor required (sqlite3_index_info)
+    ADD_DEFINITIONS( /wd4706 )  # assignment within conditional expression (pal)
 	
 	SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 	INCLUDE (LibHelperWin32Macros)

@@ -27,7 +27,7 @@ namespace Azoth
 	class IMetaInfoEntry
 	{
 	public:
-		enum class DataField
+		enum DataField
 		{
 			BirthDate
 		};

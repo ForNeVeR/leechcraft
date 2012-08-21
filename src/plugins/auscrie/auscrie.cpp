@@ -176,6 +176,7 @@ namespace Auscrie
 					geom.x (), geom.y (), geom.width (), geom.height ());
 		}
 		case ShooterDialog::Mode::WholeDesktop:
+		default:
 			return QPixmap::grabWindow (qApp->desktop ()->winId ());
 		}
 	}

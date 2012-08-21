@@ -728,8 +728,8 @@ namespace GoogleDrive
 		reply->deleteLater ();
 
 		emit uploadError ("Error", Reply2FilePath_.take (reply));
-		if (error == QNetworkReply::ProtocolUnknownError)
-			;//TODO resume upload
+		//if (error == QNetworkReply::ProtocolUnknownError)
+		//	;//TODO resume upload
 	}
 
 	void DriveManager::handleCreateDirectory ()

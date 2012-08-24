@@ -253,6 +253,10 @@ namespace LMP
 				SIGNAL (metaDataChanged ()),
 				this,
 				SLOT (handleMetadata ()));
+		connect (Source_,
+				SIGNAL (bufferStatus (int)),
+				this,
+				SIGNAL (bufferStatusChanged (int)));
 
 		auto collection = Core::Instance ().GetLocalCollection ();
 		if (collection->IsReady ())
@@ -461,6 +465,10 @@ namespace LMP
 				SIGNAL (gotNewStream (QUrl, Media::AudioInfo)),
 				this,
 				SLOT (handleRadioStream (QUrl, Media::AudioInfo)));
+		connect (CurrentStation_->GetObject (),
+				SIGNAL (gotPlaylist (QString, QString)),
+				this,
+				SLOT (handleGotRadioPlaylist (QString, QString)));
 		CurrentStation_->RequestNewStream ();
 
 		auto radioName = station->GetRadioName ();
@@ -509,6 +517,24 @@ namespace LMP
 		info.Genres_ = Source_->metaData (Phonon::GenreMetaData);
 		info.TrackNumber_ = Source_->metaData (Phonon::TracknumberMetaData).value (0).toInt ();
 		info.Length_ = Source_->totalTime () / 1000;
+
+		if (info.Artist_.isEmpty () && info.Title_.contains (" - "))
+		{
+			const auto& strs = info.Title_.split (" - ", QString::SkipEmptyParts);
+			switch (strs.size ())
+			{
+			case 2:
+				info.Artist_ = strs.value (0);
+				info.Title_ = strs.value (1);
+				break;
+			case 3:
+				info.Artist_ = strs.value (0);
+				info.Album_ = strs.value (1);
+				info.Title_ = strs.value (2);
+				break;
+			}
+		}
+
 		return info;
 	}
 
@@ -516,10 +542,18 @@ namespace LMP
 	{
 		void FillItem (QStandardItem *item, const MediaInfo& info)
 		{
-			item->setText (QString ("%1 - %2 - %3")
-						.arg (info.Artist_)
-						.arg (info.Album_)
-						.arg (info.Title_));
+			if (!info.Album_.isEmpty ())
+				item->setText (QString ("%1 - %2 - %3")
+							.arg (info.Artist_)
+							.arg (info.Album_)
+							.arg (info.Title_));
+			else if (!info.Artist_.isEmpty () && !info.Title_.isEmpty ())
+				item->setText (QString ("%1 - %2")
+							.arg (info.Artist_)
+							.arg (info.Title_));
+			else if (!info.Title_.isEmpty ())
+				item->setText (info.Title_);
+
 			item->setData (QVariant::fromValue (info), Player::Role::Info);
 		}
 
@@ -531,8 +565,11 @@ namespace LMP
 			albumItem->setData (true, Player::Role::IsAlbum);
 			albumItem->setData (QVariant::fromValue (info), Player::Role::Info);
 			auto art = FindAlbumArt (info.LocalPath_);
+			const int dim = 48;
 			if (art.isNull ())
-				art = QIcon::fromTheme ("media-optical").pixmap (64, 64);
+				art = QIcon::fromTheme ("media-optical").pixmap (dim, dim);
+			else if (std::max (art.width (), art.height ()) > dim)
+				art = art.scaled (dim, dim, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 			albumItem->setData (art, Player::Role::AlbumArt);
 			albumItem->setData (0, Player::Role::AlbumLength);
 			return albumItem;
@@ -686,7 +723,8 @@ namespace LMP
 		if (!CurrentStation_)
 			return;
 
-		PlaylistModel_->removeRow (RadioItem_->row ());
+		if (RadioItem_)
+			PlaylistModel_->removeRow (RadioItem_->row ());
 		RadioItem_ = 0;
 
 		CurrentStation_.reset ();
@@ -868,6 +906,32 @@ namespace LMP
 			Source_->play ();
 	}
 
+	void Player::handleGotRadioPlaylist (const QString& name, const QString& format)
+	{
+		QMetaObject::invokeMethod (this,
+				"postPlaylistCleanup",
+				Qt::QueuedConnection,
+				Q_ARG (QString, name));
+
+		auto parser = MakePlaylistParser (format);
+		if (!parser)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unable to find parser for format"
+					<< format;
+			return;
+		}
+
+		const auto& list = parser (name);
+		Enqueue (list, false);
+	}
+
+	void Player::postPlaylistCleanup (const QString& filename)
+	{
+		UnsetRadio ();
+		QFile::remove (filename);
+	}
+
 	void Player::handleUpdateSourceQueue ()
 	{
 		if (CurrentStation_)
@@ -944,6 +1008,8 @@ namespace LMP
 		const auto& source = Source_->currentSource ();
 		const auto& isUrl = source.type () == Phonon::MediaSource::Stream ||
 				(source.type () == Phonon::MediaSource::Url && source.url ().scheme () != "file");
+		qDebug () << Q_FUNC_INFO << isUrl << CurrentStation_.get () << !Items_.contains (source);
+		qDebug () << Source_->metaData ();
 		if (!isUrl ||
 				CurrentStation_ ||
 				!Items_.contains (source))
@@ -952,6 +1018,13 @@ namespace LMP
 		auto curItem = Items_ [source];
 
 		const auto& info = GetPhononMediaInfo ();
+		if (info.Album_ == LastPhononMediaInfo_.Album_ &&
+				info.Artist_ == LastPhononMediaInfo_.Artist_ &&
+				info.Title_ == LastPhononMediaInfo_.Title_)
+			return;
+
+		LastPhononMediaInfo_ = info;
+
 		FillItem (curItem, info);
 		emit songChanged (info);
 	}

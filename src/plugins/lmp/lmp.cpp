@@ -30,6 +30,7 @@
 #include "xmlsettingsmanager.h"
 #include "core.h"
 #include "rootpathsettingsmanager.h"
+#include "collectionstatsdialog.h"
 
 namespace LeechCraft
 {
@@ -94,6 +95,12 @@ namespace LMP
 				&Core::Instance (),
 				SLOT (rescan ()));
 
+		ActionCollectionStats_ = new QAction (tr ("Collection statistics"), this);
+		ActionCollectionStats_->setProperty ("ActionIcon", "view-statistics");
+		connect (ActionCollectionStats_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (showCollectionStats ()));
 
 		Entity e = Util::MakeEntity (QVariant (), QString (), 0,
 				"x-leechcraft/global-action-register");
@@ -257,8 +264,11 @@ namespace LMP
 
 	QMap<QString, QList<QAction*>> Plugin::GetMenuActions () const
 	{
-		decltype(GetMenuActions ()) result;
-		result [GetName ()] << ActionRescan_;
+		const auto& name = GetName ();
+
+		QMap<QString, QList<QAction*>> result;
+		result [name] << ActionRescan_;
+		result [name] << ActionCollectionStats_;
 		return result;
 	}
 
@@ -300,6 +310,13 @@ namespace LMP
 	void Plugin::handleFullRaiseRequested ()
 	{
 		TabOpenRequested (PlayerTC_.TabClass_);
+	}
+
+	void Plugin::showCollectionStats ()
+	{
+		auto dia = new CollectionStatsDialog ();
+		dia->setAttribute (Qt::WA_DeleteOnClose);
+		dia->show ();
 	}
 }
 }

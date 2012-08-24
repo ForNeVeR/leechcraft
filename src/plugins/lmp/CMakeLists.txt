@@ -105,6 +105,8 @@ SET (SRCS
 	playlistwidget.cpp
 	aalabeleventfilter.cpp
 	collectionsortermodel.cpp
+	collectionstatsdialog.cpp
+	eventswidget.cpp
 	sync/cloudwidget.cpp
 	sync/clouduploadmanager.cpp
 	sync/clouduploader.cpp
@@ -116,6 +118,7 @@ SET (SRCS
 	sync/transcodemanager.cpp
 	sync/transcodingparamswidget.cpp
 	sync/uploadmodel.cpp
+	playlistparsers/commonpl.cpp
 	playlistparsers/playlistfactory.cpp
 	playlistparsers/m3u.cpp
 	playlistparsers/pls.cpp
@@ -131,6 +134,8 @@ SET (FORMS
 	biowidget.ui
 	audiopropswidget.ui
 	playlistwidget.ui
+	collectionstatsdialog.ui
+	eventswidget.ui
 	sync/cloudwidget.ui
 	sync/devicesbrowserwidget.ui
 	sync/transcodingparamswidget.ui

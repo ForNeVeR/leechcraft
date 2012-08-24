@@ -55,12 +55,18 @@ namespace LMP
 	{
 		Ui_.setupUi (this);
 
+		Ui_.BufferProgress_->hide ();
 		Ui_.Playlist_->setItemDelegate (new PlaylistDelegate (Ui_.Playlist_, Ui_.Playlist_));
 	}
 
 	void PlaylistWidget::SetPlayer (Player *player)
 	{
 		Player_ = player;
+
+		connect (Player_,
+				SIGNAL (bufferStatusChanged (int)),
+				this,
+				SLOT (handleBufferStatus (int)));
 
 		Ui_.Playlist_->setModel (Player_->GetPlaylistModel ());
 		Ui_.Playlist_->expandAll ();
@@ -362,6 +368,12 @@ namespace LMP
 			}
 	}
 
+	void PlaylistWidget::handleBufferStatus (int status)
+	{
+		Ui_.BufferProgress_->setValue (status);
+		Ui_.BufferProgress_->setVisible (status > 0 && status < 100);
+	}
+
 	void PlaylistWidget::handleStdSort ()
 	{
 		const auto& intVars = sender ()->property ("SortInts").toList ();
@@ -476,10 +488,13 @@ namespace LMP
 
 	void PlaylistWidget::loadFromDisk ()
 	{
-		QStringList files = QFileDialog::getOpenFileNames (this,
+		const auto& files = QFileDialog::getOpenFileNames (this,
 				tr ("Load files"),
 				QDir::homePath (),
-				tr ("Music files (*.ogg *.flac *.mp3 *.wav);;All files (*.*)"));
+				tr ("Music files (*.ogg *.flac *.mp3 *.wav);;Playlists (*.pls *.m3u *.m3u8 *.xspf);;All files (*.*)"));
+		if (files.isEmpty ())
+			return;
+
 		Player_->Enqueue (files);
 	}
 
@@ -519,7 +534,12 @@ namespace LMP
 		auto model = Player_->GetPlaylistModel ();
 		int length = 0;
 		for (int i = 0, rc = model->rowCount (); i < rc; ++i)
-			length += model->index (i, 0).data (Player::Role::AlbumLength).toInt ();
+		{
+			const auto& idx = model->index (i, 0);
+			length += model->rowCount (idx) ?
+					idx.data (Player::Role::AlbumLength).toInt () :
+					idx.data (Player::Role::Info).value<MediaInfo> ().Length_;
+		}
 
 		Ui_.StatsLabel_->setText (tr ("%n track(s), total duration: %1", 0, tracksCount)
 					.arg (Util::MakeTimeFromLong (length)));

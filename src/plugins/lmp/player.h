@@ -59,6 +59,8 @@ namespace LMP
 		Media::IRadioStation_ptr CurrentStation_;
 		QStandardItem *RadioItem_;
 		QHash<QUrl, MediaInfo> Url2Info_;
+
+		MediaInfo LastPhononMediaInfo_;
 	public:
 		enum PlayMode
 		{
@@ -149,6 +151,8 @@ namespace LMP
 		void restorePlaylist ();
 		void handleStationError (const QString&);
 		void handleRadioStream (const QUrl&, const Media::AudioInfo&);
+		void handleGotRadioPlaylist (const QString&, const QString&);
+		void postPlaylistCleanup (const QString&);
 		void handleUpdateSourceQueue ();
 		void handlePlaybackFinished ();
 		void handleStateChanged (Phonon::State);
@@ -160,6 +164,7 @@ namespace LMP
 		void insertedAlbum (const QModelIndex&);
 
 		void playModeChanged (Player::PlayMode);
+		void bufferStatusChanged (int);
 	};
 }
 }

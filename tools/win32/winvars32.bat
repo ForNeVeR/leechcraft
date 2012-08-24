@@ -11,7 +11,7 @@ set QTDIR=C:\Project\Qt
 
 set BOOST_ROOT=C:\Project\boost_1_49_0
 set TORRENT_DIR=C:\Project\libtorrent-trunk
-set QXMPP_LOCAL=C:\Project\qxmpp-dev
+set QXMPP_DIR=C:\\Project\\installed\\qxmpp
 set QJSON_DIR=C:\Project\qjson
 set SPEEX_DIR=C:\Project\speex-1.2rc1
 rem Go to http://wiki.videolan.org/GenerateLibFromDll first!
@@ -33,7 +33,11 @@ set CMAKE_GENERATOR="Visual Studio 10"
 
 rem == Collect variables ==
 
-set BUILD_TYPE=Release
+set BUILD_TYPE=RelWithDebInfo
+rem This is the directory where LeechCraft will live
+set TARGET_DIR="LeechCraft"
+set SIGNCOMMAND=signtool sign /a /t http://time.certum.pl
+set SIGNCODE=1
 
 rem Set these variables to proper paths of your system:
 

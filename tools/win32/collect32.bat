@@ -4,14 +4,13 @@ call "%~dp0\winvars32.bat"
 
 set BOOST_LIB_SUFFIX=""
 set QT_LIB_SUFFIX=""
+set QXMPP_LIB_SUFFIX=""
 rem Boost and Qt libraries have Debug suffixies in names
 if "%BUILD_TYPE%" == "Debug" (
 	set BOOST_LIB_SUFFIX="gd-"
 	set QT_LIB_SUFFIX="d"
+	set QXMPP_LIB_SUFFIX="_d"
 )
-
-rem This is the directory where LeechCraft will live
-set TARGET_DIR="LeechCraft"
 
 rem === DIRECTORY STRUCTURE ===
 if exist %TARGET_DIR% rmdir /s /q %TARGET_DIR%
@@ -101,6 +100,9 @@ copy %QCA_BIN_DIR%\qca.dll %TARGET_DIR%
 copy %QCA_DIR%\certs\rootcerts.pem %TARGET_DIR%\certs
 copy %QT_BIN_DIR%\..\plugins\crypto\qca-gnupg.dll %TARGET_DIR%\plugins\crypto
 
+rem - QXmpp -
+copy %QXMPP_DIR%\lib\qxmpp%QXMPP_LIB_SUFFIX%0.dll %TARGET_DIR%
+
 rem === LEECHCRAFT FILES ===
 
 rem - Main files -
@@ -156,7 +158,11 @@ copy %TOOLS_DIR%\7za.exe %TARGET_DIR%
 copy %TOOLS_DIR%\vcredist_x86.exe %TARGET_DIR%
 
 rem === Debug files ===
-if "%BUILD_TYPE%" == "Debug" (
+set COPYDEBUG=0
+if "%BUILD_TYPE%" == "Debug" set COPYDEBUG=1
+if "%BUILD_TYPE%" == "RelWithDebInfo" set COPYDEBUG=1
+
+if "%COPYDEBUG%" == 1 (
 rem - qjson -
 copy %QJSON_BIN_DIR%\qjson.pdb %TARGET_DIR%
 rem - libtorrent -

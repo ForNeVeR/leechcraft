@@ -31,7 +31,7 @@ namespace HotStreams
 	class AudioAddictStreamFetcher : public StreamListFetcherBase
 	{
 	public:
-		enum class Service
+		enum Service
 		{
 			DI,
 			SkyFM

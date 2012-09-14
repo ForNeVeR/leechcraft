@@ -18,30 +18,23 @@
 
 #pragma once
 
-#include <QObject>
-#include <interfaces/core/icoreproxy.h>
-
-class QLineEdit;
-class QToolButton;
+#include <QtPlugin>
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace Monocle
 {
-	class ClearLineEditAddon : public QObject
+	class IDynamicDocument
 	{
-		Q_OBJECT
-
-		QToolButton *Button_;
-		QLineEdit *Edit_;
 	public:
-		ClearLineEditAddon (ICoreProxy_ptr, QLineEdit*);
+		virtual ~IDynamicDocument () {}
 	protected:
-		bool eventFilter (QObject*, QEvent*);
-	private:
-		void UpdatePos ();
-	private slots:
-		void updateButton (const QString&);
+		virtual void pageSizeChanged (int) = 0;
+
+		virtual void pageContentsChanged (int) = 0;
 	};
 }
 }
+
+Q_DECLARE_INTERFACE (LeechCraft::Monocle::IDynamicDocument,
+		"org.LeechCraft.Monocle.IDynamicDocument/1.0");

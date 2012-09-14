@@ -112,7 +112,9 @@ SET (SRCS
 	chatstyleoptionmanager.cpp
 	microblogstab.cpp
 	riexhandler.cpp
-	clearlineeditaddon.cpp
+	filesenddialog.cpp
+	pendinguploadpaster.cpp
+	contactdropfilter.cpp
 	)
 SET (HEADERS
 	azoth.h
@@ -162,7 +164,9 @@ SET (HEADERS
 	chatstyleoptionmanager.h
 	microblogstab.h
 	riexhandler.h
-	clearlineeditaddon.h
+	filesenddialog.h
+	pendinguploadpaster.h
+	contactdropfilter.h
 	animatediconmanager.h
 	sourcetrackingmodel.h
 	)
@@ -191,6 +195,7 @@ SET (FORMS
 	mucinvitedialog.ui
 	groupsenddialog.ui
 	microblogstab.ui
+	filesenddialog.ui
 	)
 SET (RESOURCES azothresources.qrc)
 
@@ -235,7 +240,7 @@ TARGET_LINK_LIBRARIES (leechcraft_azoth
 INSTALL (TARGETS leechcraft_azoth DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 INSTALL (FILES azothsettings.xml DESTINATION ${LC_SETTINGS_DEST})
-INSTALL (DIRECTORY share/azoth DESTINATION share/leechcraft)
+INSTALL (DIRECTORY share/azoth DESTINATION ${LC_SHARE_DEST})
 INSTALL (DIRECTORY interfaces DESTINATION include/leechcraft)
 
 SET (AZOTH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})

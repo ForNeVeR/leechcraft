@@ -84,6 +84,7 @@ namespace Lastfmscrobble
 		void NowPlaying (const Media::AudioInfo&);
 		void PlaybackStopped ();
 		void LoveCurrentTrack ();
+		void BanCurrentTrack ();
 
 		QString GetAlbumArtProviderName () const;
 		void RequestAlbumArt (const Media::AlbumInfo& album) const;
@@ -100,6 +101,9 @@ namespace Lastfmscrobble
 		Media::IPendingArtistBio* RequestArtistBio (const QString&);
 
 		void UpdateRecommendedEvents ();
+		void AttendEvent (qint64, Media::EventAttendType);
+	private slots:
+		void reloadRecommendedEvents ();
 	signals:
 		void gotEntity (const LeechCraft::Entity&);
 		void delegateEntity (const LeechCraft::Entity&, int*, QObject**);

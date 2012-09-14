@@ -82,6 +82,11 @@ SET (XOOX_SRCS
 	xep0232handler.cpp
 	pepmicroblog.cpp
 	vcardlisteditdialog.cpp
+	regformhandlerwidget.cpp
+	gwoptionsdialog.cpp
+	clientconnectionerrormgr.cpp
+	accstatusrestorer.cpp
+	accountsettingsholder.cpp
 	xmppannotationsiq.cpp
 	xmppannotationsmanager.cpp
 	xmppbobiq.cpp
@@ -152,6 +157,11 @@ SET (XOOX_HEADERS
 	xep0232handler.h
 	pepmicroblog.h
 	vcardlisteditdialog.h
+	regformhandlerwidget.h
+	gwoptionsdialog.h
+	clientconnectionerrormgr.h
+	accstatusrestorer.h
+	accountsettingsholder.h
 	xmppannotationsiq.h
 	xmppannotationsmanager.h
 	xmppbobiq.h
@@ -174,6 +184,7 @@ SET (XOOX_FORMS
 	commandslistpage.ui
 	commandresultpage.ui
 	vcardlisteditdialog.ui
+	gwoptionsdialog.ui
 	)
 SET (XOOX_RESOURCES azothxooxresources.qrc)
 

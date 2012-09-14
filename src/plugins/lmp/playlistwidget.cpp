@@ -28,7 +28,10 @@
 #include <QMessageBox>
 #include <QClipboard>
 #include <QApplication>
+#include <QKeyEvent>
+#include <QSortFilterProxyModel>
 #include <util/util.h>
+#include <util/gui/clearlineeditaddon.h>
 #include "player.h"
 #include "playlistdelegate.h"
 #include "xmlsettingsmanager.h"
@@ -43,9 +46,98 @@ namespace LeechCraft
 {
 namespace LMP
 {
+	namespace
+	{
+		class PlaylistTreeEventFilter : public QObject
+		{
+			Player *Player_;
+			QTreeView *View_;
+			QSortFilterProxyModel *PlaylistFilter_;
+			QLineEdit *FilterLine_;
+			QAction *FilterToggle_;
+		public:
+			PlaylistTreeEventFilter (Player* player,
+					QTreeView *view,
+					QSortFilterProxyModel *filter,
+					QLineEdit *filterLine,
+					QAction *filterToggle,
+					QObject *parent = 0)
+			: QObject (parent)
+			, Player_ (player)
+			, View_ (view)
+			, PlaylistFilter_ (filter)
+			, FilterLine_ (filterLine)
+			, FilterToggle_ (filterToggle)
+			{
+			}
+
+			bool eventFilter (QObject*, QEvent *e)
+			{
+				if (e->type () != QEvent::KeyRelease)
+					return false;
+
+				const auto key = static_cast<QKeyEvent*> (e)->key ();
+				if (key == Qt::Key_Enter || key == Qt::Key_Return || key == Qt::Key_Space)
+				{
+					Player_->play (PlaylistFilter_->mapToSource (View_->currentIndex ()));
+					return true;
+				}
+
+				if (key == Qt::Key_F &&
+						static_cast<QKeyEvent*> (e)->modifiers () == Qt::CTRL)
+				{
+					FilterLine_->setVisible (!FilterLine_->isVisible ());
+					FilterToggle_->toggle ();
+					return true;
+				}
+
+				return false;
+			}
+		};
+
+		class TreeFilterModel : public QSortFilterProxyModel
+		{
+		public:
+			TreeFilterModel (QObject *parent = 0)
+			: QSortFilterProxyModel (parent)
+			{
+				setDynamicSortFilter (true);
+			}
+		protected:
+			bool filterAcceptsRow (int row, const QModelIndex& parent) const
+			{
+				const auto& str = filterRegExp ().pattern ();
+				if (str.isEmpty ())
+					return true;
+
+				auto check = [&str] (const QString& string)
+				{
+					return string.contains (str, Qt::CaseInsensitive);
+				};
+
+				const auto& idx = sourceModel ()->index (row, 0, parent);
+				const auto& info = idx.data (Player::Role::Info).value<MediaInfo> ();
+				if (check (info.Artist_) ||
+					check (info.Album_) ||
+					info.Year_ == str.toInt ())
+					return true;
+
+				if (parent.isValid () && check (info.Title_))
+					return true;
+
+				for (int i = 0, rc = sourceModel ()->rowCount (idx); i < rc; ++i)
+					if (filterAcceptsRow (i, idx))
+						return true;
+
+				return false;
+			}
+		};
+	}
+
 	PlaylistWidget::PlaylistWidget (QWidget *parent)
 	: QWidget (parent)
 	, PlaylistToolbar_ (new QToolBar ())
+	, PlaylistFilter_ (new TreeFilterModel (this))
 	, UndoStack_ (new QUndoStack (this))
 	, Player_ (0)
 	, ActionRemoveSelected_ (0)
@@ -55,8 +147,31 @@ namespace LMP
 	{
 		Ui_.setupUi (this);
 
+		new Util::ClearLineEditAddon (Core::Instance ().GetProxy (), Ui_.SearchPlaylist_);
+
 		Ui_.BufferProgress_->hide ();
 		Ui_.Playlist_->setItemDelegate (new PlaylistDelegate (Ui_.Playlist_, Ui_.Playlist_));
+
+		connect (Ui_.SearchPlaylist_,
+				SIGNAL (textChanged (QString)),
+				PlaylistFilter_,
+				SLOT (setFilterFixedString (QString)));
+
+		connect (PlaylistFilter_,
+				SIGNAL (rowsInserted (QModelIndex, int, int)),
+				Ui_.Playlist_,
+				SLOT (expandAll ()),
+				Qt::QueuedConnection);
+		connect (PlaylistFilter_,
+				SIGNAL (modelReset ()),
+				Ui_.Playlist_,
+				SLOT (expandAll ()),
+				Qt::QueuedConnection);
+		connect (PlaylistFilter_,
+				SIGNAL (modelReset ()),
+				this,
+				SLOT (checkSelections ()),
+				Qt::QueuedConnection);
 	}
 
 	void PlaylistWidget::SetPlayer (Player *player)
@@ -68,16 +183,17 @@ namespace LMP
 				this,
 				SLOT (handleBufferStatus (int)));
 
-		Ui_.Playlist_->setModel (Player_->GetPlaylistModel ());
+		PlaylistFilter_->setSourceModel (Player_->GetPlaylistModel ());
+		Ui_.Playlist_->setModel (PlaylistFilter_);
 		Ui_.Playlist_->expandAll ();
 
 		connect (Ui_.Playlist_,
 				SIGNAL (doubleClicked (QModelIndex)),
-				Player_,
+				this,
 				SLOT (play (QModelIndex)));
 		connect (Player_,
 				SIGNAL (insertedAlbum (QModelIndex)),
-				Ui_.Playlist_,
+				this,
 				SLOT (expand (QModelIndex)));
 
 		Ui_.PlaylistLayout_->addWidget (PlaylistToolbar_);
@@ -102,6 +218,12 @@ namespace LMP
 				SLOT (updateStatsLabel ()),
 				Qt::QueuedConnection);
 		updateStatsLabel ();
+
+		Ui_.Playlist_->installEventFilter (new PlaylistTreeEventFilter (Player_,
+					Ui_.Playlist_,
+					PlaylistFilter_,
+					Ui_.SearchPlaylist_,
+					ActionToggleSearch_));
 	}
 
 	void PlaylistWidget::InitToolbarActions ()
@@ -140,10 +262,55 @@ namespace LMP
 
 		PlaylistToolbar_->addSeparator ();
 
+		ActionMoveTop_ = new QAction (tr ("Move tracks to top"), Ui_.Playlist_);
+		ActionMoveTop_->setProperty ("ActionIcon", "go-top");
+		connect (ActionMoveTop_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleMoveTop ()));
+
+		ActionMoveUp_ = new QAction (tr ("Move tracks up"), Ui_.Playlist_);
+		ActionMoveUp_->setProperty ("ActionIcon", "go-up");
+		ActionMoveUp_->setShortcut (QString ("Ctrl+Up"));
+		connect (ActionMoveUp_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleMoveUp ()));
+
+		ActionMoveDown_ = new QAction (tr ("Move tracks down"), Ui_.Playlist_);
+		ActionMoveDown_->setProperty ("ActionIcon", "go-down");
+		ActionMoveDown_->setShortcut (QString ("Ctrl+Down"));
+		connect (ActionMoveDown_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleMoveDown ()));
+
+		ActionMoveBottom_ = new QAction (tr ("Move tracks to bottom"), Ui_.Playlist_);
+		ActionMoveBottom_->setProperty ("ActionIcon", "go-bottom");
+		connect (ActionMoveBottom_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleMoveBottom ()));
+
+		auto moveUpButton = new QToolButton;
+		moveUpButton->setDefaultAction (ActionMoveUp_);
+		moveUpButton->setMenu (new QMenu);
+		moveUpButton->menu ()->addAction (ActionMoveTop_);
+
+		auto moveDownButton = new QToolButton;
+		moveDownButton->setDefaultAction (ActionMoveDown_);
+		moveDownButton->setMenu (new QMenu);
+		moveDownButton->menu ()->addAction (ActionMoveBottom_);
+
 		SetPlayModeButton ();
 		SetSortOrderButton ();
 
-		PlaylistToolbar_->addAction (Util::CreateSeparator (this));
+		MoveUpButtonAction_ = PlaylistToolbar_->addWidget (moveUpButton);
+		MoveDownButtonAction_ = PlaylistToolbar_->addWidget (moveDownButton);
+		EnableMoveButtons (false);
+
+		PlaylistToolbar_->addSeparator ();
+
 		auto undo = UndoStack_->createUndoAction (this);
 		undo->setProperty ("ActionIcon", "edit-undo");
 		undo->setShortcut (QKeySequence ("Ctrl+Z"));
@@ -288,19 +455,29 @@ namespace LMP
 				this,
 				SLOT (showAlbumArt ()));
 
-		ActionMoveUp_ = new QAction (tr ("Move tracks up"), Ui_.Playlist_);
-		ActionMoveUp_->setProperty ("ActionIcon", "go-up");
-		connect (ActionMoveUp_,
-				SIGNAL (triggered ()),
-				this,
-				SLOT (handleMoveUp ()));
+		ActionToggleSearch_ = new QAction (tr ("Toggle search field"), Ui_.Playlist_);
+		ActionToggleSearch_->setShortcut (QKeySequence::Find);
+		ActionToggleSearch_->setCheckable (true);
+		connect (ActionToggleSearch_,
+				SIGNAL (toggled (bool)),
+				Ui_.SearchPlaylist_,
+				SLOT (setVisible (bool)));
+		Ui_.SearchPlaylist_->setVisible (false);
+	}
 
-		ActionMoveDown_ = new QAction (tr ("Move tracks down"), Ui_.Playlist_);
-		ActionMoveDown_->setProperty ("ActionIcon", "go-down");
-		connect (ActionMoveDown_,
-				SIGNAL (triggered ()),
-				this,
-				SLOT (handleMoveDown ()));
+	void PlaylistWidget::EnableMoveButtons (bool enabled)
+	{
+		MoveUpButtonAction_->setVisible (enabled);
+		MoveDownButtonAction_->setVisible (enabled);
+	}
+
+	QList<Phonon::MediaSource> PlaylistWidget::GetSelected () const
+	{
+		const auto& selected = Ui_.Playlist_->selectionModel ()->selectedRows ();
+		QList<Phonon::MediaSource> sources;
+		Q_FOREACH (const auto& index, selected)
+			sources += Player_->GetIndexSources (PlaylistFilter_->mapToSource (index));
+		return sources;
 	}
 
 	void PlaylistWidget::SelectSources (const QList<Phonon::MediaSource>& sources)
@@ -308,7 +485,8 @@ namespace LMP
 		auto tryIdx = [&sources, this] (const QModelIndex& idx)
 		{
 			if (sources.contains (Player_->GetIndexSources (idx).value (0)))
-				Ui_.Playlist_->selectionModel ()->select (idx, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+				Ui_.Playlist_->selectionModel ()->select (PlaylistFilter_->mapFromSource (idx),
+						QItemSelectionModel::Select | QItemSelectionModel::Rows);
 		};
 
 		auto plModel = Player_->GetPlaylistModel ();
@@ -323,6 +501,15 @@ namespace LMP
 				for (int j = 0; j < tracks; ++j)
 					tryIdx (plModel->index (j, 0, albumIdx));
 		}
+	}
+
+	void PlaylistWidget::focusIndex (const QModelIndex& index)
+	{
+		if (!XmlSettingsManager::Instance ().property ("AutocenterCurrentTrack").toBool ())
+			return;
+
+		Ui_.Playlist_->scrollTo (PlaylistFilter_->mapFromSource (index),
+				QAbstractItemView::PositionAtCenter);
 	}
 
 	void PlaylistWidget::on_Playlist__customContextMenuRequested (const QPoint& pos)
@@ -343,8 +530,7 @@ namespace LMP
 
 		menu->addSeparator ();
 
-		menu->addAction (ActionMoveUp_);
-		menu->addAction (ActionMoveDown_);
+		menu->addAction (ActionToggleSearch_);
 
 		menu->setAttribute (Qt::WA_DeleteOnClose);
 
@@ -368,6 +554,25 @@ namespace LMP
 			}
 	}
 
+	void PlaylistWidget::play (const QModelIndex& index)
+	{
+		Player_->play (PlaylistFilter_->mapToSource (index));
+	}
+
+	void PlaylistWidget::expand (const QModelIndex& index)
+	{
+		Ui_.Playlist_->expand (PlaylistFilter_->mapFromSource (index));
+	}
+
+	void PlaylistWidget::checkSelections ()
+	{
+		if (NextResetSelect_.isEmpty () || !PlaylistFilter_->rowCount ())
+			return;
+
+		SelectSources (NextResetSelect_);
+		NextResetSelect_.clear ();
+	}
+
 	void PlaylistWidget::handleBufferStatus (int status)
 	{
 		Ui_.BufferProgress_->setValue (status);
@@ -382,6 +587,8 @@ namespace LMP
 				[] (decltype (intVars.front ()) var)
 					{ return static_cast<Player::SortingCriteria> (var.toInt ()); });
 		Player_->SetSortingCriteria (criteria);
+
+		EnableMoveButtons (criteria.isEmpty ());
 	}
 
 	void PlaylistWidget::removeSelectedSongs ()
@@ -401,7 +608,7 @@ namespace LMP
 				tr ("Remove %n song(s)", 0, indexes.size ());
 
 		Q_FOREACH (const auto& idx, indexes)
-			removedSources << Player_->GetIndexSources (idx);
+			removedSources << Player_->GetIndexSources (PlaylistFilter_->mapToSource (idx));
 
 		auto cmd = new PlaylistUndoCommand (title, removedSources, Player_);
 		UndoStack_->push (cmd);
@@ -409,7 +616,7 @@ namespace LMP
 
 	void PlaylistWidget::setStopAfterSelected ()
 	{
-		auto index = Ui_.Playlist_->currentIndex ();
+		auto index = PlaylistFilter_->mapToSource (Ui_.Playlist_->currentIndex ());
 		if (!index.isValid ())
 			return;
 
@@ -436,10 +643,7 @@ namespace LMP
 
 	void PlaylistWidget::handleMoveUp ()
 	{
-		const auto& selected = Ui_.Playlist_->selectionModel ()->selectedRows ();
-		QList<Phonon::MediaSource> sources;
-		Q_FOREACH (const auto& index, selected)
-			sources += Player_->GetIndexSources (index);
+		const auto& sources = GetSelected ();
 
 		if (sources.isEmpty ())
 			return;
@@ -451,15 +655,23 @@ namespace LMP
 
 		Player_->ReplaceQueue (allSrcs, false);
 
-		SelectSources (sources);
+		NextResetSelect_ = sources;
+	}
+
+	void PlaylistWidget::handleMoveTop ()
+	{
+		const auto& sources = GetSelected ();
+		auto allSrcs = Player_->GetQueue ();
+		Q_FOREACH (const auto& source, sources)
+			allSrcs.removeAll (source);
+
+		Player_->ReplaceQueue (sources + allSrcs, false);
+		NextResetSelect_ = sources;
 	}
 
 	void PlaylistWidget::handleMoveDown ()
 	{
-		const auto& selected = Ui_.Playlist_->selectionModel ()->selectedRows ();
-		QList<Phonon::MediaSource> sources;
-		Q_FOREACH (const auto& index, selected)
-			sources += Player_->GetIndexSources (index);
+		const auto& sources = GetSelected ();
 
 		if (sources.isEmpty ())
 			return;
@@ -471,7 +683,18 @@ namespace LMP
 
 		Player_->ReplaceQueue (allSrcs, false);
 
-		SelectSources (sources);
+		NextResetSelect_ = sources;
+	}
+
+	void PlaylistWidget::handleMoveBottom ()
+	{
+		const auto& sources = GetSelected ();
+		auto allSrcs = Player_->GetQueue ();
+		Q_FOREACH (const auto& source, sources)
+			allSrcs.removeAll (source);
+
+		Player_->ReplaceQueue (allSrcs + sources, false);
+		NextResetSelect_ = sources;
 	}
 
 	void PlaylistWidget::handleSavePlaylist ()
@@ -483,17 +706,31 @@ namespace LMP
 			return;
 
 		auto mgr = Core::Instance ().GetPlaylistManager ()->GetStaticManager ();
+
+		if (mgr->EnumerateCustomPlaylists ().contains (name) &&
+				QMessageBox::question (this,
+						"LeechCraft",
+						tr ("Playlist %1 already exists. Do you want to overwrite it?")
+							.arg ("<em>" + name + "</em>"),
+						QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
+			return;
+
 		mgr->SaveCustomPlaylist (name, Player_->GetQueue ());
 	}
 
 	void PlaylistWidget::loadFromDisk ()
 	{
+		auto prevPath = XmlSettingsManager::Instance ()
+				.Property ("PrevAddToPlaylistPath", QDir::homePath ()).toString ();
 		const auto& files = QFileDialog::getOpenFileNames (this,
 				tr ("Load files"),
-				QDir::homePath (),
+				prevPath,
 				tr ("Music files (*.ogg *.flac *.mp3 *.wav);;Playlists (*.pls *.m3u *.m3u8 *.xspf);;All files (*.*)"));
 		if (files.isEmpty ())
 			return;
+
+		prevPath = QFileInfo (files.at (0)).absoluteDir ().absolutePath ();
+		XmlSettingsManager::Instance ().setProperty ("PrevAddToPlaylistPath", prevPath);
 
 		Player_->Enqueue (files);
 	}

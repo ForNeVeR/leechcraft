@@ -20,8 +20,6 @@
 #define PLUGINS_AZOTH_PLUGINS_XOOX_INBANDACCOUNTREGSECONDPAGE_H
 #include <QWizardPage>
 #include <QXmppClient.h>
-#include "legacyformbuilder.h"
-#include "formbuilder.h"
 
 namespace LeechCraft
 {
@@ -30,34 +28,15 @@ namespace Azoth
 namespace Xoox
 {
 	class InBandAccountRegFirstPage;
-	class XMPPBobManager;
+	class RegFormHandlerWidget;
 
 	class InBandAccountRegSecondPage : public QWizardPage
 	{
 		Q_OBJECT
 
 		QXmppClient *Client_;
-		XMPPBobManager *BobManager_;
+		RegFormHandlerWidget *RegForm_;
 		InBandAccountRegFirstPage *FirstPage_;
-		LegacyFormBuilder LFB_;
-		FormBuilder FB_;
-		QWidget *Widget_;
-
-		enum FormType
-		{
-			FTLegacy,
-			FTNew
-		} FormType_;
-
-		enum State
-		{
-			SError,
-			SIdle,
-			SConnecting,
-			SFetchingForm,
-			SAwaitingUserInput,
-			SAwaitingRegistrationResult
-		} State_;
 	public:
 		InBandAccountRegSecondPage (InBandAccountRegFirstPage*, QWidget* = 0);
 
@@ -68,16 +47,8 @@ namespace Xoox
 
 		bool isComplete () const;
 		void initializePage ();
-	private:
-		void Clear ();
-		void ShowMessage (const QString&);
-		void SetState (State);
-		void HandleRegForm (const QXmppIq&);
-		void HandleRegResult (const QXmppIq&);
 	private slots:
 		void handleConnected ();
-		void handleError (QXmppClient::Error);
-		void handleIqReceived (const QXmppIq&);
 	signals:
 		void successfulReg ();
 		void regError (const QString&);

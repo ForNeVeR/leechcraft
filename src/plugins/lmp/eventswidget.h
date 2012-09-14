@@ -44,9 +44,14 @@ namespace LMP
 		QList<Media::IEventsProvider*> Providers_;
 	public:
 		EventsWidget (QWidget* = 0);
+
+		void InitializeProviders ();
 	private slots:
 		void on_Provider__activated (int);
 		void handleEvents (const Media::EventInfos_t&);
+		void handleAttendSure (int);
+		void handleAttendMaybe (int);
+		void handleUnattend (int);
 	};
 }
 }

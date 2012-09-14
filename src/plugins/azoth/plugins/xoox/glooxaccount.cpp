@@ -24,8 +24,15 @@
 #include <util/util.h>
 #include <interfaces/azoth/iprotocol.h>
 #include <interfaces/azoth/iproxyobject.h>
+
+#ifdef ENABLE_MEDIACALLS
+#include "mediacall.h"
+#endif
+#ifdef ENABLE_CRYPT
+#include "pgpmanager.h"
+#endif
+
 #include "glooxprotocol.h"
-#include "glooxaccountconfigurationdialog.h"
 #include "core.h"
 #include "clientconnection.h"
 #include "glooxmessage.h"
@@ -40,17 +47,9 @@
 #include "userlocation.h"
 #include "privacylistsconfigdialog.h"
 #include "pepmicroblog.h"
-
-#ifdef ENABLE_MEDIACALLS
-#include "mediacall.h"
-#endif
-
 #include "jabbersearchsession.h"
 #include "bookmarkeditwidget.h"
-
-#ifdef ENABLE_CRYPT
-#include "pgpmanager.h"
-#endif
+#include "accountsettingsholder.h"
 
 namespace LeechCraft
 {
@@ -70,20 +69,10 @@ namespace Xoox
 	: QObject (parent)
 	, Name_ (name)
 	, ParentProtocol_ (qobject_cast<GlooxProtocol*> (parent))
-	, Port_ (-1)
-	, KAParams_ (qMakePair (90, 60))
+	, SettingsHolder_ (new AccountSettingsHolder (this))
 	, SelfVCardAction_ (new QAction (tr ("Self VCard..."), this))
 	, PrivacyDialogAction_ (new QAction (tr ("Privacy lists..."), this))
 	{
-		AccState_.State_ = SOffline;
-		AccState_.Priority_ = -1;
-
-		connect (this,
-				SIGNAL (scheduleClientDestruction ()),
-				this,
-				SLOT (handleDestroyClient ()),
-				Qt::QueuedConnection);
-
 		SelfVCardAction_->setProperty ("ActionIcon", "text-x-vcard");
 		PrivacyDialogAction_->setProperty ("ActionIcon", "emblem-locked");
 
@@ -95,20 +84,22 @@ namespace Xoox
 				SIGNAL (triggered ()),
 				this,
 				SLOT (showPrivacyDialog ()));
+
+		connect (SettingsHolder_,
+				SIGNAL (accountSettingsChanged ()),
+				this,
+				SIGNAL (accountSettingsChanged ()));
+		connect (SettingsHolder_,
+				SIGNAL (jidChanged (QString)),
+				this,
+				SLOT (regenAccountIcon (QString)));
 	}
 
 	void GlooxAccount::Init ()
 	{
-		ClientConnection_.reset (new ClientConnection (JID_ + "/" + Resource_,
-						this));
+		ClientConnection_.reset (new ClientConnection (this));
 
-		if (!OurPhotoHash_.isEmpty ())
-			ClientConnection_->SetOurPhotoHash (OurPhotoHash_);
-
-		ClientConnection_->SetKAParams (KAParams_);
-
-		TransferManager_.reset (new TransferManager (ClientConnection_->
-						GetTransferManager (),
+		TransferManager_.reset (new TransferManager (ClientConnection_->GetTransferManager (),
 					this));
 
 		connect (ClientConnection_.get (),
@@ -179,7 +170,12 @@ namespace Xoox
 				SLOT (handleIncomingCall (QXmppCall*)));
 #endif
 
-		RegenAccountIcon ();
+		regenAccountIcon (SettingsHolder_->GetJID ());
+	}
+
+	AccountSettingsHolder* GlooxAccount::GetSettings () const
+	{
+		return SettingsHolder_;
 	}
 
 	QObject* GlooxAccount::GetObject ()
@@ -211,17 +207,7 @@ namespace Xoox
 
 	QString GlooxAccount::GetOurNick () const
 	{
-		return Nick_.isEmpty () ? JID_ : Nick_;
-	}
-
-	QString GlooxAccount::GetHost () const
-	{
-		return Host_;
-	}
-
-	int GlooxAccount::GetPort () const
-	{
-		return Port_;
+		return SettingsHolder_->GetNick ();
 	}
 
 	void GlooxAccount::RenameAccount (const QString& name)
@@ -233,7 +219,7 @@ namespace Xoox
 
 	QByteArray GlooxAccount::GetAccountID () const
 	{
-		return ParentProtocol_->GetProtocolID () + "_" + JID_.toUtf8 ();
+		return ParentProtocol_->GetProtocolID () + "_" + SettingsHolder_->GetJID ().toUtf8 ();
 	}
 
 	QList<QAction*> GlooxAccount::GetActions () const
@@ -251,69 +237,15 @@ namespace Xoox
 
 	void GlooxAccount::OpenConfigurationDialog ()
 	{
-		std::auto_ptr<GlooxAccountConfigurationDialog> dia (new GlooxAccountConfigurationDialog (0));
-		if (!JID_.isEmpty ())
-			dia->W ()->SetJID (JID_);
-		if (!Nick_.isEmpty ())
-			dia->W ()->SetNick (Nick_);
-		if (!Resource_.isEmpty ())
-			dia->W ()->SetResource (Resource_);
-		if (!Host_.isEmpty ())
-			dia->W ()->SetHost (Host_);
-		if (Port_ >= 0)
-			dia->W ()->SetPort (Port_);
-		dia->W ()->SetPriority (AccState_.Priority_);
-
-		dia->W ()->SetKAInterval (KAParams_.first);
-		dia->W ()->SetKATimeout (KAParams_.second);
-
-		if (dia->exec () == QDialog::Rejected)
-			return;
-
-		FillSettings (dia->W ());
-	}
-
-	void GlooxAccount::FillSettings (GlooxAccountConfigurationWidget *w)
-	{
-		State lastState = AccState_.State_;
-
-		const bool priorityChanged = AccState_.Priority_ != w->GetPriority ();
-		if (lastState != SOffline &&
-			(JID_ != w->GetJID () ||
-			 Resource_ != w->GetResource () ||
-			 Host_ != w->GetHost () ||
-			 Port_ != w->GetPort ()))
-			ChangeState (EntryStatus (SOffline, AccState_.Status_));
-
-		if (ClientConnection_)
-			ClientConnection_->SetOurJID (w->GetJID () + "/" + w->GetResource ());
-
-		JID_ = w->GetJID ();
-		Nick_ = w->GetNick ();
-		Resource_ = w->GetResource ();
-		AccState_.Priority_ = w->GetPriority ();
-		Host_ = w->GetHost ();
-		Port_ = w->GetPort ();
-
-		RegenAccountIcon ();
-
-		const QString& pass = w->GetPassword ();
-		if (!pass.isNull ())
-			Core::Instance ().GetPluginProxy ()->SetPassword (pass, this);
-
-		KAParams_ = qMakePair (w->GetKAInterval (), w->GetKATimeout ());
-		if (ClientConnection_)
-			ClientConnection_->SetKAParams (KAParams_);
-
-		emit accountSettingsChanged ();
-
-		if (lastState != SOffline || priorityChanged)
-			ChangeState (EntryStatus (lastState, AccState_.Status_));
+		SettingsHolder_->OpenConfigDialog ();
 	}
 
 	EntryStatus GlooxAccount::GetState () const
 	{
-		return EntryStatus (AccState_.State_, AccState_.Status_);
+		const auto& state = ClientConnection_ ?
+				ClientConnection_->GetLastState () :
+				GlooxAccountState ();
+		return EntryStatus (state.State_, state.Status_);
 	}
 
 	void GlooxAccount::ChangeState (const EntryStatus& status)
@@ -322,13 +254,13 @@ namespace Xoox
 				!ClientConnection_)
 			return;
 
-		AccState_.State_ = status.State_;
-		AccState_.Status_ = status.StatusString_;
-
 		if (!ClientConnection_)
 			Init ();
 
-		ClientConnection_->SetState (AccState_);
+		auto state = ClientConnection_->GetLastState ();
+		state.State_ = status.State_;
+		state.Status_ = status.StatusString_;
+		ClientConnection_->SetState (state);
 	}
 
 	void GlooxAccount::Authorize (QObject *entryObj)
@@ -380,7 +312,7 @@ namespace Xoox
 	QObject* GlooxAccount::GetSelfContact () const
 	{
 		return ClientConnection_ ?
-				ClientConnection_->GetCLEntry (JID_, QString ()) :
+				ClientConnection_->GetCLEntry (SettingsHolder_->GetJID (), QString ()) :
 				0;
 	}
 
@@ -683,14 +615,9 @@ namespace Xoox
 	}
 #endif
 
-	QString GlooxAccount::GetJID () const
-	{
-		return JID_;
-	}
-
 	QString GlooxAccount::GetNick () const
 	{
-		return Nick_.isEmpty () ? JID_ : Nick_;
+		return SettingsHolder_->GetNick ();
 	}
 
 	void GlooxAccount::JoinRoom (const QString& jid, const QString& nick)
@@ -744,14 +671,7 @@ namespace Xoox
 
 	void GlooxAccount::UpdateOurPhotoHash (const QByteArray& hash)
 	{
-		if (hash == OurPhotoHash_)
-			return;
-
-		OurPhotoHash_ = hash;
-		ClientConnection_->SetOurPhotoHash (hash);
-		ChangeState (GetState ());
-
-		emit accountSettingsChanged ();
+		SettingsHolder_->SetPhotoHash (hash);
 	}
 
 	void GlooxAccount::CreateSDForResource (const QString& resource)
@@ -763,21 +683,14 @@ namespace Xoox
 
 	QByteArray GlooxAccount::Serialize () const
 	{
-		quint16 version = 4;
+		quint16 version = 6;
 
 		QByteArray result;
 		{
 			QDataStream ostr (&result, QIODevice::WriteOnly);
 			ostr << version
-				<< Name_
-				<< JID_
-				<< Nick_
-				<< Resource_
-				<< AccState_.Priority_
-				<< Host_
-				<< Port_
-				<< KAParams_
-				<< OurPhotoHash_;
+				<< Name_;
+			SettingsHolder_->Serialize (ostr);
 		}
 
 		return result;
@@ -790,7 +703,7 @@ namespace Xoox
 		QDataStream in (data);
 		in >> version;
 
-		if (version < 1 || version > 4)
+		if (version < 1 || version > 6)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unknown version"
@@ -801,17 +714,7 @@ namespace Xoox
 		QString name;
 		in >> name;
 		GlooxAccount *result = new GlooxAccount (name, parent);
-		in >> result->JID_
-			>> result->Nick_
-			>> result->Resource_
-			>> result->AccState_.Priority_;
-		if (version >= 2)
-			in >> result->Host_
-				>> result->Port_;
-		if (version >= 3)
-			in >> result->KAParams_;
-		if (version >= 4)
-			in >> result->OurPhotoHash_;
+		result->GetSettings ()->Deserialize (in, version);
 		result->Init ();
 
 		return result;
@@ -832,28 +735,28 @@ namespace Xoox
 		return proxy->GetAccountPassword (this, !authfailure);
 	}
 
-	void GlooxAccount::RegenAccountIcon ()
+	void GlooxAccount::regenAccountIcon (const QString& jid)
 	{
 		AccountIcon_ = QIcon ();
 
-		if (JID_.contains ("google") ||
-				JID_.contains ("gmail"))
+		if (jid.contains ("google") ||
+				jid.contains ("gmail"))
 			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/gtalk.svg");
-		else if (JID_.contains ("facebook") ||
-				JID_.contains ("fb.com"))
+		else if (jid.contains ("facebook") ||
+				jid.contains ("fb.com"))
 			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/facebook.svg");
-		else if (JID_.contains ("vk.com"))
+		else if (jid.contains ("vk.com"))
 			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/vk.svg");
-		else if (JID_.contains ("odnoklassniki"))
+		else if (jid.contains ("odnoklassniki"))
 			AccountIcon_ = QIcon (":/plugins/azoth/plugins/xoox/resources/images/special/odnoklassniki.svg");
 	}
 
 	QString GlooxAccount::GetDefaultReqHost () const
 	{
-		if (!Host_.isEmpty ())
-			return Host_;
+		if (!SettingsHolder_->GetHost ().isEmpty ())
+			return SettingsHolder_->GetHost ();
 
-		const auto& second = JID_.split ('@', QString::SkipEmptyParts).value (1);
+		const auto& second = SettingsHolder_->GetJID ().split ('@', QString::SkipEmptyParts).value (1);
 		const int slIdx = second.indexOf ('/');
 		return slIdx >= 0 ? second.left (slIdx) : second;
 	}
@@ -874,7 +777,7 @@ namespace Xoox
 		if (!pwd.isNull ())
 		{
 			ClientConnection_->SetPassword (pwd);
-			ChangeState (EntryStatus (AccState_.State_, AccState_.Status_));
+			ClientConnection_->SetState (ClientConnection_->GetLastState ());
 		}
 	}
 
@@ -888,7 +791,8 @@ namespace Xoox
 		if (!ClientConnection_)
 			return;
 
-		auto entry = qobject_cast<EntryBase*> (ClientConnection_->GetCLEntry (JID_));
+		const auto& jid = SettingsHolder_->GetJID ();
+		auto entry = qobject_cast<EntryBase*> (ClientConnection_->GetCLEntry (jid));
 		if (entry)
 			entry->ShowInfo ();
 	}
@@ -898,11 +802,6 @@ namespace Xoox
 		PrivacyListsManager *mgr = ClientConnection_->GetPrivacyListsManager ();
 		PrivacyListsConfigDialog *plcd = new PrivacyListsConfigDialog (mgr);
 		plcd->show ();
-	}
-
-	void GlooxAccount::handleDestroyClient ()
-	{
-		ClientConnection_.reset ();
 	}
 
 #ifdef ENABLE_MEDIACALLS

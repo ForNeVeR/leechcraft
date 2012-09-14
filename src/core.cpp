@@ -28,10 +28,12 @@
 #include <QAction>
 #include <QToolBar>
 #include <QDir>
+#include <QCryptographicHash>
 #include <QDesktopServices>
 #include <QAbstractNetworkCache>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QInputDialog>
 #include <util/util.h>
 #include <util/customcookiejar.h>
 #include <util/defaulthookproxy.h>
@@ -230,13 +232,7 @@ namespace LeechCraft
 
 	void Core::Setup (QObject *plugin)
 	{
-		const IJobHolder *ijh = qobject_cast<IJobHolder*> (plugin);
-
 		InitDynamicSignals (plugin);
-
-		if (ijh)
-			InitJobHolder (plugin);
-
 		if (qobject_cast<IHaveTabs*> (plugin))
 			InitMultiTab (plugin);
 	}
@@ -479,6 +475,34 @@ namespace LeechCraft
 			CustomCookieJar *jar = static_cast<CustomCookieJar*> (NetworkAccessManager_->cookieJar ());
 			jar->setAllCookies (QList<QNetworkCookie> ());
 			jar->Save ();
+		}
+		else if (name == "SetStartupPassword")
+		{
+			if (QMessageBox::question (ReallyMainWindow_,
+						"LeechCraft",
+						tr ("This security measure is easily circumvented by modifying "
+							"LeechCraft's settings files (or registry on Windows) in a text "
+							"editor. For proper and robust protection consider using some "
+							"third-party tools like <em>encfs</em> (http://www.arg0.net/encfs/)."
+							"<br/><br/>Accept this dialog if you understand the above and "
+							"this kind of security through obscurity is OK for you."),
+						QMessageBox::Ok | QMessageBox::Cancel) != QMessageBox::Ok)
+				return;
+
+			bool ok = false;
+			const auto& newPass = QInputDialog::getText (ReallyMainWindow_,
+					"LeechCraft",
+					tr ("Enter new startup password:"),
+					QLineEdit::Password,
+					QString (),
+					&ok);
+			if (!ok)
+				return;
+
+			QString contents;
+			if (!newPass.isEmpty ())
+				contents = QCryptographicHash::hash (newPass.toUtf8 (), QCryptographicHash::Sha1).toHex ();
+			XmlSettingsManager::Instance ()->setProperty ("StartupPassword", contents);
 		}
 	}
 
@@ -830,10 +854,6 @@ namespace LeechCraft
 					this,
 					SLOT (handleGotEntity (LeechCraft::Entity,
 							int*, QObject**)));
-	}
-
-	void Core::InitJobHolder (QObject *plugin)
-	{
 	}
 
 	void Core::InitEmbedTab (QObject *plugin)

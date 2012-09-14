@@ -30,6 +30,7 @@
 #include <QMessageBox>
 #include <phonon/seekslider.h>
 #include <util/util.h>
+#include <util/gui/clearlineeditaddon.h>
 #include <interfaces/core/ipluginsmanager.h>
 #include <interfaces/media/iaudioscrobbler.h>
 #include <interfaces/media/isimilarartists.h>
@@ -42,8 +43,8 @@
 #include "localcollection.h"
 #include "collectiondelegate.h"
 #include "xmlsettingsmanager.h"
-#include "playlistmanager.h"
 #include "aalabeleventfilter.h"
+#include "nowplayingpixmaphandler.h"
 
 #ifdef ENABLE_MPRIS
 #include "mpris/instance.h"
@@ -93,11 +94,23 @@ namespace LMP
 	, TabToolbar_ (new QToolBar ())
 	, PlayPause_ (0)
 	, TrayMenu_ (new QMenu ("LMP", this))
+	, NPPixmapHandler_ (new NowPlayingPixmapHandler (this))
 	{
 		Ui_.setupUi (this);
 		Ui_.MainSplitter_->setStretchFactor (0, 2);
 		Ui_.MainSplitter_->setStretchFactor (1, 1);
 		Ui_.RadioWidget_->SetPlayer (Player_);
+
+		NPPixmapHandler_->AddSetter ([this] (const QPixmap& px, const QString&) { Ui_.NPWidget_->SetAlbumArt (px); });
+		NPPixmapHandler_->AddSetter ([this] (const QPixmap& px, const QString& path)
+				{
+					const QPixmap& scaled = px.scaled (Ui_.NPArt_->minimumSize (),
+							Qt::KeepAspectRatio, Qt::SmoothTransformation);
+					Ui_.NPArt_->setPixmap (scaled);
+					Ui_.NPArt_->setProperty ("LMP/CoverPath", path);
+				});
+
+		new Util::ClearLineEditAddon (Core::Instance ().GetProxy (), Ui_.CollectionFilter_);
 
 		SetupNavButtons ();
 
@@ -107,9 +120,17 @@ namespace LMP
 		Ui_.NPArt_->installEventFilter (new AALabelEventFilter (coverGetter, this));
 
 		connect (Player_,
+				SIGNAL (playerAvailable (bool)),
+				this,
+				SLOT (handlePlayerAvailable (bool)));
+		connect (Player_,
 				SIGNAL (songChanged (MediaInfo)),
 				this,
 				SLOT (handleSongChanged (MediaInfo)));
+		connect (Player_,
+				SIGNAL (indexChanged (QModelIndex)),
+				Ui_.Playlist_,
+				SLOT (focusIndex (QModelIndex)));
 		connect (Core::Instance ().GetLocalCollection (),
 				SIGNAL (scanStarted (int)),
 				Ui_.ScanProgress_,
@@ -131,7 +152,7 @@ namespace LMP
 				SLOT (handleSongChanged (const MediaInfo&)));
 		SetupToolbar ();
 		SetupCollection ();
-		SetupPlaylistsTab ();
+		Ui_.PLManagerWidget_->SetPlayer (Player_);
 
 		Ui_.Playlist_->SetPlayer (Player_);
 
@@ -142,6 +163,11 @@ namespace LMP
 		XmlSettingsManager::Instance ().RegisterObject ("UseNavTabBar",
 				this, "handleUseNavTabBar");
 		handleUseNavTabBar ();
+
+		connect (Ui_.NPWidget_,
+				SIGNAL (gotArtistImage (QString, QUrl)),
+				NPPixmapHandler_,
+				SLOT (handleGotArtistImage (QString, QUrl)));
 
 #ifdef ENABLE_MPRIS
 		new MPRIS::Instance (this, Player_);
@@ -199,6 +225,9 @@ namespace LMP
 		handleSongChanged (MediaInfo ());
 		Ui_.DevicesBrowser_->InitializeDevices ();
 		Ui_.RadioWidget_->InitializeProviders ();
+		Ui_.EventsWidget_->InitializeProviders ();
+		Ui_.ReleasesWidget_->InitializeProviders ();
+		Ui_.RecommendationsWidget_->InitializeProviders ();
 	}
 
 	void PlayerTab::SetupNavButtons ()
@@ -239,7 +268,8 @@ namespace LMP
 		mkButton (tr ("Current song"), "view-media-lyrics");
 		mkButton (tr ("Collection"), "folder-sound");
 		mkButton (tr ("Playlists"), "view-media-playlist");
-		mkButton (tr ("Social"), "applications-internet");
+		mkButton (tr ("Social"), "system-users");
+		mkButton (tr ("Internet"), "applications-internet");
 		mkButton (tr ("Filesystem"), "document-open");
 		mkButton (tr ("Devices"), "drive-removable-media-usb");
 
@@ -305,6 +335,15 @@ namespace LMP
 				SLOT (handleLoveTrack ()));
 		TabToolbar_->addAction (love);
 
+		QAction *ban = new QAction (tr ("Ban"), this);
+		ban->setProperty ("ActionIcon", "dialog-cancel");
+		ban->setShortcut (QString ("Ctrl+B"));
+		connect (ban,
+				 SIGNAL (triggered ()),
+				 this,
+		   SLOT (handleBanTrack ()));
+		TabToolbar_->addAction (ban);
+
 		TabToolbar_->addSeparator ();
 
 		PlayedTime_ = new QLabel ();
@@ -350,6 +389,9 @@ namespace LMP
 		TrayMenu_->addAction (PlayPause_);
 		TrayMenu_->addAction (stop);
 		TrayMenu_->addAction (next);
+		TrayMenu_->addSeparator ();
+		TrayMenu_->addAction (love);
+		TrayMenu_->addAction (ban);
 		TrayMenu_->addSeparator ();
 		TrayMenu_->addAction (closeLMP);
 		TrayIcon_->setContextMenu (TrayMenu_);
@@ -410,18 +452,6 @@ namespace LMP
 				SIGNAL (textChanged (QString)),
 				CollectionFilterModel_,
 				SLOT (setFilterFixedString (QString)));
-	}
-
-	void PlayerTab::SetupPlaylistsTab ()
-	{
-		auto mgr = Core::Instance ().GetPlaylistManager ();
-		Ui_.PlaylistsTree_->setModel (mgr->GetPlaylistsModel ());
-		Ui_.PlaylistsTree_->expandAll ();
-
-		connect (Ui_.PlaylistsTree_,
-				SIGNAL (doubleClicked (QModelIndex)),
-				this,
-				SLOT (handlePlaylistSelected (QModelIndex)));
 	}
 
 	void PlayerTab::SetNowPlaying (const MediaInfo& info, const QPixmap& px)
@@ -551,19 +581,19 @@ namespace LMP
 
 	void PlayerTab::handleSongChanged (const MediaInfo& info)
 	{
-		const auto& coverPath = FindAlbumArtPath (info.LocalPath_);
+		auto coverPath = FindAlbumArtPath (info.LocalPath_);
 		QPixmap px;
 		if (!coverPath.isEmpty ())
 			px = QPixmap (coverPath);
-		if (px.isNull ())
+
+		const bool isCorrect = !px.isNull ();
+		if (!isCorrect)
+		{
 			px = QIcon::fromTheme ("media-optical").pixmap (128, 128);
+			coverPath.clear ();
+		}
 
-		Ui_.NPWidget_->SetAlbumArt (px);
-		const QPixmap& scaled = px.scaled (Ui_.NPArt_->minimumSize (),
-				Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-		Ui_.NPArt_->setPixmap (scaled);
-		Ui_.NPArt_->setProperty ("LMP/CoverPath", coverPath);
+		NPPixmapHandler_->HandleSongChanged (info, coverPath, px, isCorrect);
 
 		Ui_.NPWidget_->SetTrackInfo (info);
 
@@ -573,7 +603,7 @@ namespace LMP
 
 		if (info.Artist_.isEmpty ())
 		{
-			LastSimilar_.clear ();
+			LastArtist_.clear ();
 			FillSimilar (Media::SimilarityInfos_t ());
 		}
 		else if (!Similars_.contains (info.Artist_))
@@ -596,9 +626,9 @@ namespace LMP
 						SLOT (handleSimilarReady ()));
 			}
 		}
-		else if (info.Artist_ != LastSimilar_)
+		else if (info.Artist_ != LastArtist_)
 		{
-			LastSimilar_ = info.Artist_;
+			LastArtist_ = info.Artist_;
 			FillSimilar (Similars_ [info.Artist_]);
 		}
 	}
@@ -633,6 +663,19 @@ namespace LMP
 				[] (decltype (scrobblers.front ()) s) { s->LoveCurrentTrack (); });
 	}
 
+	void PlayerTab::handleBanTrack ()
+	{
+		if (!XmlSettingsManager::Instance ()
+				.property ("EnableScrobbling").toBool ())
+			return;
+
+		auto scrobblers = Core::Instance ().GetProxy ()->
+					GetPluginsManager ()->GetAllCastableTo<Media::IAudioScrobbler*> ();
+		std::for_each (scrobblers.begin (), scrobblers.end (),
+				[] (decltype (scrobblers.front ()) s) { s->BanCurrentTrack (); });
+		Player_->nextTrack ();
+	}
+
 	void PlayerTab::handleSimilarError ()
 	{
 		qWarning () << Q_FUNC_INFO;
@@ -645,8 +688,8 @@ namespace LMP
 		auto obj = qobject_cast<Media::IPendingSimilarArtists*> (sender ());
 
 		const auto& similar = obj->GetSimilar ();
-		LastSimilar_ = obj->GetSourceArtistName ();
-		Similars_ [LastSimilar_] = similar;
+		LastArtist_ = obj->GetSourceArtistName ();
+		Similars_ [LastArtist_] = similar;
 		FillSimilar (similar);
 	}
 
@@ -669,16 +712,6 @@ namespace LMP
 		if (!Ui_.ScanProgress_->isVisible ())
 			Ui_.ScanProgress_->show ();
 		Ui_.ScanProgress_->setValue (progress);
-	}
-
-	void PlayerTab::handlePlaylistSelected (const QModelIndex& index)
-	{
-		auto mgr = Core::Instance ().GetPlaylistManager ();
-		const auto& sources = mgr->GetSources (index);
-		if (sources.isEmpty ())
-			return;
-
-		Player_->Enqueue (sources, false);
 	}
 
 	void PlayerTab::showCollectionTrackProps ()
@@ -757,19 +790,31 @@ namespace LMP
 	{
 		const auto& idxs = Ui_.CollectionTree_->selectionModel ()->selectedRows ();
 		auto collection = Core::Instance ().GetLocalCollection ();
+
+		QModelIndexList mapped;
 		Q_FOREACH (const auto& src, idxs)
 		{
 			const QModelIndex& index = CollectionFilterModel_->mapToSource (src);
-			if (!index.isValid ())
-				continue;
-			collection->Enqueue (index, Player_);
+			if (index.isValid ())
+				mapped << index;
 		}
+
+		collection->Enqueue (mapped, Player_);
 	}
 
 	void PlayerTab::handleCollectionItemSelected (const QModelIndex& index)
 	{
 		const int nodeType = index.data (LocalCollection::Role::Node).value<int> ();
 		CollectionShowTrackProps_->setEnabled (nodeType == LocalCollection::NodeType::Track);
+	}
+
+	void PlayerTab::handlePlayerAvailable (bool available)
+	{
+		TabToolbar_->setEnabled (available);
+		Ui_.Playlist_->setEnabled (available);
+		Ui_.PlaylistsTab_->setEnabled (available);
+		Ui_.CollectionTab_->setEnabled (available);
+		Ui_.RadioTab_->setEnabled (available);
 	}
 
 	void PlayerTab::closeLMP ()

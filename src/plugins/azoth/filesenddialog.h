@@ -16,39 +16,41 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_POSHUKU_ADDTOFAVORITESDIALOG_H
-#define PLUGINS_POSHUKU_ADDTOFAVORITESDIALOG_H
-#include <memory>
+#pragma once
+
 #include <QDialog>
-#include <util/tags/tagscompleter.h>
-#include "ui_addtofavoritesdialog.h"
+#include "ui_filesenddialog.h"
 
 namespace LeechCraft
 {
-namespace Util
+namespace Azoth
 {
-	class TagsCompletionModel;
-};
+	class ICLEntry;
 
-namespace Poshuku
-{
-	class AddToFavoritesDialog : public QDialog
+	class FileSendDialog : public QDialog
 	{
 		Q_OBJECT
 
-		Ui::AddToFavoritesDialog Ui_;
+		Ui::FileSendDialog Ui_;
+		ICLEntry *Entry_;
+		const QString EntryVariant_;
+		bool AccSupportsFT_;
 
-		std::auto_ptr<LeechCraft::Util::TagsCompleter> TagsCompleter_;
+		struct SharerInfo
+		{
+			QObject *Sharer_;
+			QString Service_;
+		};
+		QMap<int, SharerInfo> Pos2Sharer_;
 	public:
-		AddToFavoritesDialog (const QString&,
-				const QString&,
-				QWidget* = 0);
-		virtual ~AddToFavoritesDialog ();
-
-		QString GetTitle () const;
-		QStringList GetTags () const;
+		FileSendDialog (ICLEntry*, const QString& = QString (), QWidget* = 0);
+	private:
+		void FillSharers ();
+		void SendSharer (const SharerInfo&);
+		void SendProto ();
+	private slots:
+		void send ();
+		void on_FileBrowse__released ();
 	};
 }
 }
-
-#endif

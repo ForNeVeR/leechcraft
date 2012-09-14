@@ -265,7 +265,7 @@ namespace p100q
 		return body;
 	}
 
-	void Plugin::hookChatTabCreated (IHookProxy_ptr proxy,
+	void Plugin::hookChatTabCreated (IHookProxy_ptr,
 			QObject *chatTab, QObject *entry, QWebView*)
 	{
 		if (!XmlSettingsManager::Instance ()
@@ -340,14 +340,12 @@ namespace p100q
 			LastPostInTab_ [tab] = rx.cap (1);
 		else if (rx.capturedTexts ().size () == 3)
 			LastPostInTab_ [tab] = rx.cap (1) + '/' + rx.cap (2);
-		qDebug () << Q_FUNC_INFO << aPos << pPos << cPos << LastPostInTab_;
 	}
 
 	void Plugin::handleShortcutActivated ()
 	{
 		QObject *chat = sender ()->property ("Azoth/p100q/Tab").value<QObject*> ();
 
-		qDebug () << Q_FUNC_INFO << LastPostInTab_ << chat;
 		QMetaObject::invokeMethod (chat,
 				"appendMessageText",
 				Q_ARG (QString, "#" + LastPostInTab_ [chat] + " "));

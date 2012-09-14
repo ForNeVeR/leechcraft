@@ -46,6 +46,11 @@ namespace LMP
 		Ui_.NextLyricsButton_->setIcon (Core::Instance ().GetProxy ()->GetIcon ("go-next"));
 
 		updateLyricsSwitcher ();
+
+		connect (Ui_.BioWidget_,
+				SIGNAL (gotArtistImage (QString, QUrl)),
+				this,
+				SIGNAL (gotArtistImage (QString, QUrl)));
 	}
 
 	void NowPlayingWidget::SetSimilarArtists (Media::SimilarityInfos_t infos)
@@ -102,7 +107,7 @@ namespace LMP
 					("<strong>") + str + ("</strong>");
 		};
 		Ui_.ArtistName_->setText (str (info.Artist_));
-		Ui_.AlbumName_->setText (str (info.Album_));
+		Ui_.AlbumName_->setText (str (fontMetrics ().elidedText (info.Album_, Qt::ElideRight, 300)));
 		Ui_.TrackName_->setText (str (info.Title_));
 
 		const auto& genres = info.Genres_.join (" / ");

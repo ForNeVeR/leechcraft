@@ -27,6 +27,7 @@
 #include <QXmppPresence.h>
 #include <QXmppClient.h>
 #include <QXmppRosterManager.h>
+#include <QXmppDiscoveryManager.h>
 #include <util/util.h>
 #include <interfaces/azoth/iproxyobject.h>
 #include <interfaces/azoth/azothutil.h>
@@ -180,7 +181,8 @@ namespace Xoox
 
 		QPointer<VCardDialog> ptr (VCardDialog_);
 		Account_->GetClientConnection ()->FetchVCard (GetJID (),
-				[ptr] (const QXmppVCardIq& iq) { if (ptr) ptr->UpdateInfo (iq); });
+				[ptr] (const QXmppVCardIq& iq) { if (ptr) ptr->UpdateInfo (iq); },
+				true);
 		VCardDialog_->show ();
 	}
 
@@ -273,18 +275,21 @@ namespace Xoox
 			to += '/' + variant;
 		pres.setTo (to);
 
-		conn->GetClient ()->addProperCapability (pres);
+		auto discoMgr = conn->GetClient ()->findExtension<QXmppDiscoveryManager> ();
+		pres.setCapabilityHash ("sha-1");
+		pres.setCapabilityNode (discoMgr->clientCapabilitiesNode ());
+		pres.setCapabilityVer (discoMgr->capabilities ().verificationString ());
 		conn->GetClient ()->sendPacket (pres);
 	}
 
-	void EntryBase::RequestLastPosts (int maxNum)
+	void EntryBase::RequestLastPosts (int)
 	{
 	}
 
 	void EntryBase::HandlePresence (const QXmppPresence& pres, const QString& resource)
 	{
 		SetClientInfo (resource, pres);
-		SetStatus (XooxUtil::PresenceToStatus (pres), resource);
+		SetStatus (XooxUtil::PresenceToStatus (pres), resource, pres);
 
 		CheckVCardUpdate (pres);
 	}
@@ -415,14 +420,17 @@ namespace Xoox
 		}
 	}
 
-	void EntryBase::SetStatus (const EntryStatus& status, const QString& variant)
+	void EntryBase::SetStatus (const EntryStatus& status, const QString& variant, const QXmppPresence& presence)
 	{
 		const bool existed = CurrentStatus_.contains (variant);
 		const bool wasOffline = existed ?
 				CurrentStatus_ [variant].State_ == SOffline :
 				false;
+
+		qDebug () << "SetStatus" << this << variant << presence.priority () << Variant2ClientInfo_.value (variant).value ("priority");
 		if (existed &&
-				status == CurrentStatus_ [variant])
+				status == CurrentStatus_ [variant] &&
+				presence.priority () == Variant2ClientInfo_.value (variant).value ("priority"))
 			return;
 
 		CurrentStatus_ [variant] = status;
@@ -444,13 +452,6 @@ namespace Xoox
 			}
 		}
 
-		emit statusChanged (status, variant);
-
-		if (!existed ||
-				(existed && status.State_ == SOffline) ||
-				wasOffline)
-			emit availableVariantsChanged (vars);
-
 		if ((!existed || wasOffline) &&
 				status.State_ != SOffline)
 		{
@@ -463,20 +464,21 @@ namespace Xoox
 
 		if (status.State_ != SOffline)
 		{
-			QXmppRosterManager& rm = Account_->
-					GetClientConnection ()->GetClient ()->rosterManager ();
-			const auto& presences = rm.getAllPresencesForBareJid (GetJID ());
-			if (presences.contains (variant))
-			{
-				const int p = presences.value (variant).priority ();
+			if (const int p = presence.priority ())
 				Variant2ClientInfo_ [variant] ["priority"] = p;
-			}
 		}
 		else
 		{
 			Variant2Version_.remove (variant);
 			Variant2ClientInfo_.remove (variant);
 		}
+
+		emit statusChanged (status, variant);
+
+		if (!existed ||
+				(existed && status.State_ == SOffline) ||
+				wasOffline)
+			emit availableVariantsChanged (vars);
 
 		GlooxMessage *message = 0;
 		if (GetEntryType () == ETPrivateChat)

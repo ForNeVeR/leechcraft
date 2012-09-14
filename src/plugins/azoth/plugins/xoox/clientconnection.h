@@ -80,6 +80,8 @@ namespace Xoox
 	class MsgArchivingManager;
 	class SDManager;
 
+	class ClientConnectionErrorMgr;
+
 #ifdef ENABLE_CRYPT
 	class PgpManager;
 #endif
@@ -87,6 +89,9 @@ namespace Xoox
 	class ClientConnection : public QObject
 	{
 		Q_OBJECT
+
+		GlooxAccount *Account_;
+		AccountSettingsHolder *Settings_;
 
 		QXmppClient *Client_;
 		QXmppMucManager *MUCManager_;
@@ -116,15 +121,14 @@ namespace Xoox
 		PgpManager *PGPManager_;
 #endif
 
+		ClientConnectionErrorMgr *ErrorMgr_;
+
 		QString OurJID_;
 		QString OurBareJID_;
 		QString OurResource_;
 
-		QByteArray OurPhotoHash_;
-
 		SelfContact *SelfContact_;
 
-		GlooxAccount *Account_;
 		IProxyObject *ProxyObject_;
 		CapsManager *CapsManager_;
 
@@ -150,8 +154,6 @@ namespace Xoox
 		FetchQueue *VersionQueue_;
 
 		int SocketErrorAccumulator_;
-		int KAInterval_;
-		int KATimeout_;
 
 		QList<QXmppMessage> OfflineMsgQueue_;
 		QList<QPair<QString, PEPEventBase*>> InitialEventQueue_;
@@ -176,22 +178,16 @@ namespace Xoox
 
 		QHash<QString, QList<VCardCallback_t>> VCardFetchCallbacks_;
 	public:
-		ClientConnection (const QString&,
-				GlooxAccount*);
+		ClientConnection (GlooxAccount*);
 		virtual ~ClientConnection ();
 
 		void SetState (const GlooxAccountState&);
 		GlooxAccountState GetLastState () const;
 
-		QPair<int, int> GetKAParams () const;
-		void SetKAParams (const QPair<int, int>&);
-
 		void SetPassword (const QString&);
 
 		QString GetOurJID () const;
 		void SetOurJID (const QString&);
-
-		void SetOurPhotoHash (const QByteArray&);
 
 		/** Joins the room and returns the contact list
 		 * entry representing that room.
@@ -228,8 +224,8 @@ namespace Xoox
 
 		void RequestInfo (const QString&) const;
 
-		void RequestInfo (const QString&, DiscoCallback_t, const QString& = "");
-		void RequestItems (const QString&, DiscoCallback_t, const QString& = "");
+		void RequestInfo (const QString&, DiscoCallback_t, bool reportErrors = false, const QString& = "");
+		void RequestItems (const QString&, DiscoCallback_t, bool reportErrors = false, const QString& = "");
 
 		void Update (const QXmppRosterIq::Item&);
 		void Update (const QXmppMucItem&, const QString& room);
@@ -244,6 +240,8 @@ namespace Xoox
 		void RevokeSubscription (const QString&, const QString&);
 		void Remove (GlooxCLEntry*);
 
+		void WhitelistError (const QString&);
+
 		void SendPacketWCallback (const QXmppIq&, QObject*, const QByteArray&);
 		void SendMessage (GlooxMessage*);
 		QXmppClient* GetClient () const;
@@ -251,9 +249,9 @@ namespace Xoox
 		QObject* GetCLEntry (const QString& bareJid, const QString& variant) const;
 		GlooxCLEntry* AddODSCLEntry (OfflineDataSource_ptr);
 		QList<QObject*> GetCLEntries () const;
-		void FetchVCard (const QString&);
-		void FetchVCard (const QString&, VCardCallback_t);
-		void FetchVersion (const QString&);
+		void FetchVCard (const QString&, bool reportErrors = false);
+		void FetchVCard (const QString&, VCardCallback_t, bool reportErrors = false);
+		void FetchVersion (const QString&, bool reportErrors = false);
 		QXmppBookmarkSet GetBookmarks () const;
 		void SetBookmarks (const QXmppBookmarkSet&);
 		GlooxMessage* CreateMessage (IMessage::MessageType,
@@ -264,10 +262,8 @@ namespace Xoox
 	private:
 		void SetupLogger ();
 		void HandleOtherPresence (const QXmppPresence&);
-		void HandleError (const QXmppIq&);
 		void HandleRIEX (QString, QList<RIEXManager::Item>, QString = QString ());
 		void InvokeCallbacks (const QXmppIq&);
-		QString HandleErrorCondition (const QXmppStanza::Error::Condition&);
 	public slots:
 		void handlePendingForm (QXmppDataForm*, const QString&);
 	private slots:
@@ -303,6 +299,12 @@ namespace Xoox
 		void handleLog (QXmppLogger::MessageType, const QString&);
 
 		void decrementErrAccumulators ();
+
+		void setKAParams (const QPair<int, int>&);
+		void setFileLogging (bool);
+		void handlePhotoHash ();
+		void handlePriorityChanged (int);
+		void updateFTSettings ();
 	private:
 		void InitializeQCA ();
 		void ScheduleFetchVCard (const QString&);

@@ -16,13 +16,13 @@ SET (SRCS
 	xmlsettingsmanager.cpp
 	)
 
-IF (UNIX)
+IF (UNIX AND NOT APPLE)
 	SET (SRCS fswinwatcher_x11.cpp ${SRCS})
 ELSEIF (WIN32)
 	SET (SRCS fswinwatcher_win.cpp ${SRCS})
-ELSE (UNIX)
+ELSE (UNIX AND NOT APPLE)
 	SET (SRCS fswinwatcher.cpp ${SRCS})
-ENDIF (UNIX)
+ENDIF (UNIX AND NOT APPLE)
 
 SET (HEADERS
 	fswinwatcher.h
@@ -57,4 +57,4 @@ TARGET_LINK_LIBRARIES (leechcraft_kinotify
 	)
 INSTALL (TARGETS leechcraft_kinotify DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES kinotifysettings.xml DESTINATION ${LC_SETTINGS_DEST})
-INSTALL (DIRECTORY themes DESTINATION share/leechcraft/kinotify)
+INSTALL (DIRECTORY themes DESTINATION ${LC_SHARE_DEST}/kinotify)

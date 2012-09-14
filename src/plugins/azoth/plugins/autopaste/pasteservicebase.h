@@ -16,45 +16,59 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "addtofavoritesdialog.h"
-#include <interfaces/core/icoreproxy.h>
-#include <interfaces/core/itagsmanager.h>
-#include "core.h"
+#pragma once
+
+#include <QObject>
+#include <QPointer>
+
+class QNetworkAccessManager;
+class QNetworkReply;
 
 namespace LeechCraft
 {
-namespace Poshuku
+struct Entity;
+
+namespace Azoth
 {
-	using LeechCraft::Util::TagsCompleter;
-	using LeechCraft::Util::TagsCompletionModel;
-
-	AddToFavoritesDialog::AddToFavoritesDialog (const QString& title,
-			const QString& url,
-			QWidget *parent)
-	: QDialog (parent)
+namespace Autopaste
+{
+	enum class Highlight
 	{
-		Ui_.setupUi (this);
-		Ui_.URLLabel_->setText (url);
-		Ui_.TitleEdit_->setText (title);
-		Ui_.TagsEdit_->setText (tr ("untagged"));
+		None,
+		C,
+		CPP,
+		CPP0x,
+		Haskell,
+		Java,
+		XML
+	};
 
-		TagsCompleter_.reset (new TagsCompleter (Ui_.TagsEdit_));
-		Ui_.TagsEdit_->AddSelector ();
-	}
-
-	AddToFavoritesDialog::~AddToFavoritesDialog ()
+	class PasteServiceBase : public QObject
 	{
-	}
+		Q_OBJECT
 
-	QString AddToFavoritesDialog::GetTitle () const
-	{
-		return Ui_.TitleEdit_->text ();
-	}
+		QPointer<QObject> Entry_;
+	public:
+		struct PasteParams
+		{
+			QNetworkAccessManager *NAM_;
+			QString Text_;
+			Highlight High_;
+		};
 
-	QStringList AddToFavoritesDialog::GetTags () const
-	{
-		return Core::Instance ().GetProxy ()->
-			GetTagsManager ()->Split (Ui_.TagsEdit_->text ());
-	}
+		PasteServiceBase (QObject *entry, QObject* = 0);
+
+		virtual void Paste (const PasteParams&) = 0;
+	protected:
+		void InitReply (QNetworkReply*);
+		void FeedURL (const QString&);
+	protected slots:
+		virtual void handleMetadata ();
+		virtual void handleFinished ();
+		virtual void handleError ();
+	signals:
+		void gotEntity (const LeechCraft::Entity&);
+	};
+}
 }
 }

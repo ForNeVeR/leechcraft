@@ -179,6 +179,10 @@ namespace Auscrie
 		default:
 			return QPixmap::grabWindow (qApp->desktop ()->winId ());
 		}
+
+		qWarning () << Q_FUNC_INFO
+				<< "unknown mode";
+		return QPixmap ();
 	}
 
 	void Plugin::Post (const QByteArray& data)

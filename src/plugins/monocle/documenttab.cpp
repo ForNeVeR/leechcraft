@@ -31,10 +31,12 @@
 #include <QDockWidget>
 #include <QClipboard>
 #include <QtDebug>
+#include <QTimer>
 #include <interfaces/imwproxy.h>
 #include "interfaces/monocle/ihavetoc.h"
 #include "interfaces/monocle/ihavetextcontent.h"
 #include "interfaces/monocle/isupportannotations.h"
+#include "interfaces/monocle/idynamicdocument.h"
 #include "core.h"
 #include "pagegraphicsitem.h"
 #include "filewatcher.h"
@@ -58,6 +60,7 @@ namespace Monocle
 	, TOCWidget_ (new TOCWidget ())
 	, LayMode_ (LayoutMode::OnePage)
 	, MouseMode_ (MouseMode::Move)
+	, RelayoutScheduled_ (true)
 	{
 		Ui_.setupUi (this);
 		Ui_.PagesView_->setScene (&Scene_);
@@ -252,6 +255,18 @@ namespace Monocle
 		emit fileLoaded (path);
 
 		emit tabRecoverDataChanged ();
+
+		if (qobject_cast<IDynamicDocument*> (CurrentDoc_->GetObject ()))
+		{
+			connect (CurrentDoc_->GetObject (),
+					SIGNAL (pageSizeChanged (int)),
+					this,
+					SLOT (handlePageSizeChanged (int)));
+			connect (CurrentDoc_->GetObject (),
+					SIGNAL (pageContentsChanged (int)),
+					this,
+					SLOT (handlePageContentsChanged (int)));
+		}
 
 		return true;
 	}
@@ -473,6 +488,8 @@ namespace Monocle
 
 	void DocumentTab::Relayout (double scale)
 	{
+		RelayoutScheduled_ = false;
+
 		if (!CurrentDoc_)
 			return;
 
@@ -526,6 +543,31 @@ namespace Monocle
 			const auto& mapped = page->mapToScene (size.width () * x, size.height () * y);
 			Ui_.PagesView_->centerOn (mapped.x (), mapped.y ());
 		}
+	}
+
+	void DocumentTab::handlePageSizeChanged (int)
+	{
+		if (RelayoutScheduled_)
+			return;
+
+		QTimer::singleShot (500,
+				this,
+				SLOT (handleRelayout ()));
+		RelayoutScheduled_ = true;
+	}
+
+	void DocumentTab::handlePageContentsChanged (int idx)
+	{
+		auto pageItem = Pages_.at (idx);
+		pageItem->UpdatePixmap ();
+	}
+
+	void DocumentTab::handleRelayout ()
+	{
+		if (!RelayoutScheduled_)
+			return;
+
+		Relayout (GetCurrentScale ());
 	}
 
 	void DocumentTab::handleRecentOpenAction (QAction *action)

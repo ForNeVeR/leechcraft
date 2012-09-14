@@ -49,7 +49,8 @@ namespace PLS
 
 	QList<Phonon::MediaSource> Read2Sources (const QString& path)
 	{
-		return CommonRead2Sources ({ QStringList ("pls"), path, Read });
+		ReadParams params = { QStringList ("pls"), path, Read };
+		return CommonRead2Sources (params);
 	}
 }
 }

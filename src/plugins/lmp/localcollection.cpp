@@ -19,6 +19,7 @@
 #include "localcollection.h"
 #include <functional>
 #include <algorithm>
+#include <numeric>
 #include <QStandardItemModel>
 #include <QSortFilterProxyModel>
 #include <QMimeData>
@@ -391,8 +392,8 @@ namespace LMP
 					{
 						item->setIcon (ArtistIcon_);
 						item->setText (artist.Name_);
-						item->setData (artist.Name_, Role::ArtistName);
-						item->setData (NodeType::Artist, Role::Node);
+						item->setData (artist.Name_, LocalCollection::Role::ArtistName);
+						item->setData (LocalCollection::NodeType::Artist, LocalCollection::Role::Node);
 					},
 					CollectionModel_);
 			Q_FOREACH (auto album, artist.Albums_)
@@ -408,11 +409,11 @@ namespace LMP
 							item->setText (QString::fromUtf8 ("%1 — %2")
 									.arg (album->Year_)
 									.arg (album->Name_));
-							item->setData (album->Year_, Role::AlbumYear);
-							item->setData (album->Name_, Role::AlbumName);
-							item->setData (NodeType::Album, Role::Node);
+							item->setData (album->Year_, LocalCollection::Role::AlbumYear);
+							item->setData (album->Name_, LocalCollection::Role::AlbumName);
+							item->setData (LocalCollection::NodeType::Album, LocalCollection::Role::Node);
 							if (!album->CoverPath_.isEmpty ())
-								item->setData (album->CoverPath_, Role::AlbumArt);
+								item->setData (album->CoverPath_, LocalCollection::Role::AlbumArt);
 						},
 						artistItem);
 
@@ -425,10 +426,10 @@ namespace LMP
 							.arg (track.Name_);
 					auto item = new QStandardItem (name);
 					item->setEditable (false);
-					item->setData (track.Number_, Role::TrackNumber);
-					item->setData (track.Name_, Role::TrackTitle);
-					item->setData (track.FilePath_, Role::TrackPath);
-					item->setData (NodeType::Track, Role::Node);
+					item->setData (track.Number_, LocalCollection::Role::TrackNumber);
+					item->setData (track.Name_, LocalCollection::Role::TrackTitle);
+					item->setData (track.FilePath_, LocalCollection::Role::TrackPath);
+					item->setData (LocalCollection::NodeType::Track, LocalCollection::Role::Node);
 					albumItem->appendRow (item);
 
 					Path2Track_ [track.FilePath_] = track.ID_;
@@ -594,7 +595,7 @@ namespace LMP
 		auto resolver = Core::Instance ().GetLocalFileResolver ();
 
 		emit scanStarted (newPaths.size ());
-		auto worker = [resolver] (const QString& path)
+		auto worker = [resolver] (const QString& path) -> MediaInfo
 		{
 			try
 			{

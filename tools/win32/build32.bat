@@ -43,6 +43,7 @@ cmake "../../../src"  ^
 	-DENABLE_OTLOZHU=True ^
 	-DENABLE_VROOBY_UDISKS=False ^
 	-DENABLE_MONOCLE=False ^
+	-DENABLE_LMP_MPRIS=False ^
 	-DRBTorrent_DIR=%TORRENT_DIR% ^
 	-DQXmpp_DIR=%QXMPP_DIR% ^
 	-DQJSON_DIR=%QJSON_DIR% ^

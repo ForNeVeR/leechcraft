@@ -35,19 +35,17 @@ namespace
 {
 	void Write (QtMsgType type, const char *message, bool bt)
 	{
-#if not defined (Q_OS_WIN32) && not defined (Q_OS_MAC)
+#if !defined (Q_OS_WIN32) && !defined (Q_OS_MAC)
 
 		if (!strcmp (message, "QPixmap::handle(): Pixmap is not an X11 class pixmap"))
 			return;
 
 #endif
-		static const std::map<QtMsgType, QString> fileName =
-		{
-			{QtDebugMsg, "debug.log"},
-			{QtWarningMsg, "warning.log"},
-			{QtCriticalMsg, "critical.log"},
-			{QtFatalMsg, "fatal.log"}
-		};
+		std::map<QtMsgType, QString> fileName;
+		fileName[QtDebugMsg] = "debug.log";
+		fileName[QtWarningMsg] = "warning.log";
+		fileName[QtCriticalMsg] = "critical.log";
+		fileName[QtFatalMsg] = "fatal.log";
 
 		const QString name = QDir::homePath () + "/.leechcraft/" + fileName.at (type);
 

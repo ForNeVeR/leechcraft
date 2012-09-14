@@ -38,6 +38,10 @@
 #include "xmlsettingsmanager.h"
 #include "playlistparsers/playlistfactory.h"
 
+#ifdef GetObject
+#undef GetObject
+#endif
+
 Q_DECLARE_METATYPE (Phonon::MediaSource);
 Q_DECLARE_METATYPE (QList<Phonon::MediaSource>);
 
@@ -140,7 +144,7 @@ namespace LMP
 				if (action == Qt::MoveAction)
 					Q_FOREACH (const auto& src, sources)
 					{
-						auto pred = [&src] (decltype (existingQueue.front ()) item)
+						auto pred = [&src] (decltype (existingQueue.front ()) item) -> bool
 						{
 							if (src.type () != item.type ())
 								return false;

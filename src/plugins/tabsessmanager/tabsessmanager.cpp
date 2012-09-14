@@ -231,12 +231,14 @@ namespace TabSessManager
 		if (recoverData.isEmpty ())
 			return;
 
-		const TabUncloseInfo& info =
+		TabRecoverInfo temp = 
 		{
-			{
 				recoverData,
 				GetSessionProps (widget)
-			},
+		};
+		TabUncloseInfo info =
+		{
+			temp,
 			qobject_cast<IHaveRecoverableTabs*> (tab->ParentMultiTabs ())
 		};
 
@@ -319,7 +321,8 @@ namespace TabSessManager
 					continue;
 				}
 
-				tabs [plugin] << RecInfo { order++, recData, props, name, icon };
+				RecInfo temp = { order++, recData, props, name, icon };
+				tabs [plugin] << temp;
 
 				qDebug () << Q_FUNC_INFO << "got restore data for"
 						<< pluginId << name << plugin;
@@ -366,7 +369,10 @@ namespace TabSessManager
 						{ return left.second.Order_ < right.second.Order_; });
 
 			Q_FOREACH (const auto& pair, ordered)
-				pair.first->RecoverTabs ({ TabRecoverInfo { pair.second.Data_, pair.second.Props_ } });
+			{
+				TabRecoverInfo temp = { pair.second.Data_, pair.second.Props_ };
+				pair.first->RecoverTabs (QList<TabRecoverInfo>() << temp);
+			}
 		}
 	}
 

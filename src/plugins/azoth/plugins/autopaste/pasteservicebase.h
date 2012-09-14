@@ -32,7 +32,7 @@ namespace Azoth
 {
 namespace Autopaste
 {
-	enum class Highlight
+	enum Highlight
 	{
 		None,
 		C,

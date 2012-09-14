@@ -28,7 +28,8 @@ namespace Autopaste
 {
 	PasteServiceFactory::PasteServiceFactory ()
 	{
-		Infos_.push_back ({ "codepad.org", QIcon (), [] (QObject *entry) { return new CodepadService (entry); } });
+		PasteInfo temp = { "codepad.org", QIcon (), [] (QObject *entry) { return new CodepadService (entry); } };
+		Infos_.push_back (temp);
 	}
 
 	QList<PasteServiceFactory::PasteInfo> PasteServiceFactory::GetInfos () const

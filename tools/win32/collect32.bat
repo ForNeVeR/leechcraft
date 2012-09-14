@@ -165,7 +165,7 @@ set COPYDEBUG=0
 if "%BUILD_TYPE%" == "Debug" set COPYDEBUG=1
 if "%BUILD_TYPE%" == "RelWithDebInfo" set COPYDEBUG=1
 
-if "%COPYDEBUG%" == 1 (
+if %COPYDEBUG% == 1 (
 rem - qjson -
 copy %QJSON_BIN_DIR%\qjson.pdb %TARGET_DIR%
 rem - libtorrent -

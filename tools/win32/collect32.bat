@@ -123,6 +123,9 @@ rem - Oxygen icon theme -
 xcopy /e /i %OXYGENICONS_DIR% %TARGET_DIR%\icons\oxygen
 copy nul %TARGET_DIR%\leechcraft\themes\oxygen
 
+rem - Core -
+xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\share %TARGET_DIR%\share
+
 rem - Azoth resources -
 xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\azoth\share %TARGET_DIR%\share
 xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\azoth\plugins\standardstyles\share %TARGET_DIR%\share

@@ -3,8 +3,8 @@
 # These three must be integers
 !define VERSIONMAJOR 0
 !define VERSIONMINOR 5
-!define VERSIONBUILD 70
-!define VERSIONREVISION 556
+!define VERSIONBUILD 80
+!define VERSIONREVISION 260
 
 OutFile ../leechcraft-installer-${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}.exe
 Name "LeechCraft ${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}-${VERSIONREVISION}"
@@ -57,6 +57,9 @@ SectionGroup "Core"
 		File /r oxygen
 		SetOutPath $INSTDIR\settings
 		File settings\coresettings.xml
+		
+		SetOutPath $INSTDIR\share\leechcraft
+        File /r share\leechcraft\*
 
 		WriteRegStr HKCU "Software\Deviant\LeechCraft" "" $INSTDIR
 		WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -140,12 +143,13 @@ SectionGroup "Plugins"
         SetOutPath $INSTDIR\share\azoth
         File /r share\azoth\*
 		
-		# QCA & GnuPG message encryption
+		# dependencies
 		SetOutPath $INSTDIR
         File qca.dll
 		SetOutPath $INSTDIR\plugins\crypto
         File plugins\crypto\qca-gnupg.dll
-
+		SetOutPath $INSTDIR
+        File qxmpp*.dll
         SectionIn 1
     SectionEnd
 	Section "BitTorrent" TORRENTPLUGIN

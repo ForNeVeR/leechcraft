@@ -25,8 +25,10 @@ if exist build32 rmdir /s /q build32
 if not exist build32 mkdir build32
 cd build32
 cmake ../../../src ^
-	-G "Visual Studio 10" ^
+	-G "Visual Studio 11" ^
 	%BTYPE% ^
+	-DBoost_DEBUG=1 ^
+	-DBOOST_LIBRARYDIR=%BOOST_BIN_DIR% ^
 	-DENABLE_ADVANCEDNOTIFICATIONS=False ^
 	-DENABLE_AGGREGATOR=False ^
 	-DENABLE_ANHERO=False ^
@@ -39,12 +41,14 @@ cmake ../../../src ^
 	-DENABLE_GLANCE=False ^
 	-DENABLE_GMAILNOTIFIER=False ^
 	-DENABLE_HISTORYHOLDER=False ^
+	-DENABLE_HOTSTREAMS=False ^
 	-DENABLE_HTTP=True ^
 	-DENABLE_KINOTIFY=False ^
 	-DENABLE_KNOWHOW=False ^
 	-DENABLE_LACKMAN=False ^
 	-DENABLE_LHTR=False ^
 	-DENABLE_LMP=False ^
+	-DENABLE_MONOCLE=False ^
 	-DENABLE_NACHEKU=False ^
 	-DENABLE_NETSTOREMANAGER=False ^
 	-DENABLE_NETWORKMONITOR=False ^

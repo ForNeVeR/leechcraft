@@ -5,11 +5,11 @@ rem == (c) Eugene Mamin <thedzhon@gmail.com>
 
 rem == Build variables ==
 
-call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\vcvars32.bat" x86
+call "C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\vcvars32.bat" x86
 
-set QTDIR=c:\Programs\QtSDK\Desktop\Qt\4.8.1\msvc2010
+set QTDIR=E:\Programs\QtSDK\Desktop\Qt\4.8.1\msvc2010
 
-set BOOST_ROOT=d:\X-Files\Projects\_Lib\boost_1_48_0
+set BOOST_ROOT=E:\Libs\Boost
 rem set TORRENT_DIR=C:\DEVLIBS\libtorrent-rasterbar-0.15.9
 rem set QXMPP_LOCAL=C:\DEVLIBS\qxmpp-dev
 rem set QJSON_DIR=C:\DEVLIBS\qjson-0.7.1
@@ -27,8 +27,8 @@ set BUILD_TYPE=Release
 
 rem Set these variables to proper paths of your system:
 
-set BOOST_BIN_DIR="%BOOST_ROOT%\stage\lib"
-set BOOST_VERSION="1_48"
+set BOOST_BIN_DIR=E:\Libs\Boost\lib
+set BOOST_VERSION="1_51"
 rem set LIBTORRENT_BIN_DIR="%TORRENT_DIR%\bin\msvc-10.0\Release\boost-link-shared\boost-source\threading-multi"
 rem set OPENSSL_BIN_DIR="C:\DEVLIBS\OpenSSL-Win32"
 set QT_BIN_DIR="%QTDIR%\bin"

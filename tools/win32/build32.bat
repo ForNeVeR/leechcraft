@@ -64,6 +64,7 @@ cmake ../../../src ^
 	-DENABLE_TABSLIST=False ^
 	-DENABLE_TORRENT=False ^
 	-DENABLE_VGRABBER=False ^
+	-DENABLE_VROOBY=False ^
 	-DENABLE_SHELLOPEN=False ^
 	-DENABLE_FTP=False ^
 	-DENABLE_SIDEBAR=False ^

@@ -1,13 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings>
 	<page>
-		<label value="Appearance" />
+		<label value="Kinotify" />
 		<groupbox>
 			<label value="Style" />
 			<item type="combobox" property="NotificatorStyle" mayHaveDataSource="true">
 				<label value="Notificator style:" />
 				<option name="Commie" default="true">
 					<label value="Commie" />
+				</option>
+			</item>
+		</groupbox>
+		<groupbox>
+			<label value="Behavior" />
+			<item type="checkbox" property="RespectFullscreen" default="true">
+				<label value="Don't show notifications when there is a fullscreen application" />
+			</item>
+			<item type="combobox" property="NotifyPosition">
+				<label value="Notificator position:" />
+				<option name="TopLeft">
+					<label value="Top left" />
+				</option>
+				<option name="TopRight">
+					<label value="Top right" />
+				</option>
+				<option name="BottomLeft">
+					<label value="Bottom left" />
+				</option>
+				<option name="BottomRight" default="true">
+					<label value="Bottom right" />
 				</option>
 			</item>
 		</groupbox>

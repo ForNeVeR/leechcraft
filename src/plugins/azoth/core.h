@@ -81,7 +81,6 @@ namespace Azoth
 		ICoreProxy_ptr Proxy_;
 		QList<ANFieldData> ANFields_;
 
-		QRegExp LinkRegexp_;
 		QRegExp ImageRegexp_;
 
 #ifdef ENABLE_CRYPT
@@ -158,7 +157,8 @@ namespace Azoth
 			CLRUnreadMsgCount,
 			CLRRole,
 			CLRAffiliation,
-			CLRNumOnline
+			CLRNumOnline,
+			CLRIsMUCCategory
 		};
 
 		enum CLEntryType
@@ -201,6 +201,7 @@ namespace Azoth
 		ChatTabsManager* GetChatTabsManager () const;
 		QList<IAccount*> GetAccounts (std::function<bool (IProtocol*)> = [] (IProtocol*) { return true; }) const;
 		QList<IProtocol*> GetProtocols () const;
+		IAccount* GetAccount (const QByteArray&) const;
 
 #ifdef ENABLE_CRYPT
 		QList<QCA::PGPKey> GetPublicKeys () const;
@@ -286,7 +287,7 @@ namespace Azoth
 		 * @return Entry's avatar scaled to the given size.
 		 */
 		QImage GetAvatar (ICLEntry *entry, int size);
-		QImage GetDefaultAvatar (int size);
+		QImage GetDefaultAvatar (int size) const;
 
 		ActionsManager* GetActionsManager () const;
 
@@ -410,6 +411,8 @@ namespace Azoth
 		void handleMucJoinRequested ();
 
 		void handleShowNextUnread ();
+
+		void saveAccountVisibility (IAccount*);
 	private slots:
 		void handleNewProtocols (const QList<QObject*>&);
 
@@ -477,7 +480,7 @@ namespace Azoth
 		 */
 		void handleEntryPermsChanged (ICLEntry *entry = 0);
 
-		void handleEntryGenerallyChanged ();
+		void remakeTooltipForSender ();
 
 		/** Handles the message receival from contact list entries.
 		 */
@@ -602,6 +605,9 @@ namespace Azoth
 		void hookGonnaHandleSmiles (LeechCraft::IHookProxy_ptr proxy,
 				QString body,
 				QString pack);
+		void hookGotAuthRequest (LeechCraft::IHookProxy_ptr proxy,
+				QObject *entry,
+				QString msg);
 		void hookGotMessage (LeechCraft::IHookProxy_ptr proxy,
 				QObject *message);
 		void hookGotMessage2 (LeechCraft::IHookProxy_ptr proxy,

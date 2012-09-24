@@ -40,6 +40,7 @@ namespace LeechCraft
 		, Watcher_ (new QFileSystemWatcher (this))
 		, CacheFlushTimer_ (new QTimer (this))
 		, CachePathContents_ (0)
+		, CachePixmaps_ (0)
 		{
 			if (RelativePath_.startsWith ('/'))
 				RelativePath_ = RelativePath_.mid (1);
@@ -92,7 +93,7 @@ namespace LeechCraft
 		void ResourceLoader::AddGlobalPrefix ()
 		{
 #ifdef Q_OS_MAC
-			QStringList prefixes = QStringList (QApplication::applicationDirPath () + "/../Resources/");
+			QStringList prefixes = QStringList (QApplication::applicationDirPath () + "/../Resources/share/");
 #elif defined (Q_OS_WIN32)
 			QStringList prefixes = QStringList (QApplication::applicationDirPath () + "/share/");
 #elif defined (INSTALL_PREFIX)
@@ -124,10 +125,14 @@ namespace LeechCraft
 
 		void ResourceLoader::SetCacheParams (int size, int timeout)
 		{
+			if (qApp->property ("no-resource-caching").toBool ())
+				return;
+
 			if (size <= 0)
 			{
 				CacheFlushTimer_->stop ();
-				CachePathContents_.clear ();
+
+				handleFlushCaches ();
 			}
 			else
 			{
@@ -135,12 +140,13 @@ namespace LeechCraft
 					CacheFlushTimer_->start (timeout);
 
 				CachePathContents_.setMaxCost (size * 1024);
+				CachePixmaps_.setMaxCost (size * 1024);
 			}
 		}
 
 		void ResourceLoader::FlushCache ()
 		{
-			CachePathContents_.clear ();
+			handleFlushCaches ();
 		}
 
 		QFileInfoList ResourceLoader::List (const QString& option,
@@ -247,13 +253,18 @@ namespace LeechCraft
 
 		QPixmap ResourceLoader::LoadPixmap (const QString& basename) const
 		{
+			if (CachePixmaps_.contains (basename))
+				return *CachePixmaps_ [basename];
+
 			auto dev = LoadIcon (basename, true);
 			if (!dev)
 				return QPixmap ();
 
-			QPixmap px;
-			px.loadFromData (dev->readAll ());
-			return px;
+			const auto& data = dev->readAll ();
+			auto px = new QPixmap;
+			px->loadFromData (data);
+			CachePixmaps_.insert (basename, px, data.size ());
+			return *px;
 		}
 
 		QAbstractItemModel* ResourceLoader::GetSubElemModel () const
@@ -276,6 +287,7 @@ namespace LeechCraft
 			Q_FOREACH (const QString& entry,
 					QDir (path).entryList (NameFilters_, AttrFilters_))
 			{
+				Entry2Paths_ [entry] << path;
 				if (SubElemModel_->findItems (entry).size ())
 					continue;
 
@@ -287,16 +299,34 @@ namespace LeechCraft
 		{
 			emit watchedDirectoriesChanged ();
 
+			for (auto i = Entry2Paths_.begin (), end = Entry2Paths_.end (); i != end; ++i)
+				i->removeAll (path);
+
 			QFileInfo fi (path);
 			if (fi.exists () &&
 					fi.isDir () &&
 					fi.isReadable ())
 				ScanPath (path);
+
+			QStringList toRemove;
+			for (auto i = Entry2Paths_.begin (), end = Entry2Paths_.end (); i != end; ++i)
+				if (i->isEmpty ())
+					toRemove << i.key ();
+
+			Q_FOREACH (const auto& entry, toRemove)
+			{
+				Entry2Paths_.remove (entry);
+
+				auto items = SubElemModel_->findItems (entry);
+				Q_FOREACH (auto item, SubElemModel_->findItems (entry))
+					SubElemModel_->removeRow (item->row ());
+			}
 		}
 
 		void ResourceLoader::handleFlushCaches ()
 		{
 			CachePathContents_.clear ();
+			CachePixmaps_.clear ();
 		}
 	}
 }

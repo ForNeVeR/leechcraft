@@ -95,7 +95,8 @@ namespace Modnok
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/azoth/plugins/modnok/resources/images/modnok.svg");
+		static QIcon icon (":/plugins/azoth/plugins/modnok/resources/images/modnok.svg");
+		return icon;
 	}
 
 	QSet<QByteArray> Plugin::GetPluginClasses () const
@@ -208,8 +209,7 @@ namespace Modnok
 		return body;
 	}
 
-	void Plugin::hookFormatBodyEnd (IHookProxy_ptr proxy,
-			QObject *message)
+	void Plugin::hookFormatBodyEnd (IHookProxy_ptr proxy, QObject*)
 	{
 		if (ConvScriptPath_.isEmpty ())
 			return;
@@ -244,8 +244,7 @@ namespace Modnok
 		proxy->CancelDefault ();
 	}
 
-	void Plugin::hookMessageCreated (IHookProxy_ptr proxy,
-			QObject*, QObject *msgObj)
+	void Plugin::hookMessageCreated (IHookProxy_ptr, QObject*, QObject *msgObj)
 	{
 		if (ConvScriptPath_.isEmpty ())
 			return;

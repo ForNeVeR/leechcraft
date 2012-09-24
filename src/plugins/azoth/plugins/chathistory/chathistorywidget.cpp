@@ -20,10 +20,12 @@
 #include <QStandardItemModel>
 #include <QSortFilterProxyModel>
 #include <QMessageBox>
+#include <util/util.h>
 #include <interfaces/azoth/iaccount.h>
 #include <interfaces/azoth/iclentry.h>
 #include <interfaces/azoth/iproxyobject.h>
 #include "chathistory.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -33,8 +35,6 @@ namespace ChatHistory
 {
 	Plugin *ChatHistoryWidget::S_ParentMultiTabs_ = 0;
 
-	const int Amount = 50;
-
 	void ChatHistoryWidget::SetParentMultiTabs (Plugin *ch)
 	{
 		S_ParentMultiTabs_ = ch;
@@ -42,6 +42,7 @@ namespace ChatHistory
 
 	ChatHistoryWidget::ChatHistoryWidget (ICLEntry *entry, QWidget *parent)
 	: QWidget (parent)
+	, PerPageAmount_ (XmlSettingsManager::Instance ().property ("ItemsPerPage").toInt ())
 	, ContactsModel_ (new QStandardItemModel (this))
 	, SortFilter_ (new QSortFilterProxyModel (this))
 	, Backpages_ (0)
@@ -85,6 +86,10 @@ namespace ChatHistory
 				SIGNAL (gotSearchPosition (const QString&, const QString&, int)),
 				this,
 				SLOT (handleGotSearchPosition (const QString&, const QString&, int)));
+		connect (Core::Instance ().get (),
+				SIGNAL (gotDaysForSheet (QString, QString, int, int, QList<int>)),
+				this,
+				SLOT (handleGotDaysForSheet (QString, QString, int, int, QList<int>)));
 
 		Toolbar_->addAction (tr ("Previous"),
 				this,
@@ -290,11 +295,13 @@ namespace ChatHistory
 				html += "<font color=\"" + color + "\">" + var + "</font>";
 			}
 
-			html += postNick + ' ' + map ["Message"].toString ()
-					.replace ('<', "&lt;")
-					.replace ('\n', "<br/>");
+			auto msgText = map ["Message"].toString ();
+			msgText.replace ('<', "&lt;");
+			Core::Instance ()->GetPluginProxy ()->FormatLinks (msgText);
+			msgText.replace ('\n', "<br/>");
+			html += postNick + ' ' + msgText;
 
-			const bool isSearchRes = SearchResultPosition_ == Amount - Amount_;
+			const bool isSearchRes = SearchResultPosition_ == PerPageAmount_ - Amount_;
 			if (isChat && !isSearchRes)
 			{
 				html.prepend (QString ("<font color=\"#") +
@@ -375,9 +382,26 @@ namespace ChatHistory
 				}
 		}
 
-		Backpages_ = position / Amount;
-		SearchResultPosition_ = position % Amount;
+		Backpages_ = position / PerPageAmount_;
+		SearchResultPosition_ = position % PerPageAmount_;
 		RequestLogs ();
+	}
+
+	void ChatHistoryWidget::handleGotDaysForSheet (const QString& accountId,
+			const QString& entryId, int year, int month, const QList<int>& days)
+	{
+		if (accountId != CurrentAccount_ ||
+			entryId != CurrentEntry_ ||
+			year != Ui_.Calendar_->yearShown () ||
+			month != Ui_.Calendar_->monthShown ())
+			return;
+
+		Ui_.Calendar_->setDateTextFormat (QDate (), QTextCharFormat ());
+
+		QTextCharFormat fmt;
+		fmt.setFontWeight (QFont::Bold);
+		Q_FOREACH (int day, days)
+			Ui_.Calendar_->setDateTextFormat (QDate (year, month, day), fmt);
 	}
 
 	void ChatHistoryWidget::on_AccountBox__currentIndexChanged (int idx)
@@ -385,6 +409,7 @@ namespace ChatHistory
 		const QString& id = Ui_.AccountBox_->itemData (idx).toString ();
 		Core::Instance ()->GetUsersForAccount (id);
 		CurrentEntry_.clear ();
+		UpdateDates ();
 	}
 
 	void ChatHistoryWidget::handleContactSelected (const QModelIndex& index)
@@ -402,6 +427,7 @@ namespace ChatHistory
 		ContactSelectedAsGlobSearch_ = false;
 
 		RequestLogs ();
+		UpdateDates ();
 	}
 
 	void ChatHistoryWidget::on_HistorySearch__returnPressed ()
@@ -437,9 +463,26 @@ namespace ChatHistory
 		}
 	}
 
+	void ChatHistoryWidget::on_Calendar__currentPageChanged ()
+	{
+		UpdateDates ();
+	}
+
+	void ChatHistoryWidget::on_Calendar__activated (const QDate& date)
+	{
+		Ui_.Calendar_->setDateTextFormat (QDate (), QTextCharFormat ());
+
+		if (CurrentEntry_.isEmpty ())
+			return;
+
+		PreviousSearchText_.clear ();
+		Ui_.HistorySearch_->clear ();
+		Core::Instance ()->Search (CurrentAccount_, CurrentEntry_, QDateTime (date));
+	}
+
 	void ChatHistoryWidget::previousHistory ()
 	{
-		if (Amount_ < Amount)
+		if (Amount_ < PerPageAmount_)
 			return;
 
 		++Backpages_;
@@ -474,10 +517,28 @@ namespace ChatHistory
 		RequestLogs ();
 	}
 
+	void ChatHistoryWidget::on_HistView__anchorClicked (const QUrl& url)
+	{
+		emit gotEntity (Util::MakeEntity (url,
+				QString (),
+				static_cast<TaskParameters> (FromUserInitiated | OnlyHandle)));
+	}
+
+	void ChatHistoryWidget::UpdateDates ()
+	{
+		Ui_.Calendar_->setDateTextFormat (QDate (), QTextCharFormat ());
+
+		if (CurrentEntry_.isEmpty ())
+			return;
+
+		Core::Instance ()->GetDaysForSheet (CurrentAccount_, CurrentEntry_,
+				Ui_.Calendar_->yearShown (), Ui_.Calendar_->monthShown ());
+	}
+
 	void ChatHistoryWidget::RequestLogs ()
 	{
 		Core::Instance ()->GetChatLogs (CurrentAccount_,
-				CurrentEntry_, Backpages_, Amount);
+				CurrentEntry_, Backpages_, PerPageAmount_);
 	}
 
 	void ChatHistoryWidget::RequestSearch ()

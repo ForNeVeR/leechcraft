@@ -31,8 +31,6 @@ namespace Azoth
 {
 	class ICLEntry;
 
-	class ChatTab;
-
 	class ChatTabsManager : public QObject
 	{
 		Q_OBJECT
@@ -40,17 +38,20 @@ namespace Azoth
 		QSet<QString> StyleParams_;
 		QHash<QString, ChatTab_ptr> Entry2Tab_;
 		QSet<QString> EverOpened_;
+
+		QPointer<ChatTab> LastCurrentTab_;
 	public:
 		struct RestoreChatInfo
 		{
 			QString EntryID_;
 			QString Variant_;
+			QString MsgText_;
 			DynPropertiesList_t Props_;
 		};
 	private:
 		QHash<QString, RestoreChatInfo> RestoreInfo_;
 	public:
-		ChatTabsManager(QObject* = 0);
+		ChatTabsManager (QObject* = 0);
 
 		void OpenChat (const QModelIndex&);
 		QWidget* OpenChat (const ICLEntry*,
@@ -58,6 +59,8 @@ namespace Azoth
 		void CloseChat (const ICLEntry*);
 		bool IsActiveChat (const ICLEntry*) const;
 		bool IsOpenedChat (const QString&) const;
+		ChatTab* GetActiveChatTab () const;
+
 		void UpdateEntryMapping (const QString&, QObject*);
 
 		void HandleEntryAdded (ICLEntry*);
@@ -77,6 +80,7 @@ namespace Azoth
 		void RestoreChat (const RestoreChatInfo&, QObject*);
 	private slots:
 		void handleNeedToClose (ChatTab*);
+		void updateCurrentTab (QObject*);
 		void handleAddingCLEntryEnd (LeechCraft::IHookProxy_ptr proxy,
 				QObject *entry);
 		void chatWindowStyleChanged ();
@@ -89,6 +93,7 @@ namespace Azoth
 
 		void clearUnreadMsgCount (QObject*);
 		void entryMadeCurrent (QObject*);
+		void entryLostCurrent (QObject*);
 	};
 }
 }

@@ -205,6 +205,22 @@ namespace LeechCraft
 							 ver.at (3).digitValue ()),
 							0);
 
+#if defined (ENABLE_GEOIP) && !defined (TORRENT_DISABLE_GEO_IP)
+					QStringList geoipCands;
+					geoipCands << "/usr/share/GeoIP"
+							<< "/usr/local/share/GeoIP"
+							<< "/var/lib/GeoIP";
+					Q_FOREACH (const auto& cand, geoipCands)
+					{
+						const auto& name = cand + "/GeoIP.dat";
+						if (QFile::exists (name))
+						{
+							Session_->load_country_db (name.toUtf8 ().constData ());
+							break;
+						}
+					}
+#endif
+
 					setLoggingSettings ();
 
 					QList<QVariant> ports = XmlSettingsManager::Instance ()->
@@ -520,78 +536,99 @@ namespace LeechCraft
 				if (!CheckValidity (row))
 					return QVariant ();
 
-				const libtorrent::torrent_handle& h = Handles_.at (row).Handle_;
-				libtorrent::torrent_status status = h.status ();
+				const auto& h = Handles_.at (row).Handle_;
+				const auto& status = h.status ();
 
 				switch (role)
 				{
-					case Qt::DisplayRole:
-						switch (column)
+				case Qt::DisplayRole:
+					switch (column)
+					{
+					case ColumnName:
+						return QString::fromUtf8 (h.name ().c_str ());
+					case ColumnState:
+					{
+						const auto& stateStr = GetStringForState (status.state);
+						if (status.state == libtorrent::torrent_status::downloading)
 						{
-							case ColumnName:
-								return QString::fromUtf8 (h.name ().c_str ());
-							case ColumnState:
-								{
-									QString result = status.paused ?
-										tr ("Idle") : GetStringForState (status.state);
-									if (status.state == libtorrent::torrent_status::downloading)
-									{
-										result = QString ("%1 (ETA: %2)")
-											.arg (result)
-											.arg (Util::MakeTimeFromLong
-													(
-													 static_cast<double> (status.total_wanted - status.total_wanted_done) /
-													 status.download_rate
-													));
-									}
-									return result;
-								}
-							case ColumnProgress:
-								return QString (tr ("%1% (%2 of %3 at %4)")
-										.arg (status.progress * 100, 0, 'f', 2)
-										.arg (Util::MakePrettySize (status.total_wanted_done))
-										.arg (Util::MakePrettySize (status.total_wanted)))
-										.arg (Util::MakePrettySize (status.download_payload_rate) +
-												tr ("/s"));
-							default:
-								return QVariant ();
+							const auto remaining = status.total_wanted - status.total_wanted_done;
+							const auto time = static_cast<double> (remaining) / status.download_rate;
+							return QString ("%1 (ETA: %2)")
+								.arg (stateStr)
+								.arg (Util::MakeTimeFromLong (time));
 						}
-					case Qt::ToolTipRole:
+						else if (status.paused)
+							return tr ("idle");
+						else
+							return stateStr;
+					}
+					case ColumnProgress:
+						if (status.state == libtorrent::torrent_status::downloading)
+							return tr ("%1% (%2 of %3 at %4 from %5 peers)")
+									.arg (status.progress * 100, 0, 'f', 2)
+									.arg (Util::MakePrettySize (status.total_wanted_done))
+									.arg (Util::MakePrettySize (status.total_wanted))
+									.arg (Util::MakePrettySize (status.download_payload_rate) +
+											tr ("/s"))
+									.arg (status.num_peers);
+						else if (!status.paused &&
+									(status.state == libtorrent::torrent_status::finished ||
+									 status.state == libtorrent::torrent_status::seeding))
 						{
-							QString result;
-							result += tr ("Name:") + " " + QString::fromUtf8 (h.name ().c_str ()) + "\n";
-							result += tr ("Destination:") + " " +
-#if LIBTORRENT_VERSION_NUM >= 1600
-								QString::fromUtf8 (h.save_path ().c_str ()) + "\n";
-#else
-								QString::fromUtf8 (h.save_path ().directory_string ().c_str ()) + "\n";
-#endif
-							result += tr ("Progress:") + " " +
-								QString (tr ("%1% (%2 of %3)")
-										.arg (status.progress * 100, 0, 'f', 2)
-										.arg (Util::MakePrettySize (status.total_wanted_done))
-										.arg (Util::MakePrettySize (status.total_wanted))) +
-								tr ("; status:") + " " +
-								(status.paused ? tr ("Idle") : GetStringForState (status.state)) + "\n";
-							result += tr ("Downloading speed:") + " " +
-								Util::MakePrettySize (status.download_payload_rate) + tr ("/s") +
-								tr ("; uploading speed:") + " " +
-								Util::MakePrettySize (status.upload_payload_rate) + tr ("/s") + "\n";
-							result += tr ("Peers/seeds: %1/%2").arg (status.num_peers).arg (status.num_seeds);
-							return result;
+							auto total = status.num_incomplete;
+							if (total <= 0)
+								total = status.list_peers - status.list_seeds;
+							return tr ("%1, seeding at %2 to %3 leechers (of around %4)")
+									.arg (Util::MakePrettySize (status.total_wanted))
+									.arg (Util::MakePrettySize (status.upload_payload_rate) +
+											tr ("/s"))
+									.arg (status.num_peers - status.num_seeds)
+									.arg (total);
 						}
-					case Qt::DecorationRole:
-						return column ? QVariant () : TorrentIcon_;
-					case RoleTags:
-						return Handles_.at (row).Tags_;
-					case CustomDataRoles::RoleJobHolderRow:
-						return QVariant::fromValue<JobHolderRow> (JobHolderRow::DownloadProgress);
-					case ProcessState::Done:
-						return static_cast<qlonglong> (status.total_wanted_done);
-					case ProcessState::Total:
-						return static_cast<qlonglong> (status.total_wanted);
+						else
+							return tr ("%1% (%2 of %3)")
+									.arg (status.progress * 100, 0, 'f', 2)
+									.arg (Util::MakePrettySize (status.total_wanted_done))
+									.arg (Util::MakePrettySize (status.total_wanted));
 					default:
 						return QVariant ();
+					}
+				case Qt::ToolTipRole:
+				{
+					QString result;
+					result += tr ("Name:") + " " + QString::fromUtf8 (h.name ().c_str ()) + "\n";
+					result += tr ("Destination:") + " " +
+#if LIBTORRENT_VERSION_NUM >= 1600
+						QString::fromUtf8 (h.save_path ().c_str ()) + "\n";
+#else
+						QString::fromUtf8 (h.save_path ().directory_string ().c_str ()) + "\n";
+#endif
+					result += tr ("Progress:") + " " +
+						QString (tr ("%1% (%2 of %3)")
+								.arg (status.progress * 100, 0, 'f', 2)
+								.arg (Util::MakePrettySize (status.total_wanted_done))
+								.arg (Util::MakePrettySize (status.total_wanted))) +
+						tr ("; status:") + " " +
+						(status.paused ? tr ("Idle") : GetStringForState (status.state)) + "\n";
+					result += tr ("Downloading speed:") + " " +
+						Util::MakePrettySize (status.download_payload_rate) + tr ("/s") +
+						tr ("; uploading speed:") + " " +
+						Util::MakePrettySize (status.upload_payload_rate) + tr ("/s") + "\n";
+					result += tr ("Peers/seeds: %1/%2").arg (status.num_peers).arg (status.num_seeds);
+					return result;
+				}
+				case Qt::DecorationRole:
+					return column ? QVariant () : TorrentIcon_;
+				case RoleTags:
+					return Handles_.at (row).Tags_;
+				case CustomDataRoles::RoleJobHolderRow:
+					return QVariant::fromValue<JobHolderRow> (JobHolderRow::DownloadProgress);
+				case ProcessState::Done:
+					return static_cast<qlonglong> (status.total_wanted_done);
+				case ProcessState::Total:
+					return static_cast<qlonglong> (status.total_wanted);
+				default:
+					return QVariant ();
 				}
 			}
 
@@ -748,6 +785,11 @@ namespace LeechCraft
 						QString::fromStdString (pi.ip.address ().to_string ()),
 						QString::fromUtf8 (pi.client.c_str ()),
 						interesting,
+#if defined (ENABLE_GEOIP) && !defined (TORRENT_DISABLE_GEO_IP)
+						QString::fromLatin1 (QByteArray (pi.country, 2)).toLower (),
+#else
+						QString (),
+#endif
 						std::shared_ptr<libtorrent::peer_info> (new libtorrent::peer_info (pi))
 					};
 					result << ppi;
@@ -807,6 +849,8 @@ namespace LeechCraft
 					handle = libtorrent::add_magnet_uri (*Session_,
 							magnet.toStdString (),
 							atp);
+					if (XmlSettingsManager::Instance ()->property ("ResolveCountries").toBool ())
+						handle.resolve_countries (true);
 				}
 				catch (const libtorrent::libtorrent_exception& e)
 				{
@@ -867,6 +911,8 @@ namespace LeechCraft
 #endif
 					atp.duplicate_is_error = true;
 					handle = Session_->add_torrent (atp);
+					if (XmlSettingsManager::Instance ()->property ("ResolveCountries").toBool ())
+						handle.resolve_countries (true);
 				}
 				catch (const libtorrent::libtorrent_exception& e)
 				{
@@ -2010,6 +2056,8 @@ namespace LeechCraft
 							std::back_inserter (*atp.resume_data));
 
 					handle = Session_->add_torrent (atp);
+					if (XmlSettingsManager::Instance ()->property ("ResolveCountries").toBool ())
+						handle.resolve_countries (true);
 				}
 				catch (const libtorrent::libtorrent_exception& e)
 				{

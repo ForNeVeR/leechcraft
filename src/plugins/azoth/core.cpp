@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "core.h"
+#include <cmath>
 #include <QIcon>
 #include <QAction>
 #include <QStandardItemModel>
@@ -67,13 +68,13 @@
 #include "mooddialog.h"
 #include "callmanager.h"
 #include "addcontactdialog.h"
-#include "acceptriexdialog.h"
 #include "clmodel.h"
 #include "actionsmanager.h"
 #include "servicediscoverywidget.h"
 #include "importmanager.h"
 #include "unreadqueuemanager.h"
 #include "chatstyleoptionmanager.h"
+#include "riexhandler.h"
 
 namespace LeechCraft
 {
@@ -142,9 +143,7 @@ namespace Azoth
 	}
 
 	Core::Core ()
-	: LinkRegexp_ ("((?:(?:\\w+://)|(?:xmpp:|mailto:|www\\.|magnet:|irc:))\\S+)",
-			Qt::CaseInsensitive, QRegExp::RegExp2)
-	, ImageRegexp_ ("(\\b(?:data:image/)[\\w\\d/\\?.=:@&%#_;\\(?:\\)\\+\\-\\~\\*\\,]+)",
+	: ImageRegexp_ ("(\\b(?:data:image/)[\\w\\d/\\?.=:@&%#_;\\(?:\\)\\+\\-\\~\\*\\,]+)",
 			Qt::CaseInsensitive, QRegExp::RegExp2)
 #ifdef ENABLE_CRYPT
 	, QCAInit_ (new QCA::Initializer)
@@ -506,6 +505,19 @@ namespace Azoth
 		return result;
 	}
 
+	IAccount* Core::GetAccount (const QByteArray& id) const
+	{
+		Q_FOREACH (IProtocol *proto, GetProtocols ())
+			Q_FOREACH (QObject *accObj, proto->GetRegisteredAccounts ())
+			{
+				auto acc = qobject_cast<IAccount*> (accObj);
+				if (acc && acc->GetAccountID () == id)
+					return acc;
+			}
+
+		return 0;
+	}
+
 #ifdef ENABLE_CRYPT
 	QList<QCA::PGPKey> Core::GetPublicKeys () const
 	{
@@ -791,7 +803,7 @@ namespace Azoth
 					c.unicode ();
 			hash += nick.length ();
 		}
-		QColor nc = colors.at (hash % colors.size ());
+		QColor nc = colors.at (std::abs (hash) % colors.size ());
 		return nc.name ();
 	}
 
@@ -859,24 +871,7 @@ namespace Azoth
 
 			if (!isRich)
 			{
-				int pos = 0;
-				while ((pos = LinkRegexp_.indexIn (body, pos)) != -1)
-				{
-					QString link = LinkRegexp_.cap (1);
-					if (pos > 0 &&
-							(body.at (pos - 1) == '"' || body.at (pos - 1) == '='))
-					{
-						pos += link.size ();
-						continue;
-					}
-
-					QString str = QString ("<a href=\"%1\">%1</a>")
-							.arg (link);
-					body.replace (pos, link.length (), str);
-
-					pos += str.length ();
-				}
-
+				PluginProxyObject_->FormatLinks (body);
 				body.replace ('\n', "<br />");
 				body.replace ("  ", "&nbsp; ");
 			}
@@ -937,7 +932,12 @@ namespace Azoth
 			const QString& smileStr = img
 					.arg (str)
 					.arg (QString ("data:image/png;base64," + rawData));
-			body.replace (escaped, smileStr);
+			if (body.startsWith (escaped))
+				body.replace (0, escaped.size (), smileStr);
+
+			auto whites = { " ", "\n", "\t", "<br/>", "<br />", "<br>" };
+			Q_FOREACH (auto white, whites)
+				body.replace (white + escaped, white + smileStr);
 		}
 
 		return body;
@@ -995,7 +995,11 @@ namespace Azoth
 		connect (clEntry->GetObject (),
 				SIGNAL (entryGenerallyChanged ()),
 				this,
-				SLOT (handleEntryGenerallyChanged ()));
+				SLOT (remakeTooltipForSender ()));
+		connect (clEntry->GetObject (),
+				SIGNAL (avatarChanged (const QImage&)),
+				this,
+				SLOT (remakeTooltipForSender ()));
 		connect (clEntry->GetObject (),
 				SIGNAL (avatarChanged (const QImage&)),
 				this,
@@ -1052,10 +1056,16 @@ namespace Azoth
 		ID2Entry_ [id] = clEntry->GetObject ();
 
 		const QStringList& groups = GetDisplayGroups (clEntry);
-		QList<QStandardItem*> catItems =
-				GetCategoriesItems (groups, accItem);
+		QList<QStandardItem*> catItems = GetCategoriesItems (groups, accItem);
 		Q_FOREACH (QStandardItem *catItem, catItems)
+		{
 			AddEntryTo (clEntry, catItem);
+
+			bool isMucCat = catItem->data (CLRIsMUCCategory).toBool ();
+			if (!isMucCat)
+				isMucCat = clEntry->GetEntryType () == ICLEntry::ETPrivateChat;
+			catItem->setData (isMucCat, CLRIsMUCCategory);
+		}
 
 		HandleStatusChanged (clEntry->GetStatus (), clEntry, QString ());
 
@@ -1181,13 +1191,32 @@ namespace Azoth
 
 	QString Core::MakeTooltipString (ICLEntry *entry) const
 	{
-		QString tip = "<strong>" + entry->GetEntryName () + "</strong>";
-		tip += "<br />" + entry->GetHumanReadableID () + "<br />";
+		QString tip = "<table border='0'><tr><td>";
+
+		if (entry->GetEntryType () != ICLEntry::ETMUC)
+		{
+			const int avatarSize = 75;
+			const int minAvatarSize = 32;
+			auto avatar = entry->GetAvatar ();
+			if (avatar.isNull ())
+				avatar = GetDefaultAvatar (avatarSize);
+
+			if (std::max (avatar.width (), avatar.height ()) > avatarSize)
+				avatar = avatar.scaled (avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+			else if (std::max (avatar.width (), avatar.height ()) < minAvatarSize)
+				avatar = avatar.scaled (minAvatarSize, minAvatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+			tip += "<img src='" + Util::GetAsBase64Src (avatar) + "' />";
+
+			tip += "</td><td>";
+		}
+
+		tip += "<strong>" + Qt::escape (entry->GetEntryName ()) + "</strong>";
+		tip += "&nbsp;(<em>" + Qt::escape (entry->GetHumanReadableID ()) + "</em>)<br />";
 		tip += Status2Str (entry->GetStatus (), PluginProxyObject_);
 		if (entry->GetEntryType () != ICLEntry::ETPrivateChat)
 		{
 			tip += "<br />";
-			tip += tr ("In groups: ") + entry->Groups ().join ("; ");
+			tip += tr ("In groups:") + ' ' + Qt::escape (entry->Groups ().join ("; "));
 		}
 
 		const QStringList& variants = entry->Variants ();
@@ -1196,7 +1225,8 @@ namespace Azoth
 		if (mucEntry)
 		{
 			const QString& jid = mucEntry->GetRealID (entry->GetObject ());
-			tip += "<br />" + tr ("Real ID:") + ' ' + (jid.isEmpty () ? tr ("unknown") : jid);
+			tip += "<br />" + tr ("Real ID:") + ' ';
+			tip += jid.isEmpty () ? tr ("unknown") : Qt::escape (jid);
 		}
 
 		IMUCPerms *mucPerms = qobject_cast<IMUCPerms*> (entry->GetParentCLEntry ());
@@ -1223,6 +1253,18 @@ namespace Azoth
 		emit hookTooltipBeforeVariants (proxy, entry->GetObject ());
 		proxy->FillValue ("tooltip", tip);
 
+		auto cleanupBR = [&tip] ()
+		{
+			tip = tip.simplified ();
+			while (tip.endsWith ("<br />"))
+			{
+				tip.chop (6);
+				tip = tip.simplified ();
+			}
+		};
+
+		cleanupBR ();
+
 		if (entry->GetEntryType () != ICLEntry::ETPrivateChat)
 			Q_FOREACH (const QString& variant, variants)
 			{
@@ -1232,17 +1274,21 @@ namespace Azoth
 
 				tip += "<hr />";
 				if (!variant.isEmpty ())
-					tip += "<strong>" + variant + "</strong>";
+					tip += "<strong>" + variant;
 
 				if (info.contains ("priority"))
 					tip += " (" + QString::number (info.value ("priority").toInt ()) + ")";
-				tip += ": ";
+				tip += "</strong><br />";
 				tip += Status2Str (entry->GetStatus (variant), PluginProxyObject_);
 
 				if (info.contains ("client_name"))
-					tip += "<br />" + tr ("Using:") + ' ' + info.value ("client_name").toString ();
+					tip += "<br />" + tr ("Using:") + ' ' + Qt::escape (info.value ("client_name").toString ());
 				if (info.contains ("client_version"))
-					tip += " " + info.value ("client_version").toString ();
+					tip += " " + Qt::escape (info.value ("client_version").toString ());
+				if (info.contains ("client_remote_name"))
+					tip += "<br />" + tr ("Claiming:") + ' ' + Qt::escape (info.value ("client_remote_name").toString ());
+				if (info.contains ("client_os"))
+					tip += "<br />" + tr ("OS:") + ' ' + Qt::escape (info.value ("client_os").toString ());
 
 				if (info.contains ("user_mood"))
 					FormatMood (tip, info ["user_mood"].toMap ());
@@ -1255,9 +1301,13 @@ namespace Azoth
 				{
 					const QVariantMap& map = info ["custom_user_visible_map"].toMap ();
 					Q_FOREACH (const QString& key, map.keys ())
-						tip += "<br />" + key + ": " + map [key].toString () + "<br />";
+						tip += "<br />" + key + ": " + Qt::escape (map [key].toString ()) + "<br />";
 				}
 			}
+
+		cleanupBR ();
+
+		tip += "</td></tr></table>";
 
 		return tip;
 	}
@@ -1452,7 +1502,14 @@ namespace Azoth
 					.property ("ClientIcons").toString () + '/';
 		Q_FOREACH (const QString& variant, entry->Variants ())
 		{
-			const QString& filename = pack + entry->GetClientInfo (variant) ["client_type"].toString ();
+			const auto& type = entry->GetClientInfo (variant) ["client_type"].toString ();
+			if (type.isNull ())
+			{
+				result [variant] = QIcon ();
+				continue;
+			}
+
+			const QString& filename = pack + type;
 
 			QPixmap pixmap = ResourceLoaders_ [RLTClientIconLoader]->LoadPixmap (filename);
 			if (pixmap.isNull ())
@@ -1484,7 +1541,7 @@ namespace Azoth
 		return scaled;
 	}
 
-	QImage Core::GetDefaultAvatar (int size)
+	QImage Core::GetDefaultAvatar (int size) const
 	{
 		const QString& name = XmlSettingsManager::Instance ()
 				.property ("SystemIcons").toString () + "/default_avatar";
@@ -1767,6 +1824,12 @@ namespace Azoth
 		UnreadQueueManager_->ShowNext ();
 	}
 
+	void Core::saveAccountVisibility (IAccount *account)
+	{
+		const auto& id = "ShowAccount_" + account->GetAccountID ();
+		XmlSettingsManager::Instance ().setProperty (id, account->IsShownInRoster ());
+	}
+
 	void Core::handleNewProtocols (const QList<QObject*>& protocols)
 	{
 		Q_FOREACH (QObject *protoObj, protocols)
@@ -1790,8 +1853,7 @@ namespace Azoth
 
 	void Core::addAccount (QObject *accObject)
 	{
-		IAccount *account =
-				qobject_cast<IAccount*> (accObject);
+		IAccount *account = qobject_cast<IAccount*> (accObject);
 		if (!account)
 		{
 			qWarning () << Q_FUNC_INFO
@@ -1800,6 +1862,10 @@ namespace Azoth
 					<< sender ();
 			return;
 		}
+
+		const auto& showKey = QString::fromUtf8 ("ShowAccount_" + account->GetAccountID ());
+		const bool show = XmlSettingsManager::Instance ().Property (showKey, true).toBool ();
+		account->SetShownInRoster (show);
 
 		emit accountAdded (account);
 
@@ -1890,7 +1956,7 @@ namespace Azoth
 					SLOT (handleGotSDSession (QObject*)));
 
 		IProtocol *proto = qobject_cast<IProtocol*> (account->GetParentProtocol ());
-		if (proto)
+		if (proto && account->IsShownInRoster ())
 		{
 			const QByteArray& id = proto->GetProtocolID () + account->GetAccountID ();
 			const QVariant& var = XmlSettingsManager::Instance ().property (id);
@@ -1904,7 +1970,7 @@ namespace Azoth
 			else
 				UpdateInitState (account->GetState ().State_);
 		}
-		else
+		else if (!proto)
 			qWarning () << Q_FUNC_INFO
 					<< "account's parent proto isn't IProtocol"
 					<< account->GetParentProtocol ();
@@ -2225,7 +2291,7 @@ namespace Azoth
 		}
 	}
 
-	void Core::handleEntryGenerallyChanged ()
+	void Core::remakeTooltipForSender ()
 	{
 		ICLEntry *entry = qobject_cast<ICLEntry*> (sender ());
 		if (!entry)
@@ -2398,6 +2464,11 @@ namespace Azoth
 
 	void Core::handleAuthorizationRequested (QObject *entryObj, const QString& msg)
 	{
+		Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
+		emit hookGotAuthRequest (proxy, entryObj, msg);
+		if (proxy->IsCancelled ())
+			return;
+
 		ICLEntry *entry = qobject_cast<ICLEntry*> (entryObj);
 		if (!entry)
 		{
@@ -2433,7 +2504,7 @@ namespace Azoth
 		emit gotEntity (e);
 	}
 
-	void Core::handleAttentionDrawn (const QString& text, const QString& variant)
+	void Core::handleAttentionDrawn (const QString& text, const QString&)
 	{
 		if (XmlSettingsManager::Instance ()
 				.property ("IgnoreDrawAttentions").toBool ())
@@ -2860,181 +2931,9 @@ namespace Azoth
 		CheckFileIcon (id);
 	}
 
-	namespace
-	{
-		void FilterRIEXItems (QList<RIEXItem>& items, const QHash<QString, ICLEntry*>& clEntries)
-		{
-			Q_FOREACH (const RIEXItem& item, items)
-			{
-				ICLEntry *entry = clEntries.value (item.ID_);
-				if (!entry &&
-						(item.Action_ == RIEXItem::AModify ||
-						item.Action_ == RIEXItem::ADelete))
-				{
-					qWarning () << Q_FUNC_INFO
-							<< "skipping non-existent"
-							<< item.ID_;
-					items.removeAll (item);
-					continue;
-				}
-
-				if (item.Action_ == RIEXItem::ADelete &&
-						entry &&
-						!item.Groups_.isEmpty ())
-				{
-					bool found = false;
-					const QStringList& origGroups = entry->Groups ();
-					Q_FOREACH (const QString& group, item.Groups_)
-						if (origGroups.contains (group))
-						{
-							found = true;
-							break;
-						}
-
-					if (!found)
-						items.removeAll (item);
-				}
-
-				if (item.Action_ == RIEXItem::AAdd &&
-						entry)
-					items.removeAll (item);
-			}
-		}
-
-		void AddRIEX (const RIEXItem& item, const QHash<QString, ICLEntry*> entries, IAccount *acc)
-		{
-			if (!entries.contains (item.ID_))
-			{
-				acc->RequestAuth (item.ID_, QString (), item.Nick_, item.Groups_);
-				return;
-			}
-
-			ICLEntry *entry = entries [item.ID_];
-
-			bool allGroups = true;
-			Q_FOREACH (const QString& group, item.Groups_)
-				if (!entry->Groups ().contains (group))
-				{
-					allGroups = false;
-					break;
-				}
-
-			if (!allGroups)
-			{
-				QStringList newGroups = item.Groups_ + entry->Groups ();
-				newGroups.removeDuplicates ();
-				entry->SetGroups (newGroups);
-			}
-			else
-			{
-				qWarning () << Q_FUNC_INFO
-						<< "skipping already-existing"
-						<< item.ID_;
-				return;
-			}
-		}
-
-		void ModifyRIEX (const RIEXItem& item, const QHash<QString, ICLEntry*> entries, IAccount *acc)
-		{
-			if (!entries.contains (item.ID_))
-			{
-				qWarning () << Q_FUNC_INFO
-						<< "skipping non-existent"
-						<< item.ID_;
-				return;
-			}
-
-			ICLEntry *entry = entries [item.ID_];
-
-			if (!item.Groups_.isEmpty ())
-				entry->SetGroups (item.Groups_);
-
-			if (!item.Nick_.isEmpty ())
-				entry->SetEntryName (item.Nick_);
-		}
-
-		void DeleteRIEX (const RIEXItem& item, const QHash<QString, ICLEntry*> entries, IAccount *acc)
-		{
-			if (!entries.contains (item.ID_))
-			{
-				qWarning () << Q_FUNC_INFO
-						<< "skipping non-existent"
-						<< item.ID_;
-				return;
-			}
-
-			ICLEntry *entry = entries [item.ID_];
-			if (item.Groups_.isEmpty ())
-				acc->RemoveEntry (entry->GetObject ());
-			else
-			{
-				QStringList newGroups = entry->Groups ();
-				Q_FOREACH (const QString& group, item.Groups_)
-					newGroups.removeAll (group);
-
-				entry->SetGroups (newGroups);
-			}
-		}
-	}
-
 	void Core::handleRIEXItemsSuggested (QList<RIEXItem> items, QObject *from, QString message)
 	{
-		if (items.isEmpty () || !from)
-			return;
-
-		ICLEntry *entry = qobject_cast<ICLEntry*> (from);
-		if (!entry)
-		{
-			qWarning () << Q_FUNC_INFO
-					<< from
-					<< "doesn't implement ICLEntry";
-			return;
-		}
-
-		IAccount *acc = qobject_cast<IAccount*> (entry->GetParentAccount ());
-		QHash<QString, ICLEntry*> clEntries;
-		Q_FOREACH (QObject *entryObj, acc->GetCLEntries ())
-		{
-			ICLEntry *entry = qobject_cast<ICLEntry*> (entryObj);
-			if (!entry ||
-					(entry->GetEntryFeatures () & ICLEntry::FMaskLongetivity) != ICLEntry::FPermanentEntry)
-				continue;
-
-			clEntries [entry->GetHumanReadableID ()] = entry;
-		}
-
-		FilterRIEXItems (items, clEntries);
-		if (items.isEmpty ())
-			return;
-
-		AcceptRIEXDialog dia (items, from, message);
-		if (dia.exec () != QDialog::Accepted)
-			return;
-
-		Q_FOREACH (const RIEXItem& item, dia.GetSelectedItems ())
-		{
-			switch (item.Action_)
-			{
-			case RIEXItem::AAdd:
-				AddRIEX (item, clEntries, acc);
-				break;
-			case RIEXItem::AModify:
-				ModifyRIEX (item, clEntries, acc);
-				break;
-			case RIEXItem::ADelete:
-				DeleteRIEX (item, clEntries, acc);
-				break;
-			default:
-				qWarning () << Q_FUNC_INFO
-						<< "unknown action"
-						<< item.Action_
-						<< "for item"
-						<< item.ID_
-						<< item.Nick_
-						<< item.Groups_;
-				break;
-			}
-		}
+		RIEX::HandleRIEXItemsSuggested (items, from, message);
 	}
 
 	void Core::invalidateClientsIconCache (QObject *passedObj)

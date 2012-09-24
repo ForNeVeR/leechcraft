@@ -23,6 +23,7 @@
 #include <QIcon>
 #include <QColor>
 #include <QDateTime>
+#include <QRegExp>
 #include "interfaces/azoth/iproxyobject.h"
 
 namespace LeechCraft
@@ -33,9 +34,9 @@ namespace Azoth
 					  , public IProxyObject
 	{
 		Q_OBJECT
-
 		Q_INTERFACES (LeechCraft::Azoth::IProxyObject)
 
+		QRegExp LinkRegexp_;
 		QHash<QString, AuthStatus> SerializedStr2AuthStatus_;
 	public:
 		ProxyObject (QObject* = 0);
@@ -44,7 +45,6 @@ namespace Azoth
 		QString GetPassword (QObject*);
 		void SetPassword (const QString&, QObject*);
 		QString GetAccountPassword (QObject*, bool);
-		QString GetOSName ();
 		bool IsAutojoinAllowed ();
 		QString StateToString (State) const;
 		QString AuthStatusToString (AuthStatus) const;
@@ -62,6 +62,7 @@ namespace Azoth
 		void PreprocessMessage (QObject*);
 		Util::ResourceLoader* GetResourceLoader (PublicResourceLoader) const;
 		QIcon GetIconForState (State) const;
+		void FormatLinks (QString&);
 	};
 }
 }

@@ -76,7 +76,8 @@ namespace Vader
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/azoth/plugins/vader/resources/images/vader.svg");
+		static QIcon icon (":/plugins/azoth/plugins/vader/resources/images/vader.svg");
+		return icon;
 	}
 
 	Util::XmlSettingsDialog_ptr Plugin::GetSettingsDialog () const
@@ -106,9 +107,8 @@ namespace Vader
 		Core::Instance ().SetProxy (proxy);
 	}
 
-	void Plugin::hookEntryActionAreasRequested (LeechCraft::IHookProxy_ptr proxy,
-			QObject *action,
-			QObject *entry)
+	void Plugin::hookEntryActionAreasRequested (LeechCraft::IHookProxy_ptr,
+			QObject*, QObject*)
 	{
 	}
 

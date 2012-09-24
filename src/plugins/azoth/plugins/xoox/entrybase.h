@@ -28,8 +28,10 @@
 #include <QXmppDiscoveryIq.h>
 #include <interfaces/azoth/iclentry.h>
 #include <interfaces/azoth/iadvancedclentry.h>
+#include <interfaces/azoth/imetainfoentry.h>
 #include <interfaces/azoth/ihavedirectedstatus.h>
 #include <interfaces/azoth/isupportgeolocation.h>
+#include <interfaces/azoth/isupportmicroblogs.h>
 
 class QXmppPresence;
 class QXmppVersionIq;
@@ -55,12 +57,16 @@ namespace Xoox
 	class EntryBase : public QObject
 					, public ICLEntry
 					, public IAdvancedCLEntry
+					, public IMetaInfoEntry
 					, public IHaveDirectedStatus
+					, public ISupportMicroblogs
 	{
 		Q_OBJECT
 		Q_INTERFACES (LeechCraft::Azoth::ICLEntry
 				LeechCraft::Azoth::IAdvancedCLEntry
-				LeechCraft::Azoth::IHaveDirectedStatus)
+				LeechCraft::Azoth::IMetaInfoEntry
+				LeechCraft::Azoth::IHaveDirectedStatus
+				LeechCraft::Azoth::ISupportMicroblogs)
 	protected:
 		GlooxAccount *Account_;
 
@@ -110,9 +116,15 @@ namespace Xoox
 		AdvancedFeatures GetAdvancedFeatures () const;
 		void DrawAttention (const QString&, const QString&);
 
+		// IMetaInfoEntry
+		QVariant GetMetaInfo (DataField) const;
+
 		// IHaveDirectedStatus
 		bool CanSendDirectedStatusNow (const QString&);
 		void SendDirectedStatus (const EntryStatus&, const QString&);
+
+		// ISupportMicroblogs
+		void RequestLastPosts (int);
 
 		virtual QString GetJID () const = 0;
 
@@ -121,11 +133,11 @@ namespace Xoox
 		void HandlePEPEvent (QString, PEPEventBase*);
 		void HandleAttentionMessage (const QXmppMessage&);
 		void UpdateChatState (QXmppMessage::State, const QString&);
-		void SetStatus (const EntryStatus&, const QString&);
+		void SetStatus (const EntryStatus&, const QString&, const QXmppPresence&);
 		void SetAvatar (const QByteArray&);
 		void SetAvatar (const QImage&);
 		QXmppVCardIq GetVCard () const;
-		void SetVCard (const QXmppVCardIq&);
+		void SetVCard (const QXmppVCardIq&, bool initial = false);
 		void SetRawInfo (const QString&);
 
 		bool HasUnreadMsgs () const;
@@ -167,6 +179,9 @@ namespace Xoox
 		void activityChanged (const QString&);
 		void tuneChanged (const QString&);
 		void locationChanged (const QString&);
+
+		void gotRecentPosts (const QList<LeechCraft::Azoth::Post>&);
+		void gotNewPost (const LeechCraft::Azoth::Post&);
 
 		void locationChanged (const QString&, QObject*);
 

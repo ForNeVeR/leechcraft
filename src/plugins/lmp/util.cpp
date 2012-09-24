@@ -19,36 +19,88 @@
 #include "util.h"
 #include <algorithm>
 #include <QDirIterator>
+#include <QTimer>
 #include <QPixmap>
+#include <QDesktopWidget>
+#include <QLabel>
+#include <QApplication>
+#include <QKeyEvent>
+#include <phonon/mediasource.h>
+#include "core.h"
+#include "localcollection.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
 namespace LMP
 {
-	QStringList RecIterate (const QString& dirPath)
+	QStringList RecIterate (const QString& dirPath, bool followSymlinks)
 	{
 		QStringList result;
 		QStringList nameFilters;
-		nameFilters << ".ogg"
-				<< ".flac"
-				<< ".mp3"
-				<< ".wav";
-		QDirIterator iterator (dirPath, QDirIterator::Subdirectories);
-		while (iterator.hasNext ())
+		nameFilters << "*.aiff"
+				<< "*.ape"
+				<< "*.asf"
+				<< "*.flac"
+				<< "*.m4a"
+				<< "*.mp3"
+				<< "*.mp4"
+				<< "*.mpc"
+				<< "*.mpeg"
+				<< "*.mpg"
+				<< "*.ogg"
+				<< "*.tta"
+				<< "*.wav"
+				<< "*.wma"
+				<< "*.wv"
+				<< "*.wvp";
+
+		if (QFileInfo (dirPath).isFile ())
 		{
-			const QString& path = iterator.next ();
-			Q_FOREACH (const QString& name, nameFilters)
-				if (path.endsWith (name, Qt::CaseInsensitive))
-				{
-					result << path;
-					break;
-				}
+			Q_FOREACH (const auto& filter, nameFilters)
+				if (dirPath.endsWith (filter.mid (1), Qt::CaseInsensitive))
+					return QStringList (dirPath);
+			return QStringList ();
 		}
+
+		auto filters = QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot;
+		if (!followSymlinks)
+			filters |= QDir::NoSymLinks;
+
+		const auto& list = QDir (dirPath).entryInfoList (nameFilters, filters);
+		Q_FOREACH (const QFileInfo& entryInfo, list)
+		{
+			const auto& path = entryInfo.absoluteFilePath ();
+			if (entryInfo.isSymLink () &&
+					entryInfo.symLinkTarget () == path)
+				continue;
+
+			if (entryInfo.isDir ())
+				result += RecIterate (path, followSymlinks);
+			else if (entryInfo.isFile ())
+				result += path;
+		}
+
 		return result;
 	}
 
-	QString FindAlbumArtPath (const QString& near)
+	QString FindAlbumArtPath (const QString& near, bool ignoreCollection)
 	{
+		if (near.isEmpty ())
+			return QString ();
+
+		if (!ignoreCollection)
+		{
+			auto collection = Core::Instance ().GetLocalCollection ();
+			const int trackId = collection->FindTrack (near);
+			if (trackId >= 0)
+			{
+				auto album = collection->GetTrackAlbum (trackId);
+				if (!album->CoverPath_.isEmpty ())
+					return album->CoverPath_;
+			}
+		}
+
 		QStringList possibleBases;
 		possibleBases << "cover" << "folder" << "front";
 
@@ -65,9 +117,95 @@ namespace LMP
 		return pos == entryList.end () ? QString () : dir.filePath (*pos);
 	}
 
-	QPixmap FindAlbumArt (const QString& near)
+	QPixmap FindAlbumArt (const QString& near, bool ignoreCollection)
 	{
-		return QPixmap (FindAlbumArtPath (near));
+		if (near.isEmpty ())
+			return QPixmap ();
+
+		return QPixmap (FindAlbumArtPath (near, ignoreCollection));
+	}
+
+	namespace
+	{
+		class AADisplayEventFilter : public QObject
+		{
+			QWidget *Display_;
+		public:
+			AADisplayEventFilter (QWidget *display)
+			: QObject (display)
+			, Display_ (display)
+			{
+			}
+		protected:
+			bool eventFilter (QObject*, QEvent *event)
+			{
+				bool shouldClose = false;
+				switch (event->type ())
+				{
+				case QEvent::KeyRelease:
+					shouldClose = static_cast<QKeyEvent*> (event)->key () == Qt::Key_Escape;
+					break;
+				case QEvent::MouseButtonRelease:
+					shouldClose = true;
+					break;
+				default:
+					break;
+				}
+
+				if (!shouldClose)
+					return false;
+
+				QTimer::singleShot (0,
+						Display_,
+						SLOT (close ()));
+				return true;
+			}
+		};
+	}
+
+	void ShowAlbumArt (const QString& near, const QPoint& pos)
+	{
+		auto px = FindAlbumArt (near);
+		if (px.isNull ())
+			return;
+
+		const auto& availGeom = QApplication::desktop ()->availableGeometry (pos).size () * 0.9;
+		if (px.size ().width () > availGeom.width () ||
+			px.size ().height () > availGeom.height ())
+			px = px.scaled (availGeom, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+		auto label = new QLabel;
+		label->setWindowTitle (QObject::tr ("Album art"));
+		label->setWindowFlags (Qt::Tool);
+		label->setAttribute (Qt::WA_DeleteOnClose);
+		label->setFixedSize (px.size ());
+		label->setPixmap (px);
+		label->show ();
+		label->activateWindow ();
+		label->installEventFilter (new AADisplayEventFilter (label));
+	}
+
+	QString PerformSubstitutions (QString mask, const MediaInfo& info)
+	{
+		mask.replace ("$artist", info.Artist_);
+		mask.replace ("$year", QString::number (info.Year_));
+		mask.replace ("$album", info.Album_);
+		QString trackNumStr = QString::number (info.TrackNumber_);
+		if (info.TrackNumber_ < 10)
+			trackNumStr.prepend ('0');
+		mask.replace ("$trackNumber", trackNumStr);
+		mask.replace ("$title", info.Title_);
+		return mask;
+	}
+
+	bool ShouldRememberProvs ()
+	{
+		return XmlSettingsManager::Instance ().property ("RememberUsedProviders").toBool ();
+	}
+
+	bool operator!= (const Phonon::MediaSource& left, const Phonon::MediaSource& right)
+	{
+		return !(left == right);
 	}
 }
 }

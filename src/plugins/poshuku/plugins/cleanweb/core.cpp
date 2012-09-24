@@ -42,6 +42,7 @@
 #include "lineparser.h"
 
 Q_DECLARE_METATYPE (QWebFrame*);
+Q_DECLARE_METATYPE (QPointer<QWebFrame>);
 
 namespace LeechCraft
 {
@@ -121,6 +122,7 @@ namespace CleanWeb
 	, UserFilters_ (new UserFiltersModel (this))
 	{
 		qRegisterMetaType<QWebFrame*> ("QWebFrame*");
+		qRegisterMetaType<QPointer<QWebFrame>> ("QPointer<QWebFrame>");
 
 		HeaderLabels_ << tr ("Name")
 			<< tr ("Last updated")
@@ -279,6 +281,50 @@ namespace CleanWeb
 		Remove (Filters_ [index.row ()].SD_.Filename_);
 	}
 
+	namespace
+	{
+		void RemoveElem (QWebElement elem)
+		{
+			auto parent = elem.parent ();
+			elem.removeFromDocument ();
+			if (!parent.findAll ("*").count ())
+				RemoveElem (parent);
+		}
+	}
+
+	void Core::HandleInitialLayout (QWebPage*, QWebFrame *frame)
+	{
+		const QUrl& url = frame->url ();
+		const QString& urlStr = url.toString ();
+		const auto& urlUtf8 = urlStr.toUtf8 ();
+		const QString& cinUrlStr = urlStr.toLower ();
+		const auto& cinUrlUtf8 = cinUrlStr.toUtf8 ();
+
+		const QString& domain = url.host ();
+
+		QList<Filter> allFilters = Filters_;
+		allFilters << UserFilters_->GetFilter ();
+		int numItems = 0;
+		Q_FOREACH (const Filter& filter, allFilters)
+			Q_FOREACH (const auto& item, filter.Filters_)
+			{
+				if (item.Option_.HideSelector_.isEmpty ())
+					continue;
+
+				const auto& opt = item.Option_;
+				const auto& url = opt.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
+				const auto& utf8 = opt.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
+				if (!item.OrigString_.isEmpty () && !Matches (item, url, utf8, domain))
+					continue;
+
+				Q_FOREACH (auto elem, frame->findAllElements (item.Option_.HideSelector_))
+					RemoveElem (elem);
+
+				if (!(++numItems % 100))
+					qApp->processEvents ();
+			}
+	}
+
 	QNetworkReply* Core::Hook (IHookProxy_ptr hook,
 			QNetworkAccessManager*,
 			QNetworkAccessManager::Operation*,
@@ -289,34 +335,24 @@ namespace CleanWeb
 			return 0;
 
 		if (req.url ().scheme () == "data")
-		{
-			qDebug () << Q_FUNC_INFO
-				<< "not checking data: urls";
 			return 0;
-		}
 
 		QString matched;
 		if (!ShouldReject (req, &matched))
 			return 0;
 
-		if (Blocked_.size () > 300)
-			Blocked_.removeFirst ();
-		qDebug () << "rejecting against" << matched;
 		hook->CancelDefault ();
 
-#if QT_VERSION >= 0x040700
 		QWebFrame *frame = qobject_cast<QWebFrame*> (req.originatingObject ());
+		qDebug () << "rejecting against" << matched << frame;
 		if (frame)
 			QMetaObject::invokeMethod (this,
 					"delayedRemoveElements",
 					Qt::QueuedConnection,
-					Q_ARG (QWebFrame*, frame),
-					Q_ARG (QString, req.url ().toString ()));
-#else
-		Blocked_ << req.url ().toString ();
-#endif
+					Q_ARG (QPointer<QWebFrame>, frame),
+					Q_ARG (QString, req.url ().toEncoded ()));
 
-		Util::CustomNetworkReply *result = new Util::CustomNetworkReply (this);
+		Util::CustomNetworkReply *result = new Util::CustomNetworkReply (req.url (), this);
 		result->SetContent (QString ("Blocked by Poshuku CleanWeb"));
 		result->SetError (QNetworkReply::ContentAccessDenied,
 				tr ("Blocked by Poshuku CleanWeb: %1")
@@ -334,27 +370,17 @@ namespace CleanWeb
 		if (ext != QWebPage::ErrorPageExtension)
 			return;
 
-		const QWebPage::ErrorPageExtensionOption *error =
-				static_cast<const QWebPage::ErrorPageExtensionOption*> (opt);
+		auto error = static_cast<const QWebPage::ErrorPageExtensionOption*> (opt);
 		if (error->error != QNetworkReply::ContentAccessDenied)
 			return;
 
-		QString url = error->url.toString ();
-		if (!Blocked_.contains (url))
-		{
-			url = error->frame->url ().toString ();
-			if (!Blocked_.contains (url))
-				return;
-		}
-
+		QString url = error->url.toEncoded ();
 		proxy->CancelDefault ();
 		proxy->SetReturnValue (true);
-
-		// Otherwise things segfault on Qt 4.7.
 		QMetaObject::invokeMethod (this,
 				"delayedRemoveElements",
 				Qt::QueuedConnection,
-				Q_ARG (QWebFrame*, page->mainFrame ()),
+				Q_ARG (QPointer<QWebFrame>, page->mainFrame ()),
 				Q_ARG (QString, url));
 	}
 
@@ -419,33 +445,40 @@ namespace CleanWeb
 
 		const QUrl& url = req.url ();
 		const QString& urlStr = url.toString ();
+		const auto& urlUtf8 = urlStr.toUtf8 ();
 		const QString& cinUrlStr = urlStr.toLower ();
+		const auto& cinUrlUtf8 = cinUrlStr.toUtf8 ();
+
 		const QString& domain = url.host ();
+		const auto& domainUtf8 = domain.toUtf8 ();
+		const bool isForeign = !req.rawHeader ("referer").contains (domainUtf8);
 
 		QList<Filter> allFilters = Filters_;
 		allFilters << UserFilters_->GetFilter ();
 		Q_FOREACH (const Filter& filter, allFilters)
 		{
-			Q_FOREACH (const QString& exception, filter.ExceptionStrings_)
+			Q_FOREACH (const auto& item, filter.Exceptions_)
 			{
-				const bool cs = filter.Options_ [exception].Case_ == Qt::CaseSensitive;
-				const QString& url = cs ? urlStr : cinUrlStr;
-				if (Matches (exception, filter, url, domain))
+				const auto& url = item.Option_.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
+				const auto& utf8 = item.Option_.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
+				if (item.Option_.HideSelector_.isEmpty () && Matches (item, url, utf8, domain))
 					return false;
 			}
 
-			Q_FOREACH (const QString& filterString, filter.FilterStrings_)
+			Q_FOREACH (const auto& item, filter.Filters_)
 			{
-				const FilterOption& opt = filter.Options_ [filterString];
-				if (opt.AbortForeign_ &&
-						!req.rawHeader ("referer").contains (domain.toUtf8 ()))
+				if (!item.Option_.HideSelector_.isEmpty ())
 					continue;
 
-				const bool cs = opt.Case_ == Qt::CaseSensitive;
-				const QString& url = cs ? urlStr : cinUrlStr;
-				if (Matches (filterString, filter, url, domain))
+				const auto& opt = item.Option_;
+				if (opt.AbortForeign_ && isForeign)
+					continue;
+
+				const auto& url = opt.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
+				const auto& utf8 = opt.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
+				if (Matches (item, url, utf8, domain))
 				{
-					*matchedFilter = filterString;
+					*matchedFilter = item.OrigString_;
 					return true;
 				}
 			}
@@ -514,13 +547,12 @@ namespace CleanWeb
 	}
 	#endif
 
-	bool Core::Matches (const QString& exception, const Filter& filter,
-			const QString& urlStr, const QString& domain) const
+	bool Core::Matches (const FilterItem& item, const QString& urlStr, const QByteArray& urlUtf8, const QString& domain) const
 	{
-		const FilterOption& opt = filter.Options_ [exception];
+		const auto& opt = item.Option_;
 		if (!opt.NotDomains_.isEmpty ())
 		{
-			Q_FOREACH (const QString& notDomain, opt.NotDomains_)
+			Q_FOREACH (const auto& notDomain, opt.NotDomains_)
 				if (domain.endsWith (notDomain, opt.Case_))
 					return false;
 		}
@@ -538,17 +570,19 @@ namespace CleanWeb
 				return false;
 		}
 
-		if (opt.MatchType_ == FilterOption::MTRegexp &&
-				filter.RegExps_ [exception].exactMatch (urlStr))
-			return true;
-		else if (opt.MatchType_ == FilterOption::MTWildcard)
+		switch (opt.MatchType_)
 		{
-			if (WildcardMatches (qPrintable ("*" + exception + "*"),
-						qPrintable (urlStr)))
-				return true;
+		case FilterOption::MTRegexp:
+			return item.RegExp_.Matches (urlStr);
+		case FilterOption::MTWildcard:
+			return WildcardMatches (item.OrigString_.constData (), urlUtf8.constData ());
+		case FilterOption::MTPlain:
+			return item.PlainMatcher_.indexIn (urlUtf8) >= 0;
+		case FilterOption::MTBegin:
+			return urlStr.startsWith (item.OrigString_);
+		case FilterOption::MTEnd:
+			return urlStr.endsWith (item.OrigString_);
 		}
-		else if (opt.MatchType_ == FilterOption::MTPlain)
-			return urlStr.contains (exception);
 
 		return false;
 	}
@@ -811,13 +845,15 @@ namespace CleanWeb
 		PendingJobs_.remove (id);
 	}
 
-	void Core::delayedRemoveElements (QWebFrame *frame, const QString& url)
+	void Core::delayedRemoveElements (QPointer<QWebFrame> frame, const QString& url)
 	{
-		QWebElementCollection elems =
-				frame->findAllElements ("*[src=\"" + url + "\"]");
+		if (!frame)
+			return;
+
+		const auto& elems = frame->findAllElements ("*[src=\"" + url + "\"]");
 		if (elems.count ())
 			Q_FOREACH (QWebElement elem, elems)
-				elem.removeFromDocument ();
+				RemoveElem (elem);
 		else if (frame->parentFrame ())
 			delayedRemoveElements (frame->parentFrame (), url);
 		else

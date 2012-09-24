@@ -28,7 +28,7 @@ namespace Azoth
 {
 namespace Zheet
 {
-	void Plugin::Init (ICoreProxy_ptr proxy)
+	void Plugin::Init (ICoreProxy_ptr)
 	{
 		Util::InstallTranslator ("azoth_zheet");
 		connect (&Core::Instance (),
@@ -64,7 +64,8 @@ namespace Zheet
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/azoth/plugins/zheet/resources/images/zheet.svg");
+		static QIcon icon (":/plugins/azoth/plugins/zheet/resources/images/zheet.svg");
+		return icon;
 	}
 
 	QSet<QByteArray> Plugin::GetPluginClasses () const

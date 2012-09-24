@@ -44,18 +44,6 @@ namespace LeechCraft
 			return QString::fromUtf8 (str.c_str ());
 		}
 
-		template<typename In, typename Out, typename Pred>
-		Out copy_if (In first, In last, Out res, Pred p)
-		{
-			while (first != last)
-			{
-				if (p (*first))
-					*res++ = *first;
-				++first;
-			}
-			return res;
-		}
-
 		template<typename T>
 		struct ValueFinder
 		{
@@ -294,6 +282,8 @@ namespace LeechCraft
 
 		UTIL_API QVariantList GetPersistentData (const QList<QVariant>& keys,
 				QObject *object);
+
+		UTIL_API QPoint FitRectScreen (QPoint pos, const QSize& size);
 
 		/** @brief Returns an element for a given tags list.
 		 *

@@ -127,7 +127,8 @@ namespace LeechCraft
 
 			QIcon TorrentPlugin::GetIcon () const
 			{
-				return QIcon (":/resources/images/bittorrent.svg");
+				static QIcon icon (":/resources/images/bittorrent.svg");
+				return icon;
 			}
 
 			qint64 TorrentPlugin::GetDownloadSpeed () const
@@ -348,10 +349,10 @@ namespace LeechCraft
 
 				switch (place)
 				{
-				case AEPCommonContextMenu:
+				case ActionsEmbedPlace::CommonContextMenu:
 					result += CreateTorrent_.get ();
 					break;
-				case AEPToolsMenu:
+				case ActionsEmbedPlace::ToolsMenu:
 					result += OpenMultipleTorrents_.get ();
 					result += IPFilter_.get ();
 					break;

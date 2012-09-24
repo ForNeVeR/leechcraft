@@ -50,20 +50,39 @@ namespace LMP
 		QSqlQuery AddTrack_;
 		QSqlQuery AddGenre_;
 
+		QSqlQuery RemoveTrack_;
+		QSqlQuery RemoveAlbum_;
+		QSqlQuery RemoveArtist_;
+
 		QSqlQuery SetAlbumArt_;
 
 		QSqlQuery GetTrackStats_;
+		QSqlQuery SetTrackStats_;
 		QSqlQuery UpdateTrackStats_;
 	public:
+		struct LoadResult
+		{
+			Collection::Artists_t Artists_;
+
+			QHash<QString, int> PresentArtists_;
+			QHash<QString, int> PresentAlbums_;
+		};
+
 		LocalCollectionStorage (QObject* = 0);
 
 		void Clear ();
 		Collection::Artists_t AddToCollection (const QList<MediaInfo>&);
-		Collection::Artists_t Load ();
+		LoadResult Load ();
+		void Load (const LoadResult&);
+
+		void RemoveTrack (int);
+		void RemoveAlbum (int);
+		void RemoveArtist (int);
 
 		void SetAlbumArt (int, const QString&);
 
 		Collection::TrackStats GetTrackStats (int);
+		void SetTrackStats (const Collection::TrackStats&);
 		void RecordTrackPlayed (int);
 	private:
 		Collection::Artists_t GetAllArtists ();

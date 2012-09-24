@@ -30,7 +30,10 @@
 			</item>
 			<item type="combobox" property="AppQStyle" mayHaveDataSource="true">
 				<label lang="en" value="Style:" />
-				<option name="Plastique" default="true">
+				<option name="Default" default="true">
+					<label lang="en" value="Default" />
+				</option>
+				<option name="Plastique">
 					<label lang="en" value="Plastique" />
 				</option>
 			</item>
@@ -44,6 +47,15 @@
 				<label lang="en" value="Default new tab contents:" />
 				<option name="contextdependent" default="true">
 					<label lang="en" value="Context-dependent" />
+				</option>
+			</item>
+			<item type="combobox" property="TabBarPosition">
+				<label value="Tab bar position" />
+				<option name="Top" default="true">
+					<label value="Top" />
+				</option>
+				<option name="Bottom">
+					<label value="Bottom" />
 				</option>
 			</item>
 			<item type="spinbox" property="MaxLogLines" default="500" step="250" minimum="10" maximum="50000">
@@ -84,6 +96,12 @@
 			</item>
 			<item type="checkbox" property="DontAskWhenSingle" default="true">
 				<label lang="en" value="Automatically accept task when there is only one handler" />
+			</item>
+			<item type="checkbox" property="FallbackExternalHandlers" default="true">
+				<label value="Try external applications when no plugins can handle an entity" />
+			</item>
+			<item type="pushbutton" name="SetStartupPassword">
+				<label value="Set startup password" />
 			</item>
 		</groupbox>
 		<item type="groupbox" property="ShowPluginMenuInTabs" state="on" checkable="true">
@@ -169,6 +187,12 @@
 		<groupbox>
 			<label lang="en" value="Plugins manager" />
 			<item type="customwidget" label="own" name="PluginManager" />
+			<item type="pushbutton" name="EnableAllPlugins">
+				<label value="Enable all plugins" />
+			</item>
+			<item type="pushbutton" name="DisableAllPlugins">
+				<label value="Disable all plugins" />
+			</item>
 		</groupbox>
 	</page>
 </settings>

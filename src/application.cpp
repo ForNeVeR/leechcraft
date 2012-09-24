@@ -80,8 +80,12 @@ LeechCraft::Application::Application (int& argc, char **argv)
 	if (VarMap_.count ("clrsckt"))
 		QLocalServer::removeServer (GetSocketName ());
 
+	if (VarMap_.count ("no-resource-caching"))
+		setProperty ("NoResourceCaching", true);
+
 	if (VarMap_.count ("restart"))
 	{
+		Arguments_.removeAll ("--restart");
 		EnterRestartMode ();
 		return;
 	}
@@ -104,14 +108,14 @@ LeechCraft::Application::Application (int& argc, char **argv)
 		}
 
 	// Things are sane, prepare
-    QCoreApplication::setApplicationName ("Leechcraft");
+	QCoreApplication::setApplicationName ("Leechcraft");
 	QCoreApplication::setApplicationVersion (LEECHCRAFT_VERSION);
-    QCoreApplication::setOrganizationName ("Deviant");
+	QCoreApplication::setOrganizationName ("Deviant");
 
 	Translator_.reset (LeechCraft::Util::InstallTranslator (""));
 
-    qRegisterMetaType<QModelIndex> ("QModelIndex");
-    qRegisterMetaType<QModelIndex*> ("QModelIndexStar");
+	qRegisterMetaType<QModelIndex> ("QModelIndex");
+	qRegisterMetaType<QModelIndex*> ("QModelIndexStar");
 	qRegisterMetaType<TagsManager::TagsDictionary_t> ("LeechCraft::TagsManager::TagsDictionary_t");
 	qRegisterMetaType<LeechCraft::Entity> ("LeechCraft::Entity");
 	qRegisterMetaType<LeechCraft::Entity> ("Entity");
@@ -126,11 +130,21 @@ LeechCraft::Application::Application (int& argc, char **argv)
 
 	ParseCommandLine ();
 
+#ifdef Q_OS_MAC
+	if (!Arguments_.contains ("-nobundle"))
+	{
+		QDir dir (applicationDirPath ());
+		dir.cdUp ();
+		dir.cd ("PlugIns");
+		QApplication::setLibraryPaths (QStringList (dir.absolutePath ()));
+	}
+#endif
+
 	setWindowIcon (QIcon (":/resources/images/leechcraft.svg"));
 
 	// Say hello to logs
-    qDebug () << "======APPLICATION STARTUP======";
-    qWarning () << "======APPLICATION STARTUP======";
+	qDebug () << "======APPLICATION STARTUP======";
+	qWarning () << "======APPLICATION STARTUP======";
 
 	// And finally!..
 	new LeechCraft::MainWindow ();
@@ -161,6 +175,9 @@ bpo::variables_map Application::Parse (bpo::command_line_parser& parser,
 			("nolog", "disable custom file logger and print everything to stdout/stderr")
 			("clrsckt", "clear stalled socket, use if you believe previous LC instance has terminated but failed to close its local socket properly")
 			("no-app-catch", "disable exceptions catch-all in QApplication::notify(), useful for debugging purposes")
+			("safe-mode", "disable all plugins so that you can manually enable them in Settings later")
+			("list-plugins", "list all non-adapted plugins that were found and exit (this one doesn't check if plugins are valid and loadable)")
+			("no-resource-caching", "disable caching of dynamic loadable resources (useful for stuff like Azoth themes development)")
 			("autorestart", "automatically restart LC if it's closed (not guaranteed to work everywhere, especially on Windows and Mac OS X)")
 			("minimized", "start LC minimized to tray")
 			("restart", "restart the LC");
@@ -226,6 +243,9 @@ void Application::InitiateRestart ()
 
 bool Application::notify (QObject *obj, QEvent *event)
 {
+	if (event->type () == QEvent::LanguageChange)
+		return true;
+
 	if (CatchExceptions_)
 	{
 		try
@@ -289,8 +309,8 @@ bool Application::IsAlreadyRunning () const
 		out << Arguments_;
 		if (socket.waitForBytesWritten ())
 			return true;
-        if (socket.error() == QLocalSocket::UnknownSocketError)
-            return true;
+		if (socket.error() == QLocalSocket::UnknownSocketError)
+			return true;
 	}
 	else
 	{

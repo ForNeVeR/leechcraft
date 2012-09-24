@@ -66,6 +66,11 @@ namespace Xoox
 		return Job_->fileInfo ().size ();
 	}
 
+	QString TransferJob::GetComment () const
+	{
+		return Job_->fileInfo ().description ();
+	}
+
 	TransferDirection TransferJob::GetDirection () const
 	{
 		switch (Job_->direction ())
@@ -73,6 +78,11 @@ namespace Xoox
 		case QXmppTransferJob::OutgoingDirection:
 			return TDOut;
 		case QXmppTransferJob::IncomingDirection:
+			return TDIn;
+		default:
+			qWarning () << Q_FUNC_INFO
+					<< "unknown direction"
+					<< Job_->direction ();
 			return TDIn;
 		}
 	}

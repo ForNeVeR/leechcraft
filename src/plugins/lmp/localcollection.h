@@ -39,27 +39,44 @@ namespace LMP
 	class AlbumArtManager;
 	class LocalCollectionStorage;
 	class Player;
+	class LocalCollectionWatcher;
 
 	class LocalCollection : public QObject
 	{
 		Q_OBJECT
 
+		bool IsReady_;
+
+		QStringList RootPaths_;
+
 		QIcon ArtistIcon_;
 		LocalCollectionStorage *Storage_;
 		QStandardItemModel *CollectionModel_;
 		QSortFilterProxyModel *Sorter_;
+		LocalCollectionWatcher *FilesWatcher_;
 
 		AlbumArtManager *AlbumArtMgr_;
 
 		Collection::Artists_t Artists_;
+
 		QSet<QString> PresentPaths_;
 		QHash<QString, int> Path2Track_;
 		QHash<int, QString> Track2Path_;
 
+		QHash<int, int> Track2Album_;
+		QHash<int, Collection::Album_ptr> AlbumID2Album_;
+		QHash<int, int> AlbumID2ArtistID_;
+
 		QHash<int, QStandardItem*> Artist2Item_;
 		QHash<int, QStandardItem*> Album2Item_;
+		QHash<int, QStandardItem*> Track2Item_;
 
 		QFutureWatcher<MediaInfo> *Watcher_;
+		QList<QSet<QString>> NewPathsQueue_;
+
+		int UpdateNewArtists_;
+		int UpdateNewAlbums_;
+		int UpdateNewTracks_;
 	public:
 		enum NodeType
 		{
@@ -83,32 +100,76 @@ namespace LMP
 			Random50
 		};
 
+		enum class DirStatus
+		{
+			RootPath,
+			SubPath,
+			None
+		};
+
 		LocalCollection (QObject* = 0);
 		void FinalizeInit ();
 
+		bool IsReady () const;
+
 		QAbstractItemModel* GetCollectionModel () const;
 		void Enqueue (const QModelIndex&, Player*);
+		void Enqueue (const QList<QModelIndex>&, Player*);
 		void Clear ();
-		void Scan (const QString&);
 
-		int FindAlbum (const QString&, const QString&) const;
+		void Scan (const QString&, bool root = true);
+		void Unscan (const QString&);
+		void Rescan ();
+
+		DirStatus GetDirStatus (const QString&) const;
+		QStringList GetDirs () const;
+
+		int FindArtist (const QString&) const;
+
+		int FindAlbum (const QString& artist, const QString& album) const;
 		void SetAlbumArt (int, const QString&);
+		Collection::Album_ptr GetAlbum (int albumId) const;
+
+		int FindTrack (const QString&) const;
+		Collection::Album_ptr GetTrackAlbum (int trackId) const;
 
 		QList<int> GetDynamicPlaylist (DynamicPlaylist) const;
 		QStringList TrackList2PathList (const QList<int>&) const;
 
-		Collection::TrackStats GetTrackStats (const QString&);
+		Collection::TrackStats GetTrackStats (const QString&) const;
+
+		Collection::Artist GetArtist (int) const;
+		Collection::Artists_t GetAllArtists () const;
+
+		void RemoveTrack (const QString&);
 	private:
-		QStringList CollectPaths (const QModelIndex&);
+		void HandleExistingInfos (const QList<MediaInfo>&);
 		void HandleNewArtists (const Collection::Artists_t&);
+		void RemoveAlbum (int);
+		Collection::Artists_t::iterator RemoveArtist (Collection::Artists_t::iterator);
+
+		void AddRootPaths (QStringList);
+		void RemoveRootPaths (const QStringList&);
+
+		void CheckRemovedFiles (const QSet<QString>& scanned, const QString& root);
+
+		void InitiateScan (const QSet<QString>&);
 	public slots:
 		void recordPlayedTrack (const QString&);
 	private slots:
+		void rescanOnLoad ();
 		void handleLoadFinished ();
+		void handleIterateFinished ();
 		void handleScanFinished ();
+		void saveRootPaths ();
 	signals:
 		void scanStarted (int);
 		void scanProgressChanged (int);
+		void scanFinished ();
+
+		void collectionReady ();
+
+		void rootPathsChanged (const QStringList&);
 	};
 }
 }

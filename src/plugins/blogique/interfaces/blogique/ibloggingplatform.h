@@ -19,6 +19,7 @@
 #pragma once
 
 #include <QMetaType>
+#include <QAction>
 
 class QObject;
 class QIcon;
@@ -57,7 +58,12 @@ namespace Blogique
 			/** This blogging platform provides API for supporting
 			 * registering new accounts from client.
 			 */
-			BPFSupportsRegistration = 0x1
+			BPFSupportsRegistration = 0x1,
+
+			/** This blogging platform support account profilest with extended
+			 * information.
+			 */
+			BPFSupportsProfiles = 0x2
 		};
 		Q_DECLARE_FLAGS (BloggingPlatfromFeatures, BloggingPlatfromFeature);
 
@@ -186,6 +192,15 @@ namespace Blogique
 		 */
 		virtual void RemoveAccount (QObject *account) = 0;
 
+		/** @brief Returns specific editor actions.
+		 *
+		 * This function returns specific editor actions such as LJ-cut,
+		 * LJ-user, etc
+		 *
+		 * @return The List of actions witch should be added to editor widget.
+		 */
+		virtual QList<QAction*> GetEditorActions () const = 0;
+	protected:
 		/** @brief Notifies about new account.
 		 *
 		 * This signal should be emitted whenever a new account appears
@@ -210,6 +225,18 @@ namespace Blogique
 		 * implement IAccount.
 		 */
 		virtual void accountRemoved (QObject *account) = 0;
+
+		/** @brief Notifies about an account have finished validating data.
+		 *
+		 * This signal should be emitted whenever an account
+		 * finished validation.
+		 *
+		 * @note This function is expected to be a signal.
+		 *
+		 * @param[out] account The account, which must implement IAccount.
+		 */
+
+		virtual void accountValidated (QObject *account, bool validated) = 0;
 	};
 
 	Q_DECLARE_OPERATORS_FOR_FLAGS (IBloggingPlatform::BloggingPlatfromFeatures);

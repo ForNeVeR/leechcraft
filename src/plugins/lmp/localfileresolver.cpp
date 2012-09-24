@@ -18,6 +18,7 @@
 
 #include "localfileresolver.h"
 #include <QtDebug>
+#include <QFileInfo>
 #include <taglib/fileref.h>
 #include <taglib/tag.h>
 
@@ -45,15 +46,31 @@ namespace LMP
 	{
 	}
 
+	TagLib::FileRef LocalFileResolver::GetFileRef (const QString& file) const
+	{
+#ifdef Q_OS_WIN32
+		return TagLib::FileRef (file.toStdWString ().c_str ());
+#else
+		return TagLib::FileRef (file.toUtf8 ().constData ());
+#endif
+	}
+
 	MediaInfo LocalFileResolver::ResolveInfo (const QString& file)
 	{
+		const auto& modified = QFileInfo (file).lastModified ();
 		{
 			QReadLocker locker (&CacheLock_);
 			if (Cache_.contains (file))
-				return Cache_ [file];
+			{
+				const auto& pair = Cache_ [file];
+				if (pair.first == modified)
+					return pair.second;
+			}
 		}
 
-		TagLib::FileRef r (file.toUtf8 ().constData ());
+		QMutexLocker tlLocker (&TaglibMutex_);
+
+		auto r = GetFileRef (file);
 		auto tag = r.tag ();
 		if (!tag)
 			throw ResolveError (file, "failed to get file tags");
@@ -80,9 +97,14 @@ namespace LMP
 			QWriteLocker locker (&CacheLock_);
 			if (Cache_.size () > 200)
 				Cache_.clear ();
-			Cache_ [file] = info;
+			Cache_ [file] = qMakePair (modified, info);
 		}
 		return info;
+	}
+
+	QMutex& LocalFileResolver::GetMutex ()
+	{
+		return TaglibMutex_;
 	}
 }
 }

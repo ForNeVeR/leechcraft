@@ -25,6 +25,7 @@
 #include <QDialogButtonBox>
 #include <QtDebug>
 #include "../widgets/dataviewwidget.h"
+#include "../filepicker.h"
 #include "../itemhandlerfactory.h"
 #include "../datasourceroles.h"
 
@@ -53,6 +54,11 @@ namespace LeechCraft
 				this,
 				SLOT (handleRemoveRequested ()));
 
+		if (item.attribute ("addEnabled") == "false")
+			view->DisableAddition ();
+		if (item.attribute ("removeEnabled") == "false")
+			view->DisableRemoval ();
+
 		QString prop = item.attribute ("property");
 
 		view->setObjectName (prop);
@@ -78,7 +84,7 @@ namespace LeechCraft
 	{
 	}
 
-	QVariant ItemHandlerDataView::GetValue (QObject*) const
+	QVariant ItemHandlerDataView::GetObjectValue (QObject*) const
 	{
 		return QVariant ();
 	}
@@ -104,11 +110,13 @@ namespace LeechCraft
 		{
 			switch (type)
 			{
-			case DataSources::DFTInteger:
+			case DataSources::DataFieldType::Integer:
 				return new QSpinBox ();
-			case DataSources::DFTString:
-			case DataSources::DFTUrl:
+			case DataSources::DataFieldType::String:
+			case DataSources::DataFieldType::Url:
 				return new QLineEdit ();
+			case DataSources::DataFieldType::LocalPath:
+				return new FilePicker (FilePicker::Type::ExistingDirectory);
 			default:
 				return 0;
 			}
@@ -118,11 +126,13 @@ namespace LeechCraft
 		{
 			switch (type)
 			{
-			case DataSources::DFTInteger:
+			case DataSources::DataFieldType::Integer:
 				return qobject_cast<QSpinBox*> (editor)->value ();
-			case DataSources::DFTString:
-			case DataSources::DFTUrl:
+			case DataSources::DataFieldType::String:
+			case DataSources::DataFieldType::Url:
 				return qobject_cast<QLineEdit*> (editor)->text ();
+			case DataSources::DataFieldType::LocalPath:
+				return qobject_cast<FilePicker*> (editor)->GetText ();
 			default:
 				return QVariant ();
 			}
@@ -145,9 +155,10 @@ namespace LeechCraft
 		QStringList names;
 		for (int i = 0, size = model->columnCount (); i < size; ++i)
 		{
-			DataSources::DataFieldType type = static_cast<DataSources::DataFieldType> (model->
-						headerData (i, Qt::Horizontal, DataSources::DSRFieldType).value<int> ());
-			if (type != DataSources::DFTNone)
+			const auto& hData = model->headerData (i, Qt::Horizontal,
+					DataSources::DataSourceRole::FieldType);
+			auto type = static_cast<DataSources::DataFieldType> (hData.value<int> ());
+			if (type != DataSources::DataFieldType::None)
 			{
 				types << type;
 				names << model->headerData (i, Qt::Horizontal, Qt::DisplayRole).toString ();
@@ -203,6 +214,12 @@ namespace LeechCraft
 			qWarning () << Q_FUNC_INFO
 					<< "sender is not a DataViewWidget"
 					<< sender ();
+			return;
+		}
+		if (!view->GetModel ())
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "model isn't ready";
 			return;
 		}
 

@@ -25,6 +25,7 @@
 #include "interfaces/blogique/iaccount.h"
 #include "addaccountwizardfirstpage.h"
 #include "core.h"
+#include "profiledialog.h"
 
 namespace LeechCraft
 {
@@ -44,11 +45,28 @@ namespace Blogique
 				SIGNAL (accountRemoved (QObject*)),
 				this,
 				SLOT (handleAccountRemoved (QObject*)));
+		connect (&Core::Instance (),
+				SIGNAL (accountValidated (QObject*, bool)),
+				this,
+				SLOT (handleAccountValidated (QObject*, bool)));
+
+		connect (Ui_.Accounts_,
+				SIGNAL (clicked (const QModelIndex&)),
+				this,
+				SLOT (handleAccountClicked (const QModelIndex&)));
+
+		connect (Ui_.Accounts_,
+				SIGNAL (doubleClicked (const QModelIndex&)),
+				this,
+				SLOT (handleAccountDoubleClicked (const QModelIndex&)));
 
 		Q_FOREACH (IAccount *acc, Core::Instance ().GetAccounts ())
 			addAccount (acc->GetObject ());
 
+		AccountsModel_->setHorizontalHeaderLabels ({tr ("Account"), tr ("Validated")});
 		Ui_.Accounts_->setModel (AccountsModel_);
+
+		Ui_.Profile_->setEnabled (false);
 	}
 
 	void AccountsListWidget::addAccount (QObject *accObj)
@@ -68,7 +86,13 @@ namespace Blogique
 		QStandardItem *item = new QStandardItem (acc->GetAccountName ());
 		item->setIcon (ibp ? ibp->GetBloggingPlatformIcon () : QIcon ());
 		item->setEditable (false);
-		AccountsModel_->appendRow (item);
+		QStandardItem *itemValidated = new QStandardItem (acc->IsValidated () ?
+				tr ("Validated") :
+				tr ("Not validated"));
+		itemValidated->setEditable (false);
+		AccountsModel_->appendRow ({item, itemValidated});
+
+		Ui_.Accounts_->header ()->setResizeMode (QHeaderView::ResizeToContents);
 
 		Item2Account_ [item] = acc;
 		Account2Item_ [acc] = item;
@@ -80,8 +104,8 @@ namespace Blogique
 		if (!acc)
 		{
 			qWarning () << Q_FUNC_INFO
-			<< accObj
-			<< "is not an IAccount";
+					<< accObj
+					<< "is not an IAccount";
 			return;
 		}
 
@@ -103,6 +127,36 @@ namespace Blogique
 		Account2Item_.remove (acc);
 	}
 
+	void AccountsListWidget::handleAccountValidated (QObject *accObj, bool validated)
+	{
+		IAccount *acc = qobject_cast<IAccount*> (accObj);
+		if (!acc)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< accObj
+					<< "is not an IAccount";
+			return;
+		}
+
+		if (!Account2Item_.contains (acc))
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "account"
+					<< acc->GetAccountName ()
+					<< acc->GetObject ()
+					<< "from"
+					<< sender ()
+					<< "not found here";
+			return;
+		}
+
+		QStandardItem *item = Account2Item_ [acc];
+		AccountsModel_->item (item->row (), Columns::IsValidated)->setText (validated ?
+				tr ("Validated") :
+				tr ("Not validated"));
+		Ui_.Accounts_->header ()->setResizeMode (QHeaderView::ResizeToContents);
+	}
+
 	void AccountsListWidget::on_Add__released ()
 	{
 		QWizard *wizard = new QWizard (this);
@@ -115,7 +169,8 @@ namespace Blogique
 
 	void AccountsListWidget::on_Modify__released ()
 	{
-		QModelIndex index = Ui_.Accounts_->selectionModel ()->currentIndex ();
+		auto index = Ui_.Accounts_->selectionModel ()->currentIndex ();
+		index = index.sibling (index.row (), Columns::Name);
 		if (!index.isValid ())
 			return;
 
@@ -127,7 +182,8 @@ namespace Blogique
 
 	void AccountsListWidget::on_Delete__released ()
 	{
-		QModelIndex index = Ui_.Accounts_->selectionModel ()->currentIndex ();
+		auto index = Ui_.Accounts_->selectionModel ()->currentIndex ();
+		index = index.sibling (index.row (), Columns::Name);
 		if (!index.isValid ())
 			return;
 
@@ -158,5 +214,56 @@ namespace Blogique
 		}
 		ibp->RemoveAccount (acc->GetObject ());
 	}
+
+	void AccountsListWidget::on_Profile__released ()
+	{
+		auto index = Ui_.Accounts_->selectionModel ()->currentIndex ();
+		index = index.sibling (index.row (), Columns::Name);
+		if (!index.isValid ())
+			return;
+
+		QStandardItem *item = AccountsModel_->itemFromIndex (index);
+		if (item &&
+				Item2Account_.contains (item))
+		{
+			ProfileDialog *pd = new ProfileDialog (Item2Account_ [item], this);
+			pd->setAttribute (Qt::WA_DeleteOnClose);
+			pd->show ();
+		}
+	}
+
+	void AccountsListWidget::handleAccountClicked (const QModelIndex& idx)
+	{
+		QModelIndex index = idx.sibling (idx.row (), Columns::Name);
+		if (!index.isValid ())
+			return;
+
+		QStandardItem *item = AccountsModel_->itemFromIndex (index);
+		if (item &&
+				Item2Account_.contains (item))
+		{
+			IAccount *acc = Item2Account_ [item];
+			auto ibp = qobject_cast<IBloggingPlatform*> (acc->GetParentBloggingPlatform ());
+			if (!ibp)
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "account"
+						<< acc->GetAccountID ()
+						<< "hasn't valid parent blogging platform"
+						<< acc->GetParentBloggingPlatform ();
+				return;
+			}
+
+			Ui_.Profile_->setEnabled ((ibp->GetFeatures () &
+					IBloggingPlatform::BPFSupportsProfiles) &&
+					acc->IsValidated ());
+		}
+	}
+
+	void AccountsListWidget::handleAccountDoubleClicked (const QModelIndex&)
+	{
+		on_Profile__released ();
+	}
+
 }
 }

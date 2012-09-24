@@ -33,6 +33,7 @@
 #include "inbandaccountregsecondpage.h"
 #include "inbandaccountregthirdpage.h"
 #include "clientconnection.h"
+#include "accountsettingsholder.h"
 
 namespace LeechCraft
 {
@@ -98,7 +99,8 @@ namespace Xoox
 
 	QIcon GlooxProtocol::GetProtocolIcon () const
 	{
-		return QIcon (":/plugins/azoth/plugins/xoox/resources/images/jabbericon.svg");
+		static QIcon icon (":/plugins/azoth/plugins/xoox/resources/images/jabbericon.svg");
+		return icon;
 	}
 
 	QByteArray GlooxProtocol::GetProtocolID () const
@@ -141,8 +143,7 @@ namespace Xoox
 
 		const bool isNewAcc = widgets.at (0)->property ("IsNewAccount").toBool ();
 		const int pos = isNewAcc ? 3 : 0;
-		GlooxAccountConfigurationWidget *w =
-				qobject_cast<GlooxAccountConfigurationWidget*> (widgets.value (pos));
+		auto w = qobject_cast<GlooxAccountConfigurationWidget*> (widgets.value (pos));
 		if (!w)
 		{
 			qWarning () << Q_FUNC_INFO
@@ -152,7 +153,7 @@ namespace Xoox
 		}
 
 		GlooxAccount *account = new GlooxAccount (name, this);
-		account->FillSettings (w);
+		account->GetSettings ()->FillSettings (w);
 
 		if (isNewAcc)
 		{
@@ -330,7 +331,7 @@ namespace Xoox
 		w.SetNick (info ["Nick"].toString ());
 
 		GlooxAccount *account = new GlooxAccount (name, this);
-		account->FillSettings (&w);
+		account->GetSettings ()->FillSettings (&w);
 
 		Accounts_ << account;
 		account->Init ();

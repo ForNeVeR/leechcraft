@@ -22,6 +22,8 @@
 #include <idna.h>
 #endif
 
+#include <limits>
+#include <cmath>
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/seq/elem.hpp>
 #include <boost/preprocessor/repetition/repeat.hpp>
@@ -157,9 +159,13 @@ namespace Poshuku
 		Back_->setParent (this);
 		Back_->setProperty ("ActionIcon", "go-previous");
 
+		BackMenu_ = new QMenu ();
+
 		Forward_ = WebView_->pageAction (QWebPage::Forward);
 		Forward_->setParent (this);
 		Forward_->setProperty ("ActionIcon", "go-next");
+
+		ForwardMenu_ = new QMenu ();
 
 		Reload_ = WebView_->pageAction (QWebPage::Reload);
 		Reload_->setProperty ("ActionIcon", "view-refresh");
@@ -268,8 +274,18 @@ namespace Poshuku
 		BookmarksAction_->setShortcut (QKeySequence (tr ("Ctrl+B")));
 		BookmarksAction_->setProperty ("ActionIcon", "bookmarks-organize");
 
-		ToolBar_->addAction (Back_);
-		ToolBar_->addAction (Forward_);
+		auto backButton = new QToolButton ();
+		backButton->setMenu (BackMenu_);
+		backButton->setDefaultAction (Back_);
+		backButton->setPopupMode (QToolButton::MenuButtonPopup);
+		ToolBar_->addWidget (backButton);
+
+		auto fwdButton = new QToolButton ();
+		fwdButton->setMenu (ForwardMenu_);
+		fwdButton->setDefaultAction (Forward_);
+		fwdButton->setPopupMode (QToolButton::MenuButtonPopup);
+		ToolBar_->addWidget (fwdButton);
+
 		ToolBar_->addAction (ReloadStop_);
 
 		Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy ());
@@ -457,10 +473,6 @@ namespace Poshuku
 		connect (WebView_,
 				SIGNAL (loadFinished (bool)),
 				this,
-				SLOT (updateTooltip ()));
-		connect (WebView_,
-				SIGNAL (loadFinished (bool)),
-				this,
 				SLOT (notifyLoadFinished (bool)));
 		connect (WebView_,
 				SIGNAL (loadFinished (bool)),
@@ -470,6 +482,10 @@ namespace Poshuku
 				SIGNAL (loadStarted ()),
 				this,
 				SLOT (enableActions ()));
+		connect (WebView_,
+				SIGNAL (loadStarted ()),
+				this,
+				SLOT (updateNavHistory ()));
 		connect (WebView_,
 				SIGNAL (printRequested (QWebFrame*)),
 				this,
@@ -594,7 +610,8 @@ namespace Poshuku
 
 	void BrowserWidget::SetWidgetSettings (const BrowserWidgetSettings& settings)
 	{
-		if (settings.ZoomFactor_ != 1)
+		if (std::fabs (settings.ZoomFactor_ - 1) <
+				std::numeric_limits<decltype (settings.ZoomFactor_)>::epsilon ())
 		{
 			qDebug () << Q_FUNC_INFO
 				<< "setting zoomfactor to"
@@ -1163,52 +1180,6 @@ namespace Poshuku
 		return Ui_.Sidebar_;
 	}
 
-	void BrowserWidget::updateTooltip ()
-	{
-		if (!XmlSettingsManager::Instance ()->
-				property ("GenerateTooltips").toBool ())
-			return;
-
-		const int previewWidth = 400;
-		if (!WebView_->size ().isValid ())
-			return;
-
-		QSize contentsSize = WebView_->page ()->mainFrame ()->contentsSize ();
-		if (contentsSize.width () < 800)
-			contentsSize.scale (800, 1, Qt::KeepAspectRatioByExpanding);
-		contentsSize.setHeight (std::min (contentsSize.height (), 3000));
-		QPoint scroll = WebView_->page ()->mainFrame ()->scrollPosition ();
-		QSize oldSize = WebView_->page ()->viewportSize ();
-		QRegion clip (0, 0, contentsSize.width (), contentsSize.height ());
-
-		QPixmap pixmap (contentsSize);
-		if (pixmap.isNull ())
-			return;
-
-		pixmap.fill (QColor (0, 0, 0, 0));
-
-		QPainter painter (&pixmap);
-		WebView_->page ()->setViewportSize (contentsSize);
-		WebView_->page ()->mainFrame ()->render (&painter, clip);
-		WebView_->page ()->setViewportSize (oldSize);
-		WebView_->page ()->mainFrame ()->setScrollPosition (scroll);
-		painter.end ();
-
-		QLabel *widget = new QLabel;
-
-		if (pixmap.height () > 3000)
-			pixmap = pixmap.copy (0, 0, pixmap.width (), 3000);
-
-		pixmap = pixmap.scaledToWidth (previewWidth, Qt::SmoothTransformation);
-		int maxHeight = 0.8 * QApplication::desktop ()->screenGeometry (this).height ();
-		if (pixmap.height () > maxHeight)
-			pixmap = pixmap.copy (0, 0, previewWidth, maxHeight);
-		widget->setPixmap (pixmap);
-		widget->setFixedSize (pixmap.width (), pixmap.height ());
-
-		emit tooltipChanged (widget);
-	}
-
 	void BrowserWidget::enableActions ()
 	{
 		Add2Favorites_->setEnabled (true);
@@ -1218,6 +1189,79 @@ namespace Poshuku
 		ScreenSave_->setEnabled (true);
 		ViewSources_->setEnabled (true);
 		SavePage_->setEnabled (true);
+	}
+
+	const int MaxHistoryItems = 10;
+
+	void BrowserWidget::updateNavHistory ()
+	{
+		auto history = WebView_->history ();
+
+		BackMenu_->clear ();
+		auto items = history->backItems (MaxHistoryItems);
+		for (int i = items.size () - 1; i >= 0; --i)
+		{
+			const auto& item = items.at (i);
+			if (!item.isValid ())
+				continue;
+			auto act = BackMenu_->addAction (Core::Instance ().GetIcon (item.url ()), item.title ());
+			act->setToolTip (item.url ().toString ());
+			act->setData (i);
+
+			connect (act,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (handleBackHistoryAction ()));
+		}
+
+		ForwardMenu_->clear ();
+		items = history->forwardItems (MaxHistoryItems);
+		for (int i = 0; i < items.size (); ++i)
+		{
+			const auto& item = items.at (i);
+			if (!item.isValid ())
+				continue;
+			auto act = ForwardMenu_->addAction (Core::Instance ().GetIcon (item.url ()), item.title ());
+			act->setToolTip (item.url ().toString ());
+			act->setData (i);
+
+			connect (act,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (handleForwardHistoryAction ()));
+		}
+	}
+
+	void BrowserWidget::handleBackHistoryAction ()
+	{
+		auto idx = qobject_cast<QAction*> (sender ())->data ().toInt ();
+
+		auto history = WebView_->history ();
+		const auto& items = history->backItems (MaxHistoryItems);
+		if (idx < 0 || idx >= items.size ())
+			return;
+
+		const auto& item = items.at (idx);
+		if (!item.isValid ())
+			return;
+
+		history->goToItem (item);
+	}
+
+	void BrowserWidget::handleForwardHistoryAction ()
+	{
+		auto idx = qobject_cast<QAction*> (sender ())->data ().toInt ();
+
+		auto history = WebView_->history ();
+		const auto& items = history->forwardItems (MaxHistoryItems);
+		if (idx < 0 || idx >= items.size ())
+			return;
+
+		const auto& item = items.at (idx);
+		if (!item.isValid ())
+			return;
+
+		history->goToItem (item);
 	}
 
 	void BrowserWidget::handleEntityAction ()

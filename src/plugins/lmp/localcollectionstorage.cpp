@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QThread>
 #include <util/util.h>
 #include <util/dblock.h>
 #include "util.h"
@@ -28,9 +29,33 @@ namespace LeechCraft
 {
 namespace LMP
 {
+	namespace
+	{
+		template<typename T, typename U>
+		struct DumbCast
+		{
+			T operator() (U u)
+			{
+				return reinterpret_cast<T> (u);
+			}
+		};
+
+		template<typename T>
+		struct DumbCast<T, T>
+		{
+			T operator() (T t)
+			{
+				return t;
+			}
+		};
+	}
+
 	LocalCollectionStorage::LocalCollectionStorage (QObject *parent)
 	: QObject (parent)
-	, DB_ (QSqlDatabase::addDatabase ("QSQLITE", QString ("LMP_LocalCollection_%1").arg (qrand ())))
+	, DB_ (QSqlDatabase::addDatabase ("QSQLITE",
+			QString ("LMP_LocalCollection_%1_%2")
+				.arg (qrand ())
+				.arg (DumbCast<unsigned long, decltype (QThread::currentThreadId ())> () (QThread::currentThreadId ()))))
 	{
 		DB_.setDatabaseName (Util::CreateIfNotExists ("lmp").filePath ("localcollection.db"));
 
@@ -94,10 +119,9 @@ namespace LMP
 				QList<Collection::Album_ptr> ()
 			};
 			if (!IsPresent (artist, artist.ID_))
-			{
 				AddArtist (artist);
+			if (!artists.contains (artist.ID_))
 				artists [artist.ID_] = artist;
-			}
 
 			Collection::Album album =
 			{
@@ -111,9 +135,9 @@ namespace LMP
 			{
 				album.CoverPath_ = FindAlbumArtPath (info.LocalPath_);
 				AddAlbum (artist, album);
-				artists [artist.ID_].Albums_ << Collection::Album_ptr (new Collection::Album (album));
 			}
 
+			artists [artist.ID_].Albums_ << Collection::Album_ptr (new Collection::Album (album));
 			Collection::Track track =
 			{
 				0,
@@ -138,7 +162,7 @@ namespace LMP
 		return artists.values ();
 	}
 
-	Collection::Artists_t LocalCollectionStorage::Load ()
+	LocalCollectionStorage::LoadResult LocalCollectionStorage::Load ()
 	{
 		Collection::Artists_t artists = GetAllArtists ();
 		const auto& albums = GetAllAlbums ();
@@ -163,7 +187,53 @@ namespace LMP
 		}
 		GetArtistAlbums_.finish ();
 
-		return artists;
+		LoadResult result =
+		{
+			artists,
+			PresentArtists_,
+			PresentAlbums_
+		};
+		return result;
+	}
+
+	void LocalCollectionStorage::Load (const LoadResult& result)
+	{
+		PresentAlbums_ = result.PresentAlbums_;
+		PresentArtists_ = result.PresentArtists_;
+	}
+
+	void LocalCollectionStorage::RemoveTrack (int id)
+	{
+		RemoveTrack_.bindValue (":track_id", id);
+		if (!RemoveTrack_.exec ())
+		{
+			Util::DBLock::DumpError (RemoveTrack_);
+			throw std::runtime_error ("cannot remove track");
+		}
+	}
+
+	void LocalCollectionStorage::RemoveAlbum (int id)
+	{
+		RemoveAlbum_.bindValue (":album_id", id);
+		if (!RemoveAlbum_.exec ())
+		{
+			Util::DBLock::DumpError (RemoveAlbum_);
+			throw std::runtime_error ("cannot remove album");
+		}
+
+		PresentAlbums_.remove (PresentAlbums_.key (id));
+	}
+
+	void LocalCollectionStorage::RemoveArtist (int id)
+	{
+		RemoveArtist_.bindValue (":artist_id", id);
+		if (!RemoveArtist_.exec ())
+		{
+			Util::DBLock::DumpError (RemoveArtist_);
+			throw std::runtime_error ("cannot remove artist");
+		}
+
+		PresentArtists_.remove (PresentArtists_.key (id));
 	}
 
 	void LocalCollectionStorage::SetAlbumArt (int id, const QString& path)
@@ -201,6 +271,21 @@ namespace LMP
 		GetTrackStats_.finish ();
 
 		return result;
+	}
+
+	void LocalCollectionStorage::SetTrackStats (const Collection::TrackStats& stats)
+	{
+		//"(:track_id, :playcount, :added, :last_play;"
+		SetTrackStats_.bindValue (":track_id", stats.TrackID_);
+		SetTrackStats_.bindValue (":playcount", stats.Playcount_);
+		SetTrackStats_.bindValue (":added", stats.Added_);
+		SetTrackStats_.bindValue (":last_play", stats.LastPlay_);
+
+		if (!SetTrackStats_.exec ())
+		{
+			Util::DBLock::DumpError (SetTrackStats_);
+			throw std::runtime_error ("cannot set track statistics");
+		}
 	}
 
 	void LocalCollectionStorage::RecordTrackPlayed (int trackId)
@@ -449,11 +534,25 @@ namespace LMP
 		AddGenre_ = QSqlQuery (DB_);
 		AddGenre_.prepare ("INSERT INTO genres (TrackId, Name) VALUES (:track_id, :name);");
 
+		RemoveTrack_ = QSqlQuery (DB_);
+		RemoveTrack_.prepare ("DELETE FROM tracks WHERE Id = :track_id;");
+
+		RemoveAlbum_ = QSqlQuery (DB_);
+		RemoveAlbum_.prepare ("DELETE FROM albums WHERE Id = :album_id;");
+
+		RemoveArtist_ = QSqlQuery (DB_);
+		RemoveArtist_.prepare ("DELETE FROM artists WHERE Id = :artist_id;");
+
 		SetAlbumArt_ = QSqlQuery (DB_);
 		SetAlbumArt_.prepare ("UPDATE albums SET CoverPath = :cover_path WHERE Id = :album_id");
 
 		GetTrackStats_ = QSqlQuery (DB_);
 		GetTrackStats_.prepare ("SELECT Playcount, Added, LastPlay, Score, Rating FROM statistics WHERE TrackId = :track_id;");
+
+		SetTrackStats_ = QSqlQuery (DB_);
+		SetTrackStats_.prepare ("INSERT OR REPLACE INTO statistics "
+				"(TrackId, Playcount, Added, LastPlay) VALUES "
+				"(:track_id, :playcount, :added, :last_play);");
 
 		UpdateTrackStats_ = QSqlQuery (DB_);
 		UpdateTrackStats_.prepare ("INSERT OR REPLACE INTO statistics (TrackId, Playcount, Added, LastPlay) "

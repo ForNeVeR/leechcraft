@@ -116,7 +116,8 @@ namespace FatApe
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/poshuku/plugins/fatape/resources/images/fatape.svg");
+		static QIcon icon (":/plugins/poshuku/plugins/fatape/resources/images/fatape.svg");
+		return icon;
 	}
 
 	QSet<QByteArray> Plugin::GetPluginClasses () const
@@ -131,8 +132,8 @@ namespace FatApe
 		return SettingsDialog_;
 	}
 
-	void Plugin::hookInitialLayoutCompleted (LeechCraft::IHookProxy_ptr proxy,
-			QWebPage *page, QWebFrame *frame)
+	void Plugin::hookInitialLayoutCompleted (LeechCraft::IHookProxy_ptr,
+			QWebPage*, QWebFrame *frame)
 	{
 		auto match = [frame] (const UserScript& us) { return us.MatchToPage (frame->url ().toString ()); };
 		auto inject = [frame, this] (const UserScript& us) { us.Inject (frame, Proxy_); };
@@ -177,8 +178,8 @@ namespace FatApe
 		UserScripts_ [scriptIndex].SetEnabled (value);
 	}
 
-	void Plugin::hookAcceptNavigationRequest (LeechCraft::IHookProxy_ptr proxy, QWebPage *page,
-			QWebFrame *frame, QNetworkRequest request, QWebPage::NavigationType type)
+	void Plugin::hookAcceptNavigationRequest (LeechCraft::IHookProxy_ptr proxy, QWebPage*,
+			QWebFrame*, QNetworkRequest request, QWebPage::NavigationType)
 	{
 		if (!request.url ().path ().endsWith ("user.js", Qt::CaseInsensitive) ||
 				request.url ().scheme () == "file")

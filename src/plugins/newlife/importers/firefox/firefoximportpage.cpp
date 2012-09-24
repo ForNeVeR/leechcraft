@@ -64,7 +64,7 @@ namespace Importers
 		QString defaultFile = QDir::homePath () + "/Application Data/Mozilla/Firefox/profiles.ini";
 #elif defined Q_OS_MAC
 #warning Please check location of stuff on Mac OS X
-		QString defaultFile = QDir::homePath () + "/.mozilla/firefox/profiles.ini";
+		QString defaultFile = QDir::homePath () + "/Library/Application Support/Firefox/profiles.ini";
 #else
 		QString defaultFile = QDir::homePath () + "/.mozilla/firefox/profiles.ini";
 #endif
@@ -96,7 +96,7 @@ namespace Importers
 		emit completeChanged ();
 	}
 
-	void FirefoxImportPage::handleAccepted (int index)
+	void FirefoxImportPage::handleAccepted (int)
 	{
 		setField ("ProfileFile", Ui_.FileLocation_->text ());
 	}

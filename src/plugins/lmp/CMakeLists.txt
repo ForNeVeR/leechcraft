@@ -2,7 +2,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 PROJECT (leechcraft_lmp)
 INCLUDE (InitLCPlugin OPTIONAL)
 
-SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+SET (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
 IF (NOT WIN32)
 	FIND_PACKAGE (Phonon)
@@ -27,7 +27,9 @@ FIND_PACKAGE (Taglib REQUIRED)
 ADD_DEFINITIONS (${TAGLIB_CFLAGS})
 
 SET (QT_USE_QTDECLARATIVE TRUE)
+SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTSQL TRUE)
+SET (QT_USE_QTXML TRUE)
 INCLUDE (${QT_USE_FILE})
 IF (NOT PHONON_FOUND)
 	MESSAGE (FATAL_ERROR "No Phonon is found, LMP cannot be built")
@@ -56,55 +58,101 @@ SET (SRCS
 	collectiondelegate.cpp
 	nowplayingwidget.cpp
 	staticplaylistmanager.cpp
-	m3ustuff.cpp
 	playlistmanager.cpp
 	artistsinfodisplay.cpp
 	albumartmanager.cpp
-	)
-SET (HEADERS
-	lmp.h
-	xmlsettingsmanager.h
-	playertab.h
-	player.h
-	core.h
-	mediainfo.h
-	localfileresolver.h
-	playlistdelegate.h
-	localcollection.h
-	localcollectionstorage.h
-	util.h
-	collectiontypes.h
-	collectiondelegate.h
-	nowplayingwidget.h
-	staticplaylistmanager.h
-	m3ustuff.h
-	playlistmanager.h
-	artistsinfodisplay.h
-	albumartmanager.h
+	lmpsystemtrayicon.cpp
+	fsbrowserwidget.cpp
+	fsmodel.cpp
+	rootpathsettingsmanager.cpp
+	localcollectionwatcher.cpp
+	recommendationswidget.cpp
+	radiowidget.cpp
+	releaseswidget.cpp
+	playlistundocommand.cpp
+	biowidget.cpp
+	biopropproxy.cpp
+	audiopropswidget.cpp
+	playlistwidget.cpp
+	aalabeleventfilter.cpp
+	collectionsortermodel.cpp
+	collectionstatsdialog.cpp
+	eventswidget.cpp
+	plmanagerwidget.cpp
+	nowplayingpixmaphandler.cpp
+	sync/cloudwidget.cpp
+	sync/clouduploadmanager.cpp
+	sync/clouduploader.cpp
+	sync/copymanager.cpp
+	sync/devicesbrowserwidget.cpp
+	sync/syncmanagerbase.cpp
+	sync/syncmanager.cpp
+	sync/transcodejob.cpp
+	sync/transcodemanager.cpp
+	sync/transcodingparamswidget.cpp
+	sync/uploadmodel.cpp
+	playlistparsers/commonpl.cpp
+	playlistparsers/playlistfactory.cpp
+	playlistparsers/m3u.cpp
+	playlistparsers/pls.cpp
+	playlistparsers/xspf.cpp
 	)
 SET (FORMS
 	playertab.ui
 	nowplayingwidget.ui
+	fsbrowserwidget.ui
+	recommendationswidget.ui
+	radiowidget.ui
+	releaseswidget.ui
+	biowidget.ui
+	audiopropswidget.ui
+	playlistwidget.ui
+	collectionstatsdialog.ui
+	eventswidget.ui
+	plmanagerwidget.ui
+	sync/cloudwidget.ui
+	sync/devicesbrowserwidget.ui
+	sync/transcodingparamswidget.ui
 	)
 SET (RESOURCES resources.qrc)
-IF (NOT LC_NO_MOC)
-	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
-ENDIF (NOT LC_NO_MOC)
+CreateTrs ("lmp" "en;es;ru_RU" COMPILED_TRANSLATIONS)
 QT4_WRAP_UI (UIS_H ${FORMS})
 QT4_ADD_RESOURCES (RCCS ${RESOURCES})
+
+OPTION (ENABLE_LMP_MPRIS "Enable MPRIS support for LMP" TRUE)
 
 ADD_LIBRARY (leechcraft_lmp SHARED
 	${COMPILED_TRANSLATIONS}
 	${SRCS}
-	${MOC_SRCS}
 	${UIS_H}
 	${RCCS}
 	)
+IF (ENABLE_LMP_MPRIS)
+	ADD_SUBDIRECTORY (mpris)
+	ADD_DEFINITIONS (-DENABLE_MPRIS)
+ENDIF (ENABLE_LMP_MPRIS)
 TARGET_LINK_LIBRARIES (leechcraft_lmp
 	${QT_LIBRARIES}
 	${LEECHCRAFT_LIBRARIES}
 	${QT_PHONON_LIBS}
 	${TAGLIB_LIBRARIES}
+
+	${MPRIS_SUBLIB}
 	)
+
+CreateTrsUpTarget("lmp" "en;ru_RU" "${SRCS}" "${FORMS}" "lmpsettings.xml")
+
 INSTALL (TARGETS leechcraft_lmp DESTINATION ${LC_PLUGINS_DEST})
+INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 INSTALL (FILES lmpsettings.xml DESTINATION ${LC_SETTINGS_DEST})
+INSTALL (DIRECTORY interfaces DESTINATION include/leechcraft)
+
+OPTION (ENABLE_LMP_DUMBSYNC "Enable DumbSync, plugin for syncing with Flash-like media players" ON)
+OPTION (ENABLE_LMP_MP3TUNES "Enable plugin for syncing and using the mp3tunes.com service" ON)
+
+IF (ENABLE_LMP_DUMBSYNC)
+	ADD_SUBDIRECTORY (plugins/dumbsync)
+ENDIF (ENABLE_LMP_DUMBSYNC)
+IF (ENABLE_LMP_MP3TUNES)
+	ADD_SUBDIRECTORY (plugins/mp3tunes)
+ENDIF (ENABLE_LMP_MP3TUNES)

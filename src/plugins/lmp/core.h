@@ -18,16 +18,24 @@
 
 #pragma once
 
+#include <boost/optional.hpp>
 #include <QObject>
 #include <interfaces/core/icoreproxy.h>
 
+class QUrl;
+
 namespace LeechCraft
 {
+struct Entity;
+
 namespace LMP
 {
+	struct MediaInfo;
 	class LocalCollection;
 	class LocalFileResolver;
 	class PlaylistManager;
+	class SyncManager;
+	class CloudUploadManager;
 
 	class Core : public QObject
 	{
@@ -38,6 +46,11 @@ namespace LMP
 		LocalFileResolver *Resolver_;
 		LocalCollection *Collection_;
 		PlaylistManager *PLManager_;
+		SyncManager *SyncManager_;
+		CloudUploadManager *CloudUpMgr_;
+
+		QObjectList SyncPlugins_;
+		QObjectList CloudPlugins_;
 
 		Core ();
 	public:
@@ -46,15 +59,27 @@ namespace LMP
 		void SetProxy (ICoreProxy_ptr);
 		ICoreProxy_ptr GetProxy ();
 
+		void SendEntity (const Entity&);
+
 		void PostInit ();
+
+		void AddPlugin (QObject*);
+		QObjectList GetSyncPlugins () const;
+		QObjectList GetCloudStoragePlugins () const;
 
 		LocalFileResolver* GetLocalFileResolver () const;
 		LocalCollection* GetLocalCollection () const;
 		PlaylistManager* GetPlaylistManager () const;
+		SyncManager* GetSyncManager () const;
+		CloudUploadManager* GetCloudUploadManager () const;
+
+		boost::optional<MediaInfo> TryURLResolve (const QUrl&) const;
 	public slots:
 		void rescan ();
-	private slots:
-		void handleCollectionDirChanged ();
+	signals:
+		void gotEntity (const LeechCraft::Entity&);
+
+		void cloudStoragePluginsChanged ();
 	};
 }
 }

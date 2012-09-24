@@ -20,6 +20,8 @@
 #include <QDockWidget>
 #include <QToolButton>
 #include "mainwindow.h"
+#include "tabmanager.h"
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -39,39 +41,48 @@ namespace LeechCraft
 				this,
 				SLOT (handleDockLocationChanged (Qt::DockWidgetArea)));
 
-		ManageInto (dw, MW_->GetDockListWidget (area));
+		connect (dw,
+				SIGNAL (destroyed (QObject*)),
+				this,
+				SLOT (handleDockDestroyed ()));
 	}
 
-	void DockManager::UnmanageFrom (QDockWidget *dw, QWidget *w)
+	void DockManager::AssociateDockWidget (QDockWidget *dock, QWidget *tab)
 	{
-		if (!w)
-			return;
+		dock->installEventFilter (this);
 
-		/*
-		for (int i = 0; i < w->layout ()->count (); ++i)
-		{
-			QToolButton *but = qobject_cast<QToolButton*> (w->layout ()->widget ());
-			if (but->defaultAction () == dw->toggleViewAction ())
-			{
-				but->deleteLater ();
-				w->layout ()->removeItem (w->layout ()->itemAt (i));
-			}
-		}
-		*/
+		TabAssociations_ [dock] = tab;
+
+		handleTabChanged (Core::Instance ().GetTabManager ()->GetCurrentWidget ());
+
+		auto toggleAct = dock->toggleViewAction ();
+		ToggleAct2Dock_ [toggleAct] = dock;
+		connect (toggleAct,
+				SIGNAL (triggered (bool)),
+				this,
+				SLOT (handleDockToggled (bool)));
 	}
 
-	void DockManager::ManageInto (QDockWidget *dw, QWidget *w)
+	bool DockManager::eventFilter (QObject *obj, QEvent *event)
 	{
-		if (!w)
-			return;
+		if (event->type () != QEvent::Close)
+			return false;
 
-		/*
-		QToolButton *button = new QToolButton ();
-		button->setDefaultAction (dw->toggleViewAction ());
-		w->layout ()->addWidget (button);
-		if (!w->isVisible ())
-			w->show ();
-		*/
+		auto dock = qobject_cast<QDockWidget*> (obj);
+		if (!dock)
+			return false;
+
+		ForcefullyClosed_ << dock;
+
+		return false;
+	}
+
+	void DockManager::handleDockDestroyed ()
+	{
+		auto dock = static_cast<QDockWidget*> (sender ());
+		TabAssociations_.remove (dock);
+		ToggleAct2Dock_.remove (ToggleAct2Dock_.key (dock));
+		ForcefullyClosed_.remove (dock);
 	}
 
 	void DockManager::handleDockLocationChanged (Qt::DockWidgetArea area)
@@ -89,8 +100,33 @@ namespace LeechCraft
 		}
 
 		Area2Widgets_ [area] << dw;
+	}
 
-		UnmanageFrom (dw, MW_->GetDockListWidget (from));
-		ManageInto (dw, MW_->GetDockListWidget (area));
+	void DockManager::handleDockToggled (bool isVisible)
+	{
+		auto dock = ToggleAct2Dock_ [static_cast<QAction*> (sender ())];
+		if (!dock)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unknown toggler"
+					<< sender ();
+			return;
+		}
+
+		if (isVisible)
+			ForcefullyClosed_.remove (dock);
+		else
+			ForcefullyClosed_ << dock;
+	}
+
+	void DockManager::handleTabChanged (QWidget *tabWidget)
+	{
+		Q_FOREACH (QDockWidget *dock, TabAssociations_.keys ())
+		{
+			if (TabAssociations_ [dock] != tabWidget)
+				dock->setVisible (false);
+			else if (!ForcefullyClosed_.contains (dock))
+				dock->setVisible (true);
+		}
 	}
 }

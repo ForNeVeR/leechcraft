@@ -73,6 +73,7 @@ namespace LeechCraft
 	private:
 		void BuildNewTabModel ();
 	private slots:
+		void handleSettingsButton (const QString&);
 #ifdef STRICT_LICENSING
 		void notifyLicensing ();
 #endif
@@ -81,7 +82,6 @@ namespace LeechCraft
 		void removeTab (QWidget*);
 		void changeTabName (QWidget*, const QString&);
 		void changeTabIcon (QWidget*, const QIcon&);
-		void changeTooltip (QWidget*, QWidget*);
 		void statusBarChanged (QWidget*, const QString&);
 		void raiseTab (QWidget*);
 

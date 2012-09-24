@@ -284,11 +284,6 @@ namespace LeechCraft
 		 */
 		void InitDynamicSignals (QObject *object);
 
-		/** Initializes the object as a IJobHolder. The object is assumed
-		 * to be a valid IJobHolder*.
-		 */
-		void InitJobHolder (QObject *object);
-
 		/** Initializes the object as a IEmbedTab. The object is assumed
 		 * to be a valid IEmbedTab*.
 		 */
@@ -300,21 +295,10 @@ namespace LeechCraft
 		void InitMultiTab (QObject *object);
 
 		void InitCommonTab (QObject *object);
-
-		/** Handles the notification. Either logs it or shows to the
-		 * user, depending in the notification and preferences.
-		 *
-		 * @param[in] entity Entity with the notification.
-		 */
-		void HandleNotify (const LeechCraft::Entity& entity);
 	signals:
 		/** Notifies the user about an error by a pop-up message box.
 		 */
 		void error (QString error) const;
-
-		/** Sends the message to the log.
-		 */
-		void log (const QString& message);
 	};
 };
 

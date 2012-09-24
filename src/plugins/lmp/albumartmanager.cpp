@@ -40,9 +40,7 @@ namespace LMP
 
 	void AlbumArtManager::CheckAlbumArt (const Collection::Artist& artist, Collection::Album_ptr album)
 	{
-		if ((!album->CoverPath_.isEmpty () &&
-				!QPixmap (album->CoverPath_).isNull ()) ||
-				album->CoverPath_ == "NOTFOUND")
+		if (!album->CoverPath_.isEmpty ())
 			return;
 
 		if (Queue_.isEmpty ())
@@ -82,7 +80,13 @@ namespace LMP
 		auto collection = Core::Instance ().GetLocalCollection ();
 		const auto id = collection->FindAlbum (info.Artist_, info.Album_);
 		if (id < 0)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "album not found"
+					<< info.Artist_
+					<< info.Album_;
 			return;
+		}
 
 		--NumRequests_ [info];
 

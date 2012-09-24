@@ -72,7 +72,7 @@ namespace Xoox
 	, Direction_ (DIn)
 	, Type_ (MTMUCMessage)
 	, SubType_ (MSTOther)
-	, XHTML_ (msg.getXhtml ())
+	, XHTML_ (msg.xhtml ())
 	{
 		ClientConnection::Split (msg.from (), &FromJID_, &FromVariant_);
 	}
@@ -129,6 +129,11 @@ namespace Xoox
 		case DIn:
 			return ParticipantEntry_.get ();
 		case DOut:
+			return ParentEntry_;
+		default:
+			qWarning () << Q_FUNC_INFO
+					<< "unknown direction"
+					<< Direction_;
 			return ParentEntry_;
 		}
 	}

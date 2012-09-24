@@ -33,6 +33,7 @@ namespace Azoth
 	class SortFilterProxyModel;
 	class ConsoleWidget;
 	class ServiceDiscoveryWidget;
+	class MicroblogsTab;
 	class AccountActionsManager;
 
 	class MainWidget : public QWidget
@@ -65,6 +66,8 @@ namespace Azoth
 	private:
 		void CreateMenu ();
 		QMenu* CreateStatusChangeMenu (const char*, bool withCustom = false);
+	public slots:
+		void handleAccountVisibilityChanged ();
 	private slots:
 		void updateFastStatusButton (LeechCraft::Azoth::State);
 		void treeActivated (const QModelIndex&);
@@ -85,6 +88,7 @@ namespace Azoth
 		void clearFilter ();
 
 		void handleEntryMadeCurrent (QObject*);
+		void handleEntryLostCurrent (QObject*);
 		void resetToWholeMode ();
 		void handleCLMode (bool);
 		void menuBarVisibilityToggled ();
@@ -98,6 +102,7 @@ namespace Azoth
 	signals:
 		void gotConsoleWidget (ConsoleWidget*);
 		void gotSDWidget (ServiceDiscoveryWidget*);
+		void gotMicroblogsTab (MicroblogsTab*);
 	};
 }
 }

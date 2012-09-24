@@ -63,6 +63,9 @@ namespace LeechCraft
 		QDir IconsDir_;
 
 		std::shared_ptr<PluginTreeBuilder> PluginTreeBuilder_;
+
+		mutable bool CacheValid_;
+		mutable QObjectList SortedCache_;
 	public:
 		enum Roles
 		{
@@ -84,11 +87,12 @@ namespace LeechCraft
 		bool setData (const QModelIndex&, const QVariant&, int);
 
 		Size_t GetSize () const;
-		void Init ();
+		void Init (bool safeMode);
 		void Release ();
 		QString Name (const Size_t& pos) const;
 		QString Info (const Size_t& pos) const;
 
+		QList<QPluginLoader_ptr> GetAllAvailable () const;
 		QObjectList GetAllPlugins () const;
 		QString GetPluginLibraryPath (const QObject*) const;
 
@@ -96,6 +100,8 @@ namespace LeechCraft
 
 		void InjectPlugin (QObject *object);
 		void ReleasePlugin (QObject *object);
+
+		void SetAllPlugins (Qt::CheckState);
 
 		QObject* GetObject ();
 

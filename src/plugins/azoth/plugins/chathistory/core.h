@@ -78,6 +78,8 @@ namespace ChatHistory
 				int backpages, int amount);
 		void Search (const QString& accountId, const QString& entryId,
 				const QString& text, int shift);
+		void Search (const QString& accountId, const QString& entryId, const QDateTime& dt);
+		void GetDaysForSheet (const QString& accountId, const QString& entryId, int year, int month);
 		void ClearHistory (const QString& accountId, const QString& entryId);
 	private:
 		void LoadDisabled ();
@@ -90,6 +92,9 @@ namespace ChatHistory
 		 */
 		void gotChatLogs (const QString&, const QString&, int, int, const QVariant&);
 		void gotSearchPosition (const QString&, const QString&, int);
+
+		void gotDaysForSheet (const QString& accountId, const QString& entryId,
+				int year, int month, const QList<int>& days);
 	};
 }
 }

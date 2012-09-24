@@ -51,6 +51,9 @@
          <height>1</height>
         </size>
        </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -66,6 +69,12 @@
        </property>
        <item row="0" column="1">
         <widget class="QLabel" name="TrackName_">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -152,33 +161,143 @@
     </layout>
    </item>
    <item>
-    <widget class="LeechCraft::LMP::ArtistsInfoDisplay" name="SimilarView_">
+    <widget class="QTabWidget" name="CurrentSongStack_">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
        <horstretch>0</horstretch>
-       <verstretch>1</verstretch>
+       <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="renderHints">
-      <set>QPainter::Antialiasing|QPainter::HighQualityAntialiasing|QPainter::SmoothPixmapTransform|QPainter::TextAntialiasing</set>
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <property name="resizeMode">
-      <enum>QDeclarativeView::SizeRootObjectToView</enum>
-     </property>
+     <widget class="QWidget" name="BioPage_">
+      <attribute name="title">
+       <string>Bio</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <property name="margin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="LeechCraft::LMP::BioWidget" name="BioWidget_" native="true"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="SimilarPage_">
+      <attribute name="title">
+       <string>Similar artists</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="margin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QCheckBox" name="SimilarIncludeCollection_">
+         <property name="text">
+          <string>Including those in your collection</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="LeechCraft::LMP::ArtistsInfoDisplay" name="SimilarView_">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>1</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="renderHints">
+          <set>QPainter::Antialiasing|QPainter::HighQualityAntialiasing|QPainter::SmoothPixmapTransform|QPainter::TextAntialiasing</set>
+         </property>
+         <property name="resizeMode">
+          <enum>QDeclarativeView::SizeRootObjectToView</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="LyricsPage_">
+      <attribute name="title">
+       <string>Lyrics</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <property name="margin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QTextBrowser" name="LyricsBrowser_"/>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="LyricsCounter_">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="PrevLyricsButton_">
+           <property name="text">
+            <string>Previous</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="NextLyricsButton_">
+           <property name="text">
+            <string>Next</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="PropsPage_">
+      <attribute name="title">
+       <string>Properties</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_5">
+       <property name="margin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="LeechCraft::LMP::AudioPropsWidget" name="AudioProps_" native="true"/>
+       </item>
+      </layout>
+     </widget>
     </widget>
-   </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>0</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>
@@ -192,6 +311,18 @@
    <class>LeechCraft::LMP::ArtistsInfoDisplay</class>
    <extends>QDeclarativeView</extends>
    <header>artistsinfodisplay.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>LeechCraft::LMP::BioWidget</class>
+   <extends>QWidget</extends>
+   <header>biowidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>LeechCraft::LMP::AudioPropsWidget</class>
+   <extends>QWidget</extends>
+   <header>audiopropswidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

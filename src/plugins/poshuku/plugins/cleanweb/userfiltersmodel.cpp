@@ -49,10 +49,10 @@ namespace CleanWeb
 			<< tr ("Case sensitive")
 			<< tr ("Domains");
 
-		qRegisterMetaType<RegExpsDict_t> ("LeechCraft::Poshuku::CleanWeb::RegExpsDict_t");
-		qRegisterMetaType<OptionsDict_t> ("LeechCraft::Poshuku::CleanWeb::OptionsDict_t");
-		qRegisterMetaTypeStreamOperators<RegExpsDict_t> ("LeechCraft::Poshuku::CleanWeb::RegExpsDict_t");
-		qRegisterMetaTypeStreamOperators<OptionsDict_t> ("LeechCraft::Poshuku::CleanWeb::OptionsDict_t");
+		qRegisterMetaType<FilterItem> ("LeechCraft::Poshuku::CleanWeb::FilterItem");
+		qRegisterMetaType<QList<FilterItem>> ("QList<LeechCraft::Poshuku::CleanWeb::FilterItem>");
+		qRegisterMetaTypeStreamOperators<FilterItem> ("LeechCraft::Poshuku::CleanWeb::FilterItem");
+		qRegisterMetaTypeStreamOperators<QList<FilterItem>> ("QList<LeechCraft::Poshuku::CleanWeb::FilterItem>");
 	}
 
 	int UserFiltersModel::columnCount (const QModelIndex&) const
@@ -70,39 +70,43 @@ namespace CleanWeb
 		bool isException = true;
 		SplitRow (&row, &isException);
 
-		const QStringList& list = isException ?
-			Filter_.ExceptionStrings_ :
-			Filter_.FilterStrings_;
+		const auto& list = isException ?
+			Filter_.Exceptions_ :
+			Filter_.Filters_;
 
-		QString str = list.at (row);
+		const auto& item = list.at (row);
 
 		switch (index.column ())
 		{
 			case 0:
-				return str;
+				return item.OrigString_;
 			case 1:
 				return isException ?
 					tr ("Allowed") :
 					tr ("Blocked");
 			case 2:
-				switch (Filter_.Options_ [str].MatchType_)
+				switch (item.Option_.MatchType_)
 				{
 					case FilterOption::MTWildcard:
 					case FilterOption::MTPlain:
+					case FilterOption::MTBegin:
+					case FilterOption::MTEnd:
 						return tr ("Wildcard");
 					case FilterOption::MTRegexp:
 						return tr ("Regexp");
 				}
 			case 3:
-				return Filter_.Options_ [str].Case_ == Qt::CaseSensitive ?
+				return item.Option_.Case_ == Qt::CaseSensitive ?
 					tr ("True") :
 					tr ("False");
 			case 4:
 				{
+					const auto& options = item.Option_;
+
 					QStringList result;
-					Q_FOREACH (QString domain, Filter_.Options_ [str].Domains_)
+					Q_FOREACH (QString domain, options.Domains_)
 						result += domain.prepend ("+");
-					Q_FOREACH (QString domain, Filter_.Options_ [str].NotDomains_)
+					Q_FOREACH (QString domain, options.NotDomains_)
 						result += domain.prepend ("-");
 					return result.join ("; ");
 				}
@@ -138,7 +142,7 @@ namespace CleanWeb
 	int UserFiltersModel::rowCount (const QModelIndex& index) const
 	{
 		return index.isValid () ? 0 :
-			Filter_.ExceptionStrings_.size () + Filter_.FilterStrings_.size ();
+			Filter_.Exceptions_.size () + Filter_.Filters_.size ();
 	}
 
 	const Filter& UserFiltersModel::GetFilter () const
@@ -159,28 +163,28 @@ namespace CleanWeb
 
 	bool UserFiltersModel::Add (const RuleOptionDialog& dia)
 	{
-		QString rule = dia.GetString ();
-		int size = 0;
-		if (dia.IsException ())
+		const auto& itemRx = dia.GetType () == FilterOption::MTRegexp ?
+				RegExp (dia.GetString (), dia.GetCase ()) :
+				RegExp ();
+		FilterOption fo;
+		fo.Case_ = dia.GetCase ();
+		fo.MatchType_ = dia.GetType ();
+		fo.Domains_ = dia.GetDomains ();
+		fo.NotDomains_ = dia.GetNotDomains ();
+		const FilterItem item
 		{
-			size = Filter_.ExceptionStrings_.size ();
-			Filter_.ExceptionStrings_ << rule;
-		}
-		else
-		{
-			size = rowCount ();
-			Filter_.FilterStrings_ << rule;
-		}
+			dia.GetString ().toUtf8 (),
+			itemRx,
+			fo.MatchType_ == FilterOption::MTPlain ?
+					QByteArrayMatcher (dia.GetString ().toUtf8 ()) :
+					QByteArrayMatcher (),
+			fo
+		};
 
+		auto& container = dia.IsException () ? Filter_.Exceptions_ : Filter_.Filters_;
+		const int size = dia.IsException () ? Filter_.Exceptions_.size () : rowCount ();
 		beginInsertRows (QModelIndex (), size, size);
-
-		if (dia.GetType () == FilterOption::MTRegexp)
-			Filter_.RegExps_ [rule] = QRegExp (rule,
-					dia.GetCase (), QRegExp::RegExp);
-		Filter_.Options_ [rule].MatchType_ = dia.GetType ();
-		Filter_.Options_ [rule].Case_ = dia.GetCase ();
-		Filter_.Options_ [rule].Domains_ = dia.GetDomains ();
-		Filter_.Options_ [rule].NotDomains_ = dia.GetNotDomains ();
+		container << item;
 		endInsertRows ();
 
 		WriteSettings ();
@@ -194,19 +198,16 @@ namespace CleanWeb
 		bool isException;
 		SplitRow (&pos, &isException);
 
-		QString rule;
-		if (isException)
-			rule = Filter_.ExceptionStrings_.at (pos);
-		else
-			rule = Filter_.FilterStrings_.at (pos);
+		const auto& item = isException ? Filter_.Exceptions_.at (pos) : Filter_.Filters_.at (pos);
 
 		RuleOptionDialog dia;
 		dia.SetException (isException);
-		dia.SetString (rule);
-		dia.SetType (Filter_.Options_ [rule].MatchType_);
-		dia.SetCase (Filter_.Options_ [rule].Case_);
-		dia.SetDomains (Filter_.Options_ [rule].Domains_);
-		dia.SetNotDomains (Filter_.Options_ [rule].NotDomains_);
+		dia.SetString (item.OrigString_);
+		const auto& options = item.Option_;
+		dia.SetType (options.MatchType_);
+		dia.SetCase (options.Case_);
+		dia.SetDomains (options.Domains_);
+		dia.SetNotDomains (options.NotDomains_);
 
 		dia.setWindowTitle (tr ("Modify filter"));
 		if (dia.exec () != QDialog::Accepted)
@@ -223,9 +224,9 @@ namespace CleanWeb
 		SplitRow (&pos, &isException);
 		beginRemoveRows (QModelIndex (), index, index);
 		if (isException)
-			Filter_.ExceptionStrings_.removeAt (pos);
+			Filter_.Exceptions_.removeAt (pos);
 		else
-			Filter_.FilterStrings_.removeAt (pos);
+			Filter_.Filters_.removeAt (pos);
 		endRemoveRows ();
 		WriteSettings ();
 	}
@@ -254,10 +255,10 @@ namespace CleanWeb
 
 	void UserFiltersModel::SplitRow (int *row, bool *isException) const
 	{
-		if (*row >= Filter_.ExceptionStrings_.size ())
+		if (*row >= Filter_.Exceptions_.size ())
 		{
 			*isException = false;
-			*row = *row - Filter_.ExceptionStrings_.size ();
+			*row = *row - Filter_.Exceptions_.size ();
 		}
 		else
 			*isException = true;
@@ -267,20 +268,17 @@ namespace CleanWeb
 	{
 		QSettings settings (QCoreApplication::organizationName (),
 				QCoreApplication::applicationName () + "_CleanWeb_Subscr");
-		Filter_.ExceptionStrings_ = settings.value ("Exceptions").toStringList ();
-		Filter_.FilterStrings_ = settings.value ("Filters").toStringList ();
-		Filter_.RegExps_ = settings.value ("RegExps").value<RegExpsDict_t> ();
-		Filter_.Options_ = settings.value ("Options").value<OptionsDict_t> ();
+		Filter_.Exceptions_ = settings.value ("ExceptionItems").value<decltype (Filter_.Exceptions_)> ();
+		Filter_.Filters_ = settings.value ("FilterItems").value<decltype (Filter_.Filters_)> ();
 	}
 
 	void UserFiltersModel::WriteSettings () const
 	{
 		QSettings settings (QCoreApplication::organizationName (),
 				QCoreApplication::applicationName () + "_CleanWeb_Subscr");
-		settings.setValue ("Exceptions", Filter_.ExceptionStrings_);
-		settings.setValue ("Filters", Filter_.FilterStrings_);
-		settings.setValue ("RegExps", QVariant::fromValue (Filter_.RegExps_));
-		settings.setValue ("Options", QVariant::fromValue (Filter_.Options_));
+		settings.clear ();
+		settings.setValue ("ExceptionItems", QVariant::fromValue (Filter_.Exceptions_));
+		settings.setValue ("FilterItems", QVariant::fromValue (Filter_.Filters_));
 	}
 
 	void UserFiltersModel::blockImage ()

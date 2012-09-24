@@ -671,6 +671,52 @@ namespace Acetamide
 		}
 
 		if (!msg.Nick_.isEmpty () &&
+				!msg.ConnectedFrom_.isEmpty ())
+		{
+			if (!SpyNick2WhoIsMessage_.contains (msg.Nick_))
+			{
+				message = tr ("%1: %2")
+						.arg (msg.Nick_)
+						.arg (msg.ConnectedFrom_);
+				ShowAnswer ("whois", message, isEndOf);
+			}
+		}
+
+		if (!msg.Nick_.isEmpty () &&
+				!msg.IsHelpOp_.isEmpty ())
+		{
+			if (!SpyNick2WhoIsMessage_.contains (msg.Nick_))
+			{
+				message = tr ("%1 is available for help")
+						.arg (msg.Nick_);
+				ShowAnswer ("whois", message, isEndOf);
+			}
+		}
+
+		if (!msg.Nick_.isEmpty () &&
+				!msg.IsRegistered_.isEmpty ())
+		{
+			if (!SpyNick2WhoIsMessage_.contains (msg.Nick_))
+			{
+				message = tr ("%1 is a registered nick")
+						.arg (msg.Nick_);
+				ShowAnswer ("whois", message, isEndOf);
+			}
+		}
+
+		if (!msg.Nick_.isEmpty () &&
+				!msg.Mail_.isEmpty ())
+		{
+			if (!SpyNick2WhoIsMessage_.contains (msg.Nick_))
+			{
+				message = tr ("%1 e-mail address is %2")
+						.arg (msg.Nick_)
+						.arg (msg.Mail_);
+				ShowAnswer ("whois", message, isEndOf);
+			}
+		}
+
+		if (!msg.Nick_.isEmpty () &&
 				!msg.EndString_.isEmpty ())
 		{
 			if (SpyNick2WhoIsMessage_.contains (msg.Nick_))
@@ -896,6 +942,7 @@ namespace Acetamide
 
 	void IrcServerHandler::DisconnectFromServer ()
 	{
+		Account_->ChangeState (EntryStatus (SOffline, QString ()));
 		ChannelsManager_->CloseAllChannels ();
 
 		Q_FOREACH (ServerParticipantEntry_ptr entry, Nick2Entry_.values ())
@@ -1114,6 +1161,12 @@ namespace Acetamide
 			const QString& who, quint64 time)
 	{
 		ChannelsManager_->SetTopicWhoTime (channel, who, time);
+	}
+
+	void IrcServerHandler::SetIrcServerInfo (IrcServer server, const QString& version)
+	{
+		ServerOptions_.IrcServer_ = server;
+		ServerOptions_.IrcServerVersion_ = version;
 	}
 
 	void IrcServerHandler::connectionEstablished ()

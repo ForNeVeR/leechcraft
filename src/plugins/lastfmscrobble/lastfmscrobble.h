@@ -24,11 +24,17 @@
 #include <interfaces/media/iaudioscrobbler.h>
 #include <interfaces/media/ialbumartprovider.h>
 #include <interfaces/media/isimilarartists.h>
+#include <interfaces/media/irecommendedartists.h>
+#include <interfaces/media/iradiostationprovider.h>
+#include <interfaces/media/irecentreleases.h>
+#include <interfaces/media/iartistbiofetcher.h>
+#include <interfaces/media/ieventsprovider.h>
 
 namespace LeechCraft
 {
 namespace Lastfmscrobble
 {
+	class Authenticator;
 	class LastFMSubmitter;
 
 	class Plugin : public QObject
@@ -37,17 +43,32 @@ namespace Lastfmscrobble
 				, public Media::IAudioScrobbler
 				, public Media::IAlbumArtProvider
 				, public Media::ISimilarArtists
+				, public Media::IRecommendedArtists
+				, public Media::IRadioStationProvider
+				, public Media::IRecentReleases
+				, public Media::IArtistBioFetcher
+				, public Media::IEventsProvider
 	{
 		Q_OBJECT
 		Q_INTERFACES (IInfo
 				IHaveSettings
 				Media::IAudioScrobbler
 				Media::IAlbumArtProvider
-				Media::ISimilarArtists)
+				Media::ISimilarArtists
+				Media::IRecommendedArtists
+				Media::IRadioStationProvider
+				Media::IRecentReleases
+				Media::IArtistBioFetcher
+				Media::IEventsProvider)
 
 		Util::XmlSettingsDialog_ptr XmlSettingsDialog_;
+
+		Authenticator *Auth_;
 		LastFMSubmitter *LFSubmitter_;
+
 		ICoreProxy_ptr Proxy_;
+
+		QStandardItem *RadioRoot_;
 	public:
 		void Init (ICoreProxy_ptr proxy);
 		void SecondInit ();
@@ -63,21 +84,35 @@ namespace Lastfmscrobble
 		void NowPlaying (const Media::AudioInfo&);
 		void PlaybackStopped ();
 		void LoveCurrentTrack ();
-
-		Media::IPendingSimilarArtists* GetSimilarArtists (const QString&, int);
+		void BanCurrentTrack ();
 
 		QString GetAlbumArtProviderName () const;
 		void RequestAlbumArt (const Media::AlbumInfo& album) const;
-	private:
-		void FeedPassword (bool);
+
+		Media::IPendingSimilarArtists* GetSimilarArtists (const QString&, int);
+
+		Media::IPendingSimilarArtists* RequestRecommended (int);
+
+		Media::IRadioStation_ptr GetRadioStation (QStandardItem*, const QString&);
+		QList<QStandardItem*> GetRadioListItems () const;
+
+		void RequestRecentReleases (int, bool);
+
+		Media::IPendingArtistBio* RequestArtistBio (const QString&);
+
+		void UpdateRecommendedEvents ();
+		void AttendEvent (qint64, Media::EventAttendType);
 	private slots:
-		void handleSubmitterInit ();
-		void handleAuthFailure ();
+		void reloadRecommendedEvents ();
 	signals:
 		void gotEntity (const LeechCraft::Entity&);
 		void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
 
 		void gotAlbumArt (const Media::AlbumInfo&, const QList<QImage>&);
+
+		void gotRecentReleases (const QList<Media::AlbumRelease>&);
+
+		void gotRecommendedEvents (const Media::EventInfos_t&);
 	};
 }
 }

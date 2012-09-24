@@ -24,6 +24,9 @@
 #include <interfaces/ihavesettings.h>
 #include <interfaces/ientityhandler.h>
 #include <interfaces/iactionsexporter.h>
+#include <interfaces/ihaverecoverabletabs.h>
+#include <interfaces/ipluginready.h>
+#include <interfaces/ihaveshortcuts.h>
 
 namespace LeechCraft
 {
@@ -37,9 +40,19 @@ namespace LMP
 				 , public IHaveSettings
 				 , public IEntityHandler
 				 , public IActionsExporter
+				 , public IHaveRecoverableTabs
+				 , public IHaveShortcuts
+				 , public IPluginReady
 	{
 		Q_OBJECT
-		Q_INTERFACES (IInfo IHaveTabs IHaveSettings IEntityHandler IActionsExporter)
+		Q_INTERFACES (IInfo
+				IHaveTabs
+				IHaveSettings
+				IEntityHandler
+				IActionsExporter
+				IHaveRecoverableTabs
+				IHaveShortcuts
+				IPluginReady)
 
 		TabClassInfo PlayerTC_;
 		PlayerTab *PlayerTab_;
@@ -47,6 +60,10 @@ namespace LMP
 		Util::XmlSettingsDialog_ptr XSD_;
 
 		QAction *ActionRescan_;
+		QAction *ActionCollectionStats_;
+
+		QMap<QString, Entity> GlobAction2Entity_;
+		QMap<QString, ActionInfo> GlobAction2Info_;
 	public:
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
@@ -66,6 +83,17 @@ namespace LMP
 
 		QList<QAction*> GetActions (ActionsEmbedPlace area) const;
 		QMap<QString, QList<QAction*>> GetMenuActions () const;
+
+		void RecoverTabs (const QList<TabRecoverInfo>& infos);
+
+		void SetShortcut (const QString&, const QKeySequences_t&);
+		QMap<QString, ActionInfo> GetActionInfo () const;
+
+		QSet<QByteArray> GetExpectedPluginClasses () const;
+		void AddPlugin (QObject* plugin);
+	private slots:
+		void handleFullRaiseRequested ();
+		void showCollectionStats ();
 	signals:
 		void addNewTab (const QString&, QWidget*);
 		void removeTab (QWidget*);

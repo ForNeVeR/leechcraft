@@ -28,6 +28,8 @@
 #include "interfaces/azoth/azothcommon.h"
 #include "ui_chattab.h"
 
+class QTextBrowser;
+
 namespace LeechCraft
 {
 namespace Azoth
@@ -48,9 +50,11 @@ namespace Azoth
 		Q_INTERFACES (ITabWidget IRecoverableTab)
 
 		static QObject *S_ParentMultiTabs_;
+		static TabClassInfo S_TabClass_;
 
 		Ui::ChatTab Ui_;
 		std::unique_ptr<QToolBar> TabToolbar_;
+		QTextBrowser *MUCEventLog_;
 		QAction *ToggleRichText_;
 		QAction *Call_;
 #ifdef ENABLE_CRYPT
@@ -68,6 +72,7 @@ namespace Azoth
 		int LastSpacePosition_;
 		QString NickFirstPart_;
 
+		bool HadHighlight_;
 		int NumUnreadMsgs_;
 		int ScrollbackPos_;
 
@@ -86,6 +91,7 @@ namespace Azoth
 		ChatPartState PreviousState_;
 	public:
 		static void SetParentMultiTabs (QObject*);
+		static void SetTabClassInfo (const TabClassInfo&);
 
 		ChatTab (const QString&, QWidget* = 0);
 		~ChatTab ();
@@ -113,6 +119,8 @@ namespace Azoth
 
 		void HandleMUCParticipantsChanged ();
 
+		void SetEnabled (bool);
+
 		QObject* GetCLEntry () const;
 		QString GetSelectedVariant () const;
 	public slots:
@@ -120,7 +128,14 @@ namespace Azoth
 		void appendMessageText (const QString&);
 		void selectVariant (const QString&);
 		QTextEdit* getMsgEdit ();
+
+		void handleLocalImageDropped (const QImage&, const QUrl&);
+		void handleImageDropped (const QImage&);
+		void handleFilesDropped (const QList<QUrl>&);
 	private slots:
+		void on_MUCEventsButton__toggled (bool);
+		void handleSeparateMUCLog ();
+
 		void clearAvailableNick ();
 		void handleEditScroll (int);
 		void messageSend ();
@@ -209,6 +224,7 @@ namespace Azoth
 		void changeTabIcon (QWidget*, const QIcon&);
 		void needToClose (ChatTab*);
 		void entryMadeCurrent (QObject*);
+		void entryLostCurrent (QObject*);
 
 		void tabRecoverDataChanged ();
 

@@ -346,7 +346,8 @@ namespace Aggregator
 
 	QIcon Aggregator::GetIcon () const
 	{
-		return QIcon (":/resources/images/aggregator.svg");
+		static QIcon icon (":/resources/images/aggregator.svg");
+		return icon;
 	}
 
 	TabClasses_t Aggregator::GetTabClasses () const
@@ -441,25 +442,21 @@ namespace Aggregator
 
 		switch (place)
 		{
-		case AEPToolsMenu:
+		case ActionsEmbedPlace::ToolsMenu:
 			result << Impl_->ToolMenu_->menuAction ();
 			result << Impl_->AppWideActions_.ActionRegexpMatcher_;
 			break;
-		case AEPCommonContextMenu:
+		case ActionsEmbedPlace::CommonContextMenu:
 			result << Impl_->AppWideActions_.ActionAddFeed_;
 			result << Impl_->AppWideActions_.ActionUpdateFeeds_;
 			break;
-		case AEPTrayMenu:
+		case ActionsEmbedPlace::TrayMenu:
 			result << Impl_->AppWideActions_.ActionMarkAllAsRead_;
 			result << Impl_->AppWideActions_.ActionAddFeed_;
 			result << Impl_->AppWideActions_.ActionUpdateFeeds_;
 			break;
-		case AEPQuickLaunch:
-			break;
 		default:
-			qWarning () << Q_FUNC_INFO
-					<< "unknown place"
-					<< place;
+			break;
 		}
 
 		return result;
@@ -484,22 +481,57 @@ namespace Aggregator
 		return result;
 	}
 
-	Sync::Payloads_t Aggregator::GetAllDeltas (const Sync::ChainID_t& chain) const
+	Sync::Payloads_t Aggregator::GetAllDeltas (const Sync::ChainID_t&) const
 	{
 		return Sync::Payloads_t ();
 	}
 
-	Sync::Payloads_t Aggregator::GetNewDeltas (const Sync::ChainID_t& chain) const
+	Sync::Payloads_t Aggregator::GetNewDeltas (const Sync::ChainID_t&) const
 	{
 		return Sync::Payloads_t ();
 	}
 
-	void Aggregator::PurgeNewDeltas (const Sync::ChainID_t& chain, quint32 since)
+	void Aggregator::PurgeNewDeltas (const Sync::ChainID_t&, quint32)
 	{
 	}
 
-	void Aggregator::ApplyDeltas (const Sync::Payloads_t& payloads, const Sync::ChainID_t& chain)
+	void Aggregator::ApplyDeltas (const Sync::Payloads_t&, const Sync::ChainID_t&)
 	{
+	}
+
+	void Aggregator::RecoverTabs (const QList<TabRecoverInfo>& infos)
+	{
+		Q_FOREACH (const auto& recInfo, infos)
+		{
+			qDebug () << Q_FUNC_INFO << recInfo.Data_;
+
+			if (recInfo.Data_ == "aggregatortab")
+			{
+				Q_FOREACH (const auto& pair, recInfo.DynProperties_)
+					setProperty (pair.first, pair.second);
+
+				TabOpenRequested (Impl_->TabInfo_.TabClass_);
+			}
+			else
+				qWarning () << Q_FUNC_INFO
+						<< "unknown context"
+						<< recInfo.Data_;
+		}
+	}
+
+	QByteArray Aggregator::Aggregator::GetTabRecoverData () const
+	{
+		return "aggregatortab";
+	}
+
+	QIcon Aggregator::Aggregator::GetTabRecoverIcon () const
+	{
+		return GetIcon ();
+	}
+
+	QString Aggregator::Aggregator::GetTabRecoverName () const
+	{
+		return GetName ();
 	}
 
 	void Aggregator::keyPressEvent (QKeyEvent *e)
@@ -796,8 +828,7 @@ namespace Aggregator
 
 	void Aggregator::on_ActionUpdateSelectedFeed__triggered ()
 	{
-		const bool repr = IsRepr ();
-		Perform ([repr] (const QModelIndex& mi) { Core::Instance ().UpdateFeed (mi, repr); });
+		Perform ([] (const QModelIndex& mi) { Core::Instance ().UpdateFeed (mi); });
 	}
 
 	void Aggregator::on_ActionRegexpMatcher__triggered ()

@@ -63,7 +63,8 @@ namespace Isterique
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/azoth/plugins/isterique/resources/images/isterique.svg");
+		static QIcon icon (":/plugins/azoth/plugins/isterique/resources/images/isterique.svg");
+		return icon;
 	}
 
 	QSet<QByteArray> Plugin::GetPluginClasses () const
@@ -78,8 +79,7 @@ namespace Isterique
 		return SettingsDialog_;
 	}
 
-	void Plugin::hookGotMessage (LeechCraft::IHookProxy_ptr proxy,
-			QObject *message)
+	void Plugin::hookGotMessage (LeechCraft::IHookProxy_ptr, QObject *message)
 	{
 		IMessage *msg = qobject_cast<IMessage*> (message);
 		if (!msg)

@@ -19,9 +19,10 @@ else (LastFM_LIBRARIES AND LastFM_INCLUDE_DIRS)
 
 	find_path (LastFM_INCLUDE_DIR
 		NAMES
-		lastfm.h
+		lastfm/global.h
 		PATHS
 		/usr/include
+		/usr/local/include
 		/usr/local/include
 		/opt/local/include
 		/sw/include
@@ -32,6 +33,7 @@ else (LastFM_LIBRARIES AND LastFM_INCLUDE_DIRS)
 		lastfm
 		PATHS
 		/usr/lib
+		/usr/local/lib
 		/usr/local/lib
 		/opt/local/lib
 		/sw/lib

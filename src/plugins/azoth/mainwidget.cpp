@@ -25,6 +25,7 @@
 #include <QToolBar>
 #include <QTimer>
 #include <util/util.h>
+#include <util/gui/clearlineeditaddon.h>
 #include <interfaces/core/icoreproxy.h>
 #include "interfaces/azoth/iclentry.h"
 #include "core.h"
@@ -117,6 +118,10 @@ namespace Azoth
 				SIGNAL (gotSDWidget (ServiceDiscoveryWidget*)),
 				this,
 				SIGNAL (gotSDWidget (ServiceDiscoveryWidget*)));
+		connect (AccountActsMgr_,
+				SIGNAL (gotMicroblogsTab (MicroblogsTab*)),
+				this,
+				SIGNAL (gotMicroblogsTab (MicroblogsTab*)));
 
 		qRegisterMetaType<QPersistentModelIndex> ("QPersistentModelIndex");
 
@@ -127,6 +132,7 @@ namespace Azoth
 		FastStatusButton_->setPopupMode (QToolButton::MenuButtonPopup);
 
 		Ui_.setupUi (this);
+		new Util::ClearLineEditAddon (Core::Instance ().GetProxy (), Ui_.FilterLine_);
 		Ui_.FilterLine_->setPlaceholderText (tr ("Search..."));
 		Ui_.CLTree_->setFocusProxy (Ui_.FilterLine_);
 
@@ -143,6 +149,10 @@ namespace Azoth
 				this,
 				SLOT (handleEntryMadeCurrent (QObject*)),
 				Qt::QueuedConnection);
+		connect (Core::Instance ().GetChatTabsManager (),
+				SIGNAL (entryLostCurrent (QObject*)),
+				this,
+				SLOT (handleEntryLostCurrent (QObject*)));
 
 		XmlSettingsManager::Instance ().RegisterObject ("EntryActivationType",
 				this, "handleEntryActivationType");
@@ -324,6 +334,11 @@ namespace Azoth
 		return result;
 	}
 
+	void MainWidget::handleAccountVisibilityChanged ()
+	{
+		ProxyModel_->invalidate ();
+	}
+
 	void MainWidget::updateFastStatusButton (State state)
 	{
 		FastStatusButton_->defaultAction ()->setIcon (Core::Instance ().GetIconForState (state));
@@ -335,6 +350,22 @@ namespace Azoth
 	{
 		if (index.data (Core::CLREntryType).value<Core::CLEntryType> () != Core::CLETContact)
 			return;
+
+		if (QApplication::keyboardModifiers () & Qt::CTRL)
+			if (auto tab = Core::Instance ().GetChatTabsManager ()->GetActiveChatTab ())
+			{
+				auto text = index.data ().toString ();
+
+				auto edit = tab->getMsgEdit ();
+				if (edit->toPlainText ().isEmpty ())
+					text += XmlSettingsManager::Instance ()
+							.property ("PostAddressText").toString ();
+				else
+					text.prepend (" ");
+
+				tab->appendMessageText (text);
+				return;
+			}
 
 		Core::Instance ().OpenChat (ProxyModel_->mapToSource (index));
 	}
@@ -490,7 +521,8 @@ namespace Azoth
 
 		EntryStatus status (state, QString ());
 		Q_FOREACH (IAccount *acc, Core::Instance ().GetAccounts ())
-			acc->ChangeState (status);
+			if (acc->IsShownInRoster ())
+				acc->ChangeState (status);
 	}
 
 	void MainWidget::handleEntryActivationType ()
@@ -594,7 +626,6 @@ namespace Azoth
 	void MainWidget::handleManageBookmarks ()
 	{
 		BookmarksManagerDialog *dia = new BookmarksManagerDialog (this);
-		dia->setAttribute (Qt::WA_DeleteOnClose, true);
 		dia->show ();
 	}
 
@@ -626,12 +657,19 @@ namespace Azoth
 
 	void MainWidget::clearFilter ()
 	{
+		if (!XmlSettingsManager::Instance ().property ("ClearSearchAfterFocus").toBool ())
+			return;
+
 		if (!Ui_.FilterLine_->text ().isEmpty ())
 			Ui_.FilterLine_->setText (QString ());
 	}
 
 	void MainWidget::handleEntryMadeCurrent (QObject *obj)
 	{
+		auto entry = qobject_cast<ICLEntry*> (obj);
+		if (entry && entry->GetEntryType () == ICLEntry::ETPrivateChat)
+			obj = entry->GetParentCLEntry ();
+
 		const bool isMUC = qobject_cast<IMUCEntry*> (obj);
 
 		if (XmlSettingsManager::Instance ().property ("AutoMUCMode").toBool ())
@@ -639,6 +677,12 @@ namespace Azoth
 
 		if (isMUC)
 			ProxyModel_->SetMUC (obj);
+	}
+
+	void MainWidget::handleEntryLostCurrent (QObject*)
+	{
+		if (XmlSettingsManager::Instance ().property ("AutoMUCMode").toBool ())
+			ActionCLMode_->setChecked (false);
 	}
 
 	void MainWidget::resetToWholeMode ()

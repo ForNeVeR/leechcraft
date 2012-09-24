@@ -80,7 +80,8 @@ namespace Laure
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/laure/resources/img/laure.svg");
+		static QIcon icon (":/plugins/laure/resources/img/laure.svg");
+		return icon;
 	}
 
 	TabClasses_t Plugin::GetTabClasses () const
@@ -124,13 +125,13 @@ namespace Laure
 				this,
 				SLOT (handleNeedToClose ()));
 		connect (w,
-				SIGNAL (gotEntity (Entity)),
+				SIGNAL (gotEntity (LeechCraft::Entity)),
 				this,
-				SIGNAL (gotEntity (Entity)));
+				SIGNAL (gotEntity (LeechCraft::Entity)));
 		connect (w,
-				SIGNAL (delegateEntity (Entity, int*, QObject**)),
+				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)),
 				this,
-				SIGNAL (delegateEntity (Entity, int*, QObject**)));
+				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)));
 
 		Others_ << w;
 		emit addNewTab (tr ("Laure"), w);

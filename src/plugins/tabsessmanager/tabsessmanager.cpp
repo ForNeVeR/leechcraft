@@ -29,6 +29,7 @@
 #include <util/util.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
+#include <interfaces/core/icoretabwidget.h>
 #include <interfaces/ihaverecoverabletabs.h>
 #include <interfaces/ihavetabs.h>
 #include "restoresessiondialog.h"
@@ -42,6 +43,7 @@ namespace TabSessManager
 	{
 		Util::InstallTranslator ("tabsessmanager");
 
+		IsScheduled_ = false;
 		UncloseMenu_ = new QMenu (tr ("Unclose tabs"));
 
 		Proxy_ = proxy;
@@ -71,6 +73,11 @@ namespace TabSessManager
 				QCoreApplication::applicationName () + "_TabSessManager");
 		Q_FOREACH (const auto& group, settings.childGroups ())
 			AddCustomSession (group);
+
+		connect (proxy->GetTabWidget ()->GetObject (),
+				SIGNAL (tabWasMoved (int, int)),
+				this,
+				SLOT (handleTabMoved (int, int)));
 	}
 
 	void Plugin::SecondInit ()
@@ -110,30 +117,24 @@ namespace TabSessManager
 	QList<QAction*> Plugin::GetActions (ActionsEmbedPlace place) const
 	{
 		QList<QAction*> result;
-		if (place == AEPToolsMenu)
+		if (place == ActionsEmbedPlace::ToolsMenu)
 		{
 			result << SessMgrMenu_->menuAction ();
 			result << UncloseMenu_->menuAction ();
 		}
-		else if (place == AEPCommonContextMenu)
+		else if (place == ActionsEmbedPlace::CommonContextMenu)
 			result << UncloseMenu_->menuAction ();
 		return result;
 	}
 
-	bool Plugin::eventFilter (QObject *obj, QEvent *e)
+	bool Plugin::eventFilter (QObject*, QEvent *e)
 	{
 		if (e->type () != QEvent::DynamicPropertyChange)
 			return false;
 
 		auto propEvent = static_cast<QDynamicPropertyChangeEvent*> (e);
 		if (propEvent->propertyName ().startsWith ("SessionData/"))
-		{
-			qDebug () << Q_FUNC_INFO
-					<< "changed"
-					<< propEvent->propertyName ()
-					<< obj->property (propEvent->propertyName ());
 			handleTabRecoverDataChanged ();
-		}
 
 		return false;
 	}
@@ -180,9 +181,6 @@ namespace TabSessManager
 					<< rec->GetTabRecoverName ()
 					<< forRecover
 					<< GetSessionProps (tab);
-
-			qDebug () << Q_FUNC_INFO << "appended data for"
-					<< plugin->GetUniqueID () << rec->GetTabRecoverName ();
 		}
 
 		return result;
@@ -208,10 +206,6 @@ namespace TabSessManager
 				SIGNAL (tabRecoverDataChanged ()),
 				this,
 				SLOT (handleTabRecoverDataChanged ()));
-		connect (widget,
-				SIGNAL (destroyed (QObject*)),
-				this,
-				SLOT (handleTabDestroyed ()));
 
 		widget->installEventFilter (this);
 
@@ -226,10 +220,21 @@ namespace TabSessManager
 		if (!recTab || !tab)
 			return;
 
-		const TabUncloseInfo& info =
+		auto removeGuard = [this, widget] (void*)
+		{
+			Tabs_.removeAll (widget);
+			handleTabRecoverDataChanged ();
+		};
+		std::shared_ptr<void> guard (static_cast<void*> (0), removeGuard);
+
+		const auto& recoverData = recTab->GetTabRecoverData ();
+		if (recoverData.isEmpty ())
+			return;
+
+		const TabUncloseInfo info
 		{
 			{
-				recTab->GetTabRecoverData (),
+				recoverData,
 				GetSessionProps (widget)
 			},
 			qobject_cast<IHaveRecoverableTabs*> (tab->ParentMultiTabs ())
@@ -262,9 +267,23 @@ namespace TabSessManager
 		action->setShortcut (QString ("Ctrl+Shift+T"));
 	}
 
-	void Plugin::handleTabDestroyed ()
+	void Plugin::handleTabMoved (int from, int to)
 	{
-		Tabs_.remove (sender ());
+		if (std::max (from, to) >= Tabs_.size () ||
+			std::min (from, to) < 0)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "invalid"
+					<< from
+					<< "->"
+					<< to
+					<< "; total tabs:"
+					<< Tabs_.size ();
+			return;
+		}
+
+		auto tab = Tabs_.takeAt (from);
+		Tabs_.insert (to, tab);
 
 		handleTabRecoverDataChanged ();
 	}
@@ -276,6 +295,7 @@ namespace TabSessManager
 			QHash<QByteArray, QObject*> pluginCache;
 			QHash<QObject*, QList<RecInfo>> tabs;
 
+			int order = 0;
 			while (!str.atEnd ())
 			{
 				QByteArray pluginId;
@@ -299,7 +319,7 @@ namespace TabSessManager
 					continue;
 				}
 
-				tabs [plugin] << RecInfo { recData, props, name, icon };
+				tabs [plugin] << RecInfo { order++, recData, props, name, icon };
 
 				qDebug () << Q_FUNC_INFO << "got restore data for"
 						<< pluginId << name << plugin;
@@ -330,20 +350,23 @@ namespace TabSessManager
 
 		void OpenTabs (const QHash<QObject*, QList<RecInfo>>& tabs)
 		{
-			Q_FOREACH (QObject *plugin, tabs.keys ())
+			QList<QPair<IHaveRecoverableTabs*, RecInfo>> ordered;
+			Q_FOREACH (auto plugin, tabs.keys ())
 			{
 				auto ihrt = qobject_cast<IHaveRecoverableTabs*> (plugin);
 				if (!ihrt)
 					continue;
 
-				QList<TabRecoverInfo> datas;
-				const auto& infos = tabs [plugin];
-				std::transform (infos.begin (), infos.end (), std::back_inserter (datas),
-						[] (const RecInfo& rec) { return TabRecoverInfo { rec.Data_, rec.Props_ }; });
-				qDebug () << Q_FUNC_INFO << "recovering"
-						<< plugin << infos.size ();
-				ihrt->RecoverTabs (datas);
+				Q_FOREACH (const auto& info, tabs [plugin])
+					ordered << qMakePair (ihrt, info);
 			}
+
+			std::sort (ordered.begin (), ordered.end (),
+					[] (decltype (ordered.at (0)) left, decltype (ordered.at (0)) right)
+						{ return left.second.Order_ < right.second.Order_; });
+
+			Q_FOREACH (const auto& pair, ordered)
+				pair.first->RecoverTabs ({ TabRecoverInfo { pair.second.Data_, pair.second.Props_ } });
 		}
 	}
 
@@ -397,12 +420,23 @@ namespace TabSessManager
 
 	void Plugin::handleTabRecoverDataChanged ()
 	{
-		qDebug () << Q_FUNC_INFO << IsRecovering_ << Proxy_->IsShuttingDown ();
 		if (IsRecovering_ || Proxy_->IsShuttingDown ())
 			return;
 
+		if (IsScheduled_)
+			return;
+
+		IsScheduled_ = true;
+		QTimer::singleShot (2000,
+				this,
+				SLOT (saveDefaultSession ()));
+	}
+
+	void Plugin::saveDefaultSession ()
+	{
+		IsScheduled_ = false;
+
 		const auto& result = GetCurrentSession ();
-		qDebug () << "saving restore data" << result.size ();
 
 		QSettings settings (QCoreApplication::organizationName (),
 				QCoreApplication::applicationName () + "_TabSessManager");

@@ -60,6 +60,8 @@ namespace Laure
 		QAction *SubtitleAction_;
 		QMenu *SubtitleMenu_;
 		PlayPauseAction *ActionPlay_;
+
+		bool InMove_;
 	public:
 		/** @brief Constructs a new LaureWidget tab
 		 * with the given parent and flags.
@@ -78,6 +80,7 @@ namespace Laure
 	private:
 		void InitCommandFrame ();
 		void InitToolBar ();
+		void InitShortcuts ();
 	signals:
 		/** @brief Is emitted to notify the Core that this tab needs to
 		 * be closed.
@@ -95,15 +98,15 @@ namespace Laure
 		 */
 		void addItem (const QString& location);
 
-		void gotEntity (const Entity&);
-		void delegateEntity (const Entity&, int*, QObject**);
+		void gotEntity (const LeechCraft::Entity&);
+		void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
 	public slots:
 		/** @brief Is called for adding media files to the playlist.
 		 *
 		 * @param[in] location Media file location.
 		 */
 		void handleOpenMediaContent (const QString& location);
-		
+
 		void updateSubtitleMenu (const MediaMeta& meta);
 	private slots:
 		void handleOpenFile ();
@@ -115,6 +118,11 @@ namespace Laure
 		void subtitleDialog ();
 		void showSubtitleMenu ();
 		void handlePlayListWidgetDoubleClicked ();
+		void handleSplitterMoved ();
+
+		void handleSliderReleased ();
+		void handleSliderMoved (int pos);
+		void handleDetachPlayer ();
 	};
 }
 }

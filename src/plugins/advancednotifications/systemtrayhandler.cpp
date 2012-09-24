@@ -20,9 +20,9 @@
 #include <interfaces/structures.h>
 #include <interfaces/core/icoreproxy.h>
 #include <QMenu>
-#include <QApplication>
-#include <QDesktopWidget>
 #include <QPainter>
+#include <QApplication>
+#include <util/util.h>
 #include "generalhandler.h"
 #include "xmlsettingsmanager.h"
 
@@ -146,7 +146,7 @@ namespace AdvancedNotifications
 				this,
 				SLOT (handleLCAction ()));
 
-		emit gotActions (QList<QAction*> () << action, AEPLCTray);
+		emit gotActions (QList<QAction*> () << action, ActionsEmbedPlace::LCTray);
 
 #ifdef HAVE_QML
 		VisualNotificationsView *vnv = new VisualNotificationsView;
@@ -409,19 +409,7 @@ namespace AdvancedNotifications
 			if (!view->isVisible ())
 			{
 				view->SetEvents (events);
-
-				QPoint pos = QCursor::pos ();
-				const QRect& geometry = qApp->desktop ()->screenGeometry (pos);
-				const QSize& size = view->size ();
-				const bool dropDown = pos.y () < geometry.height () / 2;
-				const bool dropRight = pos.x () + size.width () < geometry.width ();
-
-				if (!dropDown)
-					pos.ry () -= size.height ();
-				if (!dropRight)
-					pos.rx () -= size.width ();
-
-				view->move (pos);
+				view->move (Util::FitRectScreen (QCursor::pos (), view->size ()));
 			}
 			view->setVisible (!view->isVisible ());
 		}

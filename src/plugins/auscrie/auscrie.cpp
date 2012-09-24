@@ -80,14 +80,15 @@ namespace Auscrie
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/resources/images/auscrie.svg");
+		static QIcon icon (":/resources/images/auscrie.svg");
+		return icon;
 	}
 
 	QList<QAction*> Plugin::GetActions (ActionsEmbedPlace place) const
 	{
 		QList<QAction*> result;
 
-		if (place == AEPCommonContextMenu)
+		if (place == ActionsEmbedPlace::CommonContextMenu)
 			result << ShotAction_;
 
 		return result;
@@ -177,6 +178,10 @@ namespace Auscrie
 		case ShooterDialog::Mode::WholeDesktop:
 			return QPixmap::grabWindow (qApp->desktop ()->winId ());
 		}
+
+		qWarning () << Q_FUNC_INFO
+				<< "unknown mode";
+		return QPixmap ();
 	}
 
 	void Plugin::Post (const QByteArray& data)

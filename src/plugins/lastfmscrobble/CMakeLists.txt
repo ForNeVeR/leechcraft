@@ -24,6 +24,17 @@ SET (SRCS
 	lastfmscrobble.cpp
 	pendingsimilarartists.cpp
 	albumartfetcher.cpp
+	authenticator.cpp
+	basesimilarartists.cpp
+	pendingrecommendedartists.cpp
+	util.cpp
+	radiostation.cpp
+	radiotuner.cpp
+	recentreleasesfetcher.cpp
+	pendingartistbio.cpp
+	receventsfetcher.cpp
+	eventsfetchaggregator.cpp
+	eventattendmarker.cpp
 	)
 SET (HEADERS
 	lastfmsubmitter.h
@@ -31,14 +42,27 @@ SET (HEADERS
 	lastfmscrobble.h
 	pendingsimilarartists.h
 	albumartfetcher.h
+	authenticator.h
+	basesimilarartists.h
+	pendingrecommendedartists.h
+	util.h
+	radiostation.h
+	radiotuner.h
+	recentreleasesfetcher.h
+	pendingartistbio.h
+	receventsfetcher.h
+	eventsfetchaggregator.h
+	eventattendmarker.h
 	)
 SET (RESOURCES lastfmscrobbleresources.qrc)
 IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 ENDIF (NOT LC_NO_MOC)
 QT4_ADD_RESOURCES (RCCS ${RESOURCES})
+CreateTrs ("lastfmscrobble" "en;ru_RU" COMPILED_TRANSLATIONS)
 
 ADD_LIBRARY (leechcraft_lastfmscrobble SHARED
+	${COMPILED_TRANSLATIONS}
 	${SRCS}
 	${MOC_SRCS}
 	${RCCS}
@@ -51,3 +75,4 @@ TARGET_LINK_LIBRARIES (leechcraft_lastfmscrobble
 
 INSTALL (TARGETS leechcraft_lastfmscrobble DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES lastfmscrobblesettings.xml DESTINATION ${LC_SETTINGS_DEST})
+INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})

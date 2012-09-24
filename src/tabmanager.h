@@ -46,6 +46,7 @@ namespace LeechCraft
 	public:
 		TabManager (SeparateTabWidget*, QObject* = 0);
 
+		QWidget* GetCurrentWidget () const;
 		QWidget* GetWidget (int) const;
 		QToolBar* GetToolBar (int) const;
 		void ForwardKeyboard (QKeyEvent*);
@@ -70,7 +71,6 @@ namespace LeechCraft
 		void removeByContents (QWidget*);
 		void changeTabName (QWidget*, const QString&);
 		void changeTabIcon (QWidget*, const QIcon&);
-		void changeTooltip (QWidget*, QWidget*);
 		void bringToFront (QWidget*) const;
 		void handleScrollButtons ();
 		void handleCurrentChanged (int);
@@ -80,9 +80,11 @@ namespace LeechCraft
 		int FindTabForWidget (QWidget*) const;
 		QString MakeTabName (const QString&) const;
 		void InvalidateName ();
-		
+
 		QStringList GetOriginalNames () const;
 		void SetOriginalNames (const QStringList&);
+	signals:
+		void currentTabChanged (QWidget*);
 	};
 };
 

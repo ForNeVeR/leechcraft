@@ -48,9 +48,7 @@ namespace LeechCraft
 	class Core;
 	class PluginInfo;
 	class PluginManagerDialog;
-	class FancyPopupManager;
 	class ShortcutManager;
-	class LogToolBox;
 	class ToolbarGuard;
 
 	class MainWindow : public QMainWindow
@@ -65,8 +63,6 @@ namespace LeechCraft
 		QLabel *Clock_;
 		Util::GraphWidget *SpeedGraph_;
 		ShortcutManager *ShortcutManager_;
-		FancyPopupManager *FancyPopupManager_;
-		LogToolBox *LogToolBox_;
 		bool IsShown_;
 		bool WasMaximized_;
 		QString LanguageOnLoad_;
@@ -92,7 +88,9 @@ namespace LeechCraft
 		IShortcutProxy* GetShortcutProxy () const;
 		void SetAdditionalTitle (const QString&);
 		ToolbarGuard* GetGuard () const;
-		FancyPopupManager* GetFancyPopupManager () const;
+
+		QMenu* GetMainMenu () const;
+		void HideMainMenu ();
 
 		QWidget* GetDockListWidget (Qt::DockWidgetArea) const;
 
@@ -102,6 +100,7 @@ namespace LeechCraft
 		void RemoveMenus (const QMap<QString, QList<QAction*>>&);
 	public slots:
 		void catchError (QString);
+		void showHideMain ();
 	protected:
 		virtual void closeEvent (QCloseEvent*);
 		virtual void keyPressEvent (QKeyEvent*);
@@ -117,6 +116,7 @@ namespace LeechCraft
 		void handleCloseCurrentTab ();
 		void on_ActionSettings__triggered ();
 		void on_ActionAboutLeechCraft__triggered ();
+		void on_ActionRestart__triggered ();
 		void on_ActionQuit__triggered ();
 		void on_ActionShowStatusBar__triggered ();
 		void on_ActionMenu__triggered ();
@@ -124,7 +124,6 @@ namespace LeechCraft
 		void handleAppStyle ();
 		void handleLanguage ();
 		void on_ActionFullscreenMode__triggered (bool);
-		void on_ActionLogger__triggered ();
 		void on_MainTabWidget__currentChanged (int);
 		void on_ActionShowToolBar__triggered (bool);
 		void handleShortcutFullscreenMode ();
@@ -135,7 +134,6 @@ namespace LeechCraft
 		void handleRestoreActionAdded (QAction*);
 		void updateSpeedIndicators ();
 		void updateClock ();
-		void showHideMain ();
 		void handleTrayIconActivated (QSystemTrayIcon::ActivationReason);
 		void updateIconSet ();
 		void doDelayedInit ();
@@ -147,6 +145,8 @@ namespace LeechCraft
 		void InitializeShortcuts ();
 		void ShowMenuAndBar (bool);
 	signals:
+		void hookDockWidgetActionVisToggled (LeechCraft::IHookProxy_ptr, QDockWidget*, bool);
+		void hookGonnaFillMenu (LeechCraft::IHookProxy_ptr);
 		void hookGonnaFillQuickLaunch (LeechCraft::IHookProxy_ptr);
 	};
 };

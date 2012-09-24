@@ -24,6 +24,7 @@
 #include <util/gui/flowlayout.h>
 #include <interfaces/ihavetabs.h>
 #include <interfaces/core/icoretabwidget.h>
+#include <interfaces/imwproxy.h>
 
 Q_DECLARE_METATYPE (QToolButton*);
 
@@ -45,6 +46,17 @@ namespace Sidebar
 		static_cast<QVBoxLayout*> (layout ())->addLayout (TrayLay_);
 
 		setMaximumWidth (IconSize_.width () + 2);
+
+		auto mw = proxy->GetMWProxy ();
+		auto menuButton = new QToolButton ();
+		menuButton->setIconSize (IconSize_);
+		menuButton->setIcon (QIcon (":/resources/images/leechcraft.svg"));
+		menuButton->setPopupMode (QToolButton::InstantPopup);
+		menuButton->setArrowType (Qt::NoArrow);
+		menuButton->setMenu (mw->GetMainMenu ());
+		menuButton->setAutoRaise (true);
+		Ui_.MainMenuLay_->addWidget (menuButton);
+		mw->HideMainMenu ();
 	}
 
 	void SBWidget::AddTabOpenAction (QAction *act)
@@ -65,6 +77,16 @@ namespace Sidebar
 	void SBWidget::RemoveQLAction (QAction *act)
 	{
 		RemoveTabButton (act, Ui_.QLLay_);
+	}
+
+	void SBWidget::AddDockAction (QAction *act)
+	{
+		AddTabButton (act, Ui_.DockLay_);
+	}
+
+	void SBWidget::RemoveDockAction (QAction *act)
+	{
+		RemoveTabButton (act, Ui_.DockLay_);
 	}
 
 	void SBWidget::AddCurTabAction (QAction *act, QWidget *w)
@@ -131,6 +153,7 @@ namespace Sidebar
 		auto tb = new QToolButton;
 		tb->setIconSize (IconSize_);
 		tb->setDefaultAction (act);
+		tb->setAutoRaise (true);
 
 		lay->addWidget (tb);
 
@@ -167,6 +190,7 @@ namespace Sidebar
 			auto tb = new QToolButton;
 			tb->setIconSize (IconSize_);
 			tb->setDefaultAction (foldAct);
+			tb->setAutoRaise (true);
 			TabClass2Folder_ [tc.TabClass_] = tb;
 			Ui_.TabsLay_->insertWidget (0, tb);
 
@@ -177,7 +201,7 @@ namespace Sidebar
 			AddToFolder (tc.TabClass_, newAct);
 	}
 
-	void SBWidget::AddToFolder (const QByteArray& tabClass, QAction *act)
+	void SBWidget::AddToFolder (const QByteArray&, QAction *act)
 	{
 		delete CurTab2Button_.take (act);
 	}

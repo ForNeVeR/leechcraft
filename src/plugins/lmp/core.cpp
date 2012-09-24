@@ -17,10 +17,17 @@
  **********************************************************************/
 
 #include "core.h"
+#include <interfaces/iplugin2.h>
 #include "localfileresolver.h"
 #include "localcollection.h"
 #include "xmlsettingsmanager.h"
 #include "playlistmanager.h"
+#include "sync/syncmanager.h"
+#include "sync/clouduploadmanager.h"
+#include "interfaces/lmp/ilmpplugin.h"
+#include "interfaces/lmp/isyncplugin.h"
+#include "interfaces/lmp/icloudstorageplugin.h"
+#include "interfaces/lmp/iplaylistprovider.h"
 
 namespace LeechCraft
 {
@@ -30,6 +37,8 @@ namespace LMP
 	: Resolver_ (new LocalFileResolver)
 	, Collection_ (new LocalCollection)
 	, PLManager_ (new PlaylistManager)
+	, SyncManager_ (new SyncManager)
+	, CloudUpMgr_ (new CloudUploadManager)
 	{
 	}
 
@@ -49,11 +58,54 @@ namespace LMP
 		return Proxy_;
 	}
 
+	void Core::SendEntity (const Entity& e)
+	{
+		emit gotEntity (e);
+	}
+
 	void Core::PostInit ()
 	{
-		XmlSettingsManager::Instance ().RegisterObject ("CollectionDir",
-				this, "handleCollectionDirChanged");
 		Collection_->FinalizeInit ();
+	}
+
+	void Core::AddPlugin (QObject *pluginObj)
+	{
+		auto ip2 = qobject_cast<IPlugin2*> (pluginObj);
+		auto ilmpPlug = qobject_cast<ILMPPlugin*> (pluginObj);
+
+		if (!ilmpPlug)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< pluginObj
+					<< "doesn't implement ILMPPlugin";
+			return;
+		}
+
+		const auto& classes = ip2->GetPluginClasses ();
+		if (classes.contains ("org.LeechCraft.LMP.CollectionSync") &&
+			qobject_cast<ISyncPlugin*> (pluginObj))
+			SyncPlugins_ << pluginObj;
+
+		if (classes.contains ("org.LeechCraft.LMP.CloudStorage") &&
+			qobject_cast<ICloudStoragePlugin*> (pluginObj))
+		{
+			CloudPlugins_ << pluginObj;
+			emit cloudStoragePluginsChanged ();
+		}
+
+		if (classes.contains ("org.LeechCraft.LMP.PlaylistProvider") &&
+			qobject_cast<IPlaylistProvider*> (pluginObj))
+			PLManager_->AddProvider (pluginObj);
+	}
+
+	QObjectList Core::GetSyncPlugins () const
+	{
+		return SyncPlugins_;
+	}
+
+	QObjectList Core::GetCloudStoragePlugins() const
+	{
+		return CloudPlugins_;
 	}
 
 	LocalFileResolver* Core::GetLocalFileResolver () const
@@ -71,18 +123,24 @@ namespace LMP
 		return PLManager_;
 	}
 
-	void Core::rescan ()
+	SyncManager* Core::GetSyncManager () const
 	{
-		handleCollectionDirChanged ();
+		return SyncManager_;
 	}
 
-	void Core::handleCollectionDirChanged ()
+	CloudUploadManager* Core::GetCloudUploadManager () const
 	{
-		Collection_->Clear ();
-		const auto& dir = XmlSettingsManager::Instance ()
-				.property ("CollectionDir").toString ();
-		if (!dir.isEmpty ())
-			Collection_->Scan (dir);
+		return CloudUpMgr_;
+	}
+
+	boost::optional<MediaInfo> Core::TryURLResolve (const QUrl& url) const
+	{
+		return PLManager_->TryResolveMediaInfo (url);
+	}
+
+	void Core::rescan ()
+	{
+		Collection_->Rescan ();
 	}
 }
 }

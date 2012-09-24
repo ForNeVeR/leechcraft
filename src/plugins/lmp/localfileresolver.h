@@ -22,6 +22,9 @@
 #include <QObject>
 #include <QHash>
 #include <QReadWriteLock>
+#include <QMutex>
+#include <QDateTime>
+#include <taglib/fileref.h>
 #include "mediainfo.h"
 
 namespace LeechCraft
@@ -42,12 +45,15 @@ namespace LMP
 	{
 		Q_OBJECT
 
+		QMutex TaglibMutex_;
 		QReadWriteLock CacheLock_;
-		QHash<QString, MediaInfo> Cache_;
+		QHash<QString, QPair<QDateTime, MediaInfo>> Cache_;
 	public:
 		LocalFileResolver (QObject* = 0);
 
+		TagLib::FileRef GetFileRef (const QString&) const;
 		MediaInfo ResolveInfo (const QString&);
+		QMutex& GetMutex ();
 	};
 }
 }

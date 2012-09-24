@@ -60,7 +60,6 @@ namespace LeechCraft
 		QWidget *DefaultWidget_;
 		QAction *AddTabButtonAction_;
 		QAction *DefaultTabAction_;
-		QMap<int, std::shared_ptr<QWidget>> Widgets_;
 		QList<QPointer<QAction>> TabBarActions_;
 		QWidget *CurrentWidget_;
 		int CurrentIndex_;
@@ -87,8 +86,6 @@ namespace LeechCraft
 		QString TabToolTip (int index) const;
 		void SetTabToolTip (int index, const QString& toolTip);
 
-		void SetTooltip (int index, QWidget *toolTip);
-
 		QWidget* TabButton (int index, QTabBar::ButtonPosition positioin) const;
 		QTabBar::ButtonPosition GetCloseButtonPosition () const;
 		void SetTabClosable (int index, bool closable, QWidget *closeButton = 0);
@@ -101,6 +98,7 @@ namespace LeechCraft
 
 		void AddWidget2TabBarLayout (QTabBar::ButtonPosition pos, QWidget *action);
 		void AddAction2TabBarLayout (QTabBar::ButtonPosition pos, QAction *action);
+		void RemoveActionFromTabBarLayout (QTabBar::ButtonPosition pos, QAction *action);
 
 		int CurrentIndex () const;
 		QWidget* CurrentWidget () const;
@@ -135,7 +133,6 @@ namespace LeechCraft
 	protected:
 		void resizeEvent (QResizeEvent *event);
 		void mousePressEvent (QMouseEvent *event);
-		bool event (QEvent *event);
 	private:
 		void Init ();
 		void AddTabButtonInit ();
@@ -146,6 +143,7 @@ namespace LeechCraft
 		void handleNewTabShortcutActivated ();
 		void setPreviousTab ();
 	private slots:
+		void handleTabBarPosition ();
 		void handleSelectionBehavior ();
 		void handleAddDefaultTab ();
 		void handleShowAddTabButton (bool show);

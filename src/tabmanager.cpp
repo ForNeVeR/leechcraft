@@ -68,6 +68,11 @@ TabManager::TabManager (SeparateTabWidget *tabWidget,
 	TabWidget_->AddAction2TabBar (closeAllButCurrent);
 }
 
+QWidget* TabManager::GetCurrentWidget () const
+{
+	return TabWidget_->CurrentWidget ();
+}
+
 QWidget* TabManager::GetWidget (int position) const
 {
 	return TabWidget_->Widget (position);
@@ -160,6 +165,9 @@ void TabManager::add (const QString& name, QWidget *contents,
 			return;
 		}
 		icon = itw->GetTabClassInfo ().Icon_;
+
+		if (itw->GetTabClassInfo ().Features_ & TFSingle)
+			Core::Instance ().GetNewTabMenuManager ()->HideAction (itw);
 	}
 
 	if (XmlSettingsManager::Instance ()->
@@ -265,14 +273,6 @@ void TabManager::changeTabIcon (QWidget *contents, const QIcon& icon)
 	TabWidget_->SetTabIcon (tabNumber, icon);
 }
 
-void TabManager::changeTooltip (QWidget *contents, QWidget *tip)
-{
-	int tabNumber = FindTabForWidget (contents);
-	if (tabNumber == -1)
-		return;
-	TabWidget_->SetTooltip (tabNumber, tip);
-}
-
 void TabManager::handleScrollButtons ()
 {
 	TabWidget_->TabBar ()->setUsesScrollButtons (XmlSettingsManager::Instance ()->
@@ -296,10 +296,15 @@ void TabManager::handleCurrentChanged (int index)
 
 	InvalidateName ();
 
+	if (auto prevTab = TabWidget_->GetPreviousWidget ())
+		if (auto imtw = qobject_cast<ITabWidget*> (prevTab))
+			imtw->TabLostCurrent ();
+
 	if (TabWidget_->WidgetCount () != 1)
 		Core::Instance ().GetReallyMainWindow ()->RemoveMenus (Menus_);
 
-	ITabWidget *imtw = qobject_cast<ITabWidget*> (TabWidget_->Widget (index));
+	auto tab = TabWidget_->Widget (index);
+	auto imtw = qobject_cast<ITabWidget*> (tab);
 	if (!imtw)
 	{
 		qWarning () << Q_FUNC_INFO
@@ -311,6 +316,8 @@ void TabManager::handleCurrentChanged (int index)
 	QMap<QString, QList<QAction*>> menus = imtw->GetWindowMenus ();
 	Core::Instance ().GetReallyMainWindow ()->AddMenus (menus);
 	Menus_ = menus;
+
+	emit currentTabChanged (tab);
 
 	imtw->TabMadeCurrent ();
 }

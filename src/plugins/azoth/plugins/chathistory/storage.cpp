@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "storage.h"
+#include <algorithm>
 #include <stdexcept>
 #include <QStringList>
 #include <QSqlDatabase>
@@ -96,6 +97,13 @@ namespace ChatHistory
 				"WHERE Id = :entry_id "
 				"AND AccountID = :account_id "
 				"AND Date >= :date");
+
+		GetMonthDates_ = QSqlQuery (*DB_);
+		GetMonthDates_.prepare ("SELECT Date FROM azoth_history "
+				"WHERE Id = :entry_id "
+				"AND AccountID = :account_id "
+				"AND Date >= :lower_date "
+				"AND Date <= :upper_date");
 
 		LogsSearcher_ = QSqlQuery (*DB_);
 		LogsSearcher_.prepare ("SELECT date FROM azoth_history "
@@ -446,6 +454,30 @@ namespace ChatHistory
 				LogsSearcherWOContactAccount_.value (0).toDateTime ());
 	}
 
+	void Storage::SearchDate (qint32 accountId, qint32 entryId, const QDateTime& dt)
+	{
+		Date2Pos_.bindValue (":date", dt);
+		Date2Pos_.bindValue (":account_id", accountId);
+		Date2Pos_.bindValue (":entry_id", entryId);
+		if (!Date2Pos_.exec ())
+		{
+			Util::DBLock::DumpError (Date2Pos_);
+			return;
+		}
+
+		if (!Date2Pos_.next ())
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unable to navigate to next record";
+			return;
+		}
+
+		const int index = Date2Pos_.value (0).toInt ();
+		Date2Pos_.finish ();
+
+		emit gotSearchPosition (Accounts_.key (accountId), Users_.key (entryId), index);
+	}
+
 	void Storage::addMessage (const QVariantMap& data)
 	{
 		Util::DBLock lock (*DB_);
@@ -647,26 +679,81 @@ namespace ChatHistory
 		if (res.IsEmpty ())
 			return;
 
-		Date2Pos_.bindValue (":date", res.Date_);
-		Date2Pos_.bindValue (":account_id", res.AccountID_);
-		Date2Pos_.bindValue (":entry_id", res.EntryID_);
-		if (!Date2Pos_.exec ())
-		{
-			Util::DBLock::DumpError (Date2Pos_);
-			return;
-		}
+		SearchDate (res.AccountID_, res.EntryID_, res.Date_);
+	}
 
-		if (!Date2Pos_.next ())
+	void Storage::searchDate (const QString& account, const QString& entry, const QDateTime& dt)
+	{
+		if (!Accounts_.contains (account))
 		{
 			qWarning () << Q_FUNC_INFO
-					<< "unable to navigate to next record";
+					<< "Accounts_ doesn't contain"
+					<< account
+					<< "; raw contents"
+					<< Accounts_;
+			return;
+		}
+		if (!Users_.contains (entry))
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "Users_ doesn't contain"
+					<< entry
+					<< "; raw contents"
+					<< Users_;
 			return;
 		}
 
-		const int index = Date2Pos_.value (0).toInt ();
-		Date2Pos_.finish ();
+		const qint32 entryId = Users_ [entry];
+		const qint32 accId = Accounts_ [account];
+		SearchDate (accId, entryId, dt);
+	}
 
-		emit gotSearchPosition (Accounts_.key (res.AccountID_), Users_.key (res.EntryID_), index);
+	void Storage::getDaysForSheet (const QString& account, const QString& entry, int year, int month)
+	{
+		if (!Accounts_.contains (account))
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "Accounts_ doesn't contain"
+					<< account
+					<< "; raw contents"
+					<< Accounts_;
+			return;
+		}
+		if (!Users_.contains (entry))
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "Users_ doesn't contain"
+					<< entry
+					<< "; raw contents"
+					<< Users_;
+			return;
+		}
+
+		const QDate lowerDate (year, month, 1);
+		const QDateTime lowerBound (lowerDate, QTime (0, 0, 0));
+		const QDateTime upperBound (QDate (year, month, lowerDate.daysInMonth ()), QTime (23, 59, 59));
+
+		GetMonthDates_.bindValue (":entry_id", Users_ [entry]);
+		GetMonthDates_.bindValue (":account_id", Accounts_ [account]);
+		GetMonthDates_.bindValue (":lower_date", lowerBound);
+		GetMonthDates_.bindValue (":upper_date", upperBound);
+
+		if (!GetMonthDates_.exec ())
+		{
+			Util::DBLock::DumpError (GetMonthDates_);
+			return;
+		}
+
+		QList<int> result;
+		while (GetMonthDates_.next ())
+		{
+			const auto date = GetMonthDates_.value (0).toDate ();
+			const int day = date.day ();
+			if (!result.contains (day))
+				result << day;
+		}
+		std::sort (result.begin (), result.end ());
+		emit gotDaysForSheet (account, entry, year, month, result);
 	}
 
 	void Storage::clearHistory (const QString& accountId, const QString& entryId)

@@ -29,6 +29,11 @@
 #include "xmlsettingsmanager.h"
 #include "confwidget.h"
 
+uint qHash (const QRegExp& rx)
+{
+	return qHash (rx.pattern ());
+}
+
 namespace LeechCraft
 {
 namespace Azoth
@@ -45,6 +50,9 @@ namespace Herbicide
 
 		ConfWidget_ = new ConfWidget ();
 		SettingsDialog_->SetCustomWidget ("ConfWidget", ConfWidget_);
+
+		handleWhitelistChanged ();
+		handleBlacklistChanged ();
 	}
 
 	void Plugin::SecondInit ()
@@ -72,7 +80,8 @@ namespace Herbicide
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/azoth/plugins/herbicide/resources/images/herbicide.svg");
+		static QIcon icon (":/plugins/azoth/plugins/herbicide/resources/images/herbicide.svg");
+		return icon;
 	}
 
 	QSet<QByteArray> Plugin::GetPluginClasses () const
@@ -112,7 +121,77 @@ namespace Herbicide
 		if (AllowedEntries_.contains (entryObj))
 			return true;
 
+		const auto& id = entry->GetHumanReadableID ();
+
+		Q_FOREACH (const auto& rx, Whitelist_)
+			if (rx.exactMatch (id))
+				return true;
+
+		if (XmlSettingsManager::Instance ().property ("AskOnlyBL").toBool ())
+		{
+			Q_FOREACH (const auto& rx, Blacklist_)
+				if (rx.exactMatch (id))
+					return false;
+
+			return true;
+		}
+
 		return false;
+	}
+
+	void Plugin::ChallengeEntry (IHookProxy_ptr proxy, QObject *entryObj)
+	{
+		auto entry = qobject_cast<ICLEntry*> (entryObj);
+		AskedEntries_ << entryObj;
+		const QString& text = tr ("Please answer to the following "
+				"question to verify you are not a bot and is welcome "
+				"to communicate with me:\n%1")
+					.arg (ConfWidget_->GetQuestion ());
+		QObject *msgObj = entry->CreateMessage (IMessage::MTChatMessage, QString (), text);
+		OurMessages_ << msgObj;
+		qobject_cast<IMessage*> (msgObj)->Send ();
+
+		proxy->CancelDefault ();
+	}
+
+	void Plugin::GreetEntry (QObject *entryObj)
+	{
+		AllowedEntries_ << entryObj;
+
+		AskedEntries_.remove (entryObj);
+
+		auto entry = qobject_cast<ICLEntry*> (entryObj);
+
+		const QString& text = tr ("Nice, seems like you've answered "
+				"correctly. Please write again now what you wanted "
+				"to write.");
+		QObject *msgObj = entry->CreateMessage (IMessage::MTChatMessage, QString (), text);
+		OurMessages_ << msgObj;
+		qobject_cast<IMessage*> (msgObj)->Send ();
+
+		if (DeniedAuth_.contains (entryObj))
+			QMetaObject::invokeMethod (entry->GetParentAccount (),
+					"authorizationRequested",
+					Q_ARG (QObject*, entryObj),
+					Q_ARG (QString, DeniedAuth_.take (entryObj)));
+	}
+
+	void Plugin::hookGotAuthRequest (IHookProxy_ptr proxy, QObject *entry, QString msg)
+	{
+		if (!IsConfValid ())
+			return;
+
+		if (!XmlSettingsManager::Instance ().property ("EnableForAuths").toBool ())
+			return;
+
+		if (IsEntryAllowed (entry))
+			return;
+
+		if (!AskedEntries_.contains (entry))
+		{
+			ChallengeEntry (proxy, entry);
+			DeniedAuth_ [entry] = msg;
+		}
 	}
 
 	void Plugin::hookGotMessage (LeechCraft::IHookProxy_ptr proxy,
@@ -147,29 +226,9 @@ namespace Herbicide
 			return;
 
 		if (!AskedEntries_.contains (entryObj))
-		{
-			AskedEntries_ << entryObj;
-			const QString& text = tr ("Please answer to the following "
-					"question to verify you are not a bot and is welcome "
-					"to communicate with me:\n%1")
-						.arg (ConfWidget_->GetQuestion ());
-			QObject *msgObj = entry->CreateMessage (IMessage::MTChatMessage, QString (), text);
-			OurMessages_ << msgObj;
-			qobject_cast<IMessage*> (msgObj)->Send ();
-
-			proxy->CancelDefault ();
-		}
+			ChallengeEntry (proxy, entryObj);
 		else if (ConfWidget_->GetAnswers ().contains (msg->GetBody ().toLower ()))
-		{
-			AllowedEntries_ << entryObj;
-			AskedEntries_.remove (entryObj);
-			const QString& text = tr ("Nice, seems like you've answered "
-					"correctly. Please write again now what you wanted "
-					"to write.");
-			QObject *msgObj = entry->CreateMessage (IMessage::MTChatMessage, QString (), text);
-			OurMessages_ << msgObj;
-			qobject_cast<IMessage*> (msgObj)->Send ();
-		}
+			GreetEntry (entryObj);
 		else
 		{
 			const QString& text = tr ("Sorry, you are wrong. Try again.");
@@ -179,6 +238,35 @@ namespace Herbicide
 
 			proxy->CancelDefault ();
 		}
+	}
+
+	namespace
+	{
+		QSet<QRegExp> GetRegexps (const QByteArray& prop)
+		{
+			QSet<QRegExp> result;
+
+			const auto& strings = XmlSettingsManager::Instance ().property (prop).toStringList ();
+			Q_FOREACH (auto string, strings)
+			{
+				string = string.trimmed ();
+				if (string.isEmpty ())
+					continue;
+				result << QRegExp (string);
+			}
+
+			return result;
+		}
+	}
+
+	void Plugin::handleWhitelistChanged ()
+	{
+		Whitelist_ = GetRegexps ("WhitelistRegexps");
+	}
+
+	void Plugin::handleBlacklistChanged ()
+	{
+		Blacklist_ = GetRegexps ("BlacklistRegexps");
 	}
 }
 }

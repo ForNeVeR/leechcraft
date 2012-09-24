@@ -23,6 +23,7 @@
 #include <QStringList>
 #include <QDir>
 #include <QCache>
+#include <QPixmap>
 #include "utilconfig.h"
 
 class QAbstractItemModel;
@@ -30,7 +31,6 @@ class QStandardItemModel;
 class QSortFilterProxyModel;
 class QFileSystemWatcher;
 class QTimer;
-class QPixmap;
 
 namespace LeechCraft
 {
@@ -86,6 +86,8 @@ namespace LeechCraft
 			QStringList GlobalPrefixesChain_;
 			QString RelativePath_;
 
+			QHash<QString, QStringList> Entry2Paths_;
+
 			QStandardItemModel *SubElemModel_;
 			QStringList NameFilters_;
 			QDir::Filters AttrFilters_;
@@ -95,6 +97,7 @@ namespace LeechCraft
 
 			QTimer *CacheFlushTimer_;
 			mutable QCache<QString, QByteArray> CachePathContents_;
+			mutable QCache<QString, QPixmap> CachePixmaps_;
 		public:
 			/** @brief Initializes the loader with the given path.
 			 *

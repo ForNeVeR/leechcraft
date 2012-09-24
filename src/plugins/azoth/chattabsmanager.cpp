@@ -73,8 +73,9 @@ namespace Azoth
 		const QString& id = entry->GetEntryID ();
 		if (Entry2Tab_.contains (id))
 		{
-			emit raiseTab (Entry2Tab_ [id]);
-			return Entry2Tab_ [id];
+			auto tab = Entry2Tab_ [id];
+			emit raiseTab (tab);
+			return tab;
 		}
 
 		EverOpened_ << id;
@@ -98,6 +99,14 @@ namespace Azoth
 				SIGNAL (entryMadeCurrent (QObject*)),
 				this,
 				SIGNAL (entryMadeCurrent (QObject*)));
+		connect (tab,
+				SIGNAL (entryMadeCurrent (QObject*)),
+				this,
+				SLOT (updateCurrentTab (QObject*)));
+		connect (tab,
+				SIGNAL (entryLostCurrent (QObject*)),
+				this,
+				SIGNAL (entryLostCurrent (QObject*)));
 		connect (tab,
 				SIGNAL (changeTabName (QWidget*, const QString&)),
 				this,
@@ -139,6 +148,11 @@ namespace Azoth
 	bool ChatTabsManager::IsOpenedChat (const QString& id) const
 	{
 		return EverOpened_.contains (id);
+	}
+
+	ChatTab* ChatTabsManager::GetActiveChatTab () const
+	{
+		return LastCurrentTab_;
 	}
 
 	void ChatTabsManager::UpdateEntryMapping (const QString& id, QObject *obj)
@@ -200,15 +214,11 @@ namespace Azoth
 		if (!Entry2Tab_.contains (id))
 			return;
 
-		Entry2Tab_ [id]->setEnabled (enabled);
+		Entry2Tab_ [id]->SetEnabled (enabled);
 	}
 
 	void ChatTabsManager::ChatMadeCurrent (ChatTab *curTab)
 	{
-		Q_FOREACH (ChatTab_ptr tab, Entry2Tab_.values ())
-			if (tab != curTab)
-				tab->TabLostCurrent ();
-
 		ICLEntry *entry = qobject_cast<ICLEntry*> (curTab->GetCLEntry ());
 		if (!entry)
 		{
@@ -252,7 +262,6 @@ namespace Azoth
 			return false;
 
 		tab->TabMadeCurrent ();
-
 		return false;
 	}
 
@@ -281,6 +290,7 @@ namespace Azoth
 		}
 		auto tab = qobject_cast<ChatTab*> (OpenChat (entry, info.Props_));
 		tab->selectVariant (info.Variant_);
+		tab->prepareMessageText (info.MsgText_);
 	}
 
 	void ChatTabsManager::handleNeedToClose (ChatTab *tab)
@@ -299,6 +309,14 @@ namespace Azoth
 			if (muc)
 				muc->Leave ();
 		}
+	}
+
+	void ChatTabsManager::updateCurrentTab (QObject *entryObj)
+	{
+		auto entry = qobject_cast<ICLEntry*> (entryObj);
+		LastCurrentTab_ = entry ?
+				Entry2Tab_.value (entry->GetEntryID ()) :
+				0;
 	}
 
 	void ChatTabsManager::handleAddingCLEntryEnd (IHookProxy_ptr,

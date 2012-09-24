@@ -18,9 +18,10 @@
 
 #include "sortfilterproxymodel.h"
 #include <QTimer>
-#include "core.h"
+#include "interfaces/azoth/iaccount.h"
 #include "interfaces/azoth/iclentry.h"
 #include "interfaces/azoth/imucperms.h"
+#include "core.h"
 #include "xmlsettingsmanager.h"
 
 namespace LeechCraft
@@ -158,7 +159,9 @@ namespace Azoth
 			if (idx.data (Core::CLRUnreadMsgCount).toInt ())
 				return true;
 
-			if (GetType (idx) == Core::CLETContact)
+			const auto type = GetType (idx);
+
+			if (type == Core::CLETContact)
 			{
 				ICLEntry *entry = GetEntry (idx);
 				const State state = entry->GetStatus ().State_;
@@ -172,7 +175,7 @@ namespace Azoth
 						entry->GetEntryType () == ICLEntry::ETPrivateChat)
 					return false;
 			}
-			else if (GetType (idx) == Core::CLETCategory)
+			else if (type == Core::CLETCategory)
 			{
 				if (!sourceModel ()->rowCount (idx))
 					return false;
@@ -180,6 +183,12 @@ namespace Azoth
 				if (!ShowOffline_ &&
 						!idx.data (Core::CLRNumOnline).toInt ())
 					return false;
+			}
+			else if (type == Core::CLETAccount)
+			{
+				const auto& accObj = idx.data (Core::CLRAccountObject).value<QObject*> ();
+				auto acc = qobject_cast<IAccount*> (accObj);
+				return acc->IsShownInRoster ();
 			}
 		}
 
@@ -189,9 +198,18 @@ namespace Azoth
 	bool SortFilterProxyModel::lessThan (const QModelIndex& right,
 			const QModelIndex& left) const			// sort in reverse order ok
 	{
-		if (GetType (left) != Core::CLETContact ||
-				GetType (right) != Core::CLETContact)
+		const auto leftType = GetType (left);
+		if (leftType == Core::CLETAccount)
 			return QSortFilterProxyModel::lessThan (left, right);
+		else if (leftType == Core::CLETCategory)
+		{
+			const bool leftIsMuc = left.data (Core::CLRIsMUCCategory).toBool ();
+			const bool rightIsMuc = right.data (Core::CLRIsMUCCategory).toBool ();
+			if ((leftIsMuc && rightIsMuc) || (!leftIsMuc && !rightIsMuc))
+				return QSortFilterProxyModel::lessThan (left, right);
+			else
+				return rightIsMuc;
+		}
 
 		ICLEntry *lE = GetEntry (left);
 		ICLEntry *rE = GetEntry (right);
@@ -199,16 +217,13 @@ namespace Azoth
 		if (lE->GetEntryType () == ICLEntry::ETPrivateChat &&
 				rE->GetEntryType () == ICLEntry::ETPrivateChat &&
 				lE->GetParentCLEntry () == rE->GetParentCLEntry ())
-		{
-			IMUCPerms *lp = qobject_cast<IMUCPerms*> (lE->GetParentCLEntry ());
-			if (lp)
+			if (IMUCPerms *lp = qobject_cast<IMUCPerms*> (lE->GetParentCLEntry ()))
 			{
 				bool less = lp->IsLessByPerm (lE->GetObject (), rE->GetObject ());
 				bool more = lp->IsLessByPerm (rE->GetObject (), lE->GetObject ());
 				if (less || more)
 					return more;
 			}
-		}
 
 		State lState = lE->GetStatus ().State_;
 		State rState = rE->GetStatus ().State_;

@@ -21,6 +21,7 @@
 #include <memory>
 #include <QObject>
 #include <QSet>
+#include <QUrl>
 #include <interfaces/structures.h>
 #include <interfaces/core/icoreproxy.h>
 
@@ -49,6 +50,7 @@ namespace Metida
 		static Core& Instance ();
 
 		void SecondInit ();
+		void Release ();
 
 		void CreateBloggingPlatfroms (QObject *parentPlatform);
 		void SetCoreProxy (ICoreProxy_ptr proxy);
@@ -58,6 +60,8 @@ namespace Metida
 
 		void SetPluginProxy (QObject *pluginProxy);
 		IPluginProxy* GetPluginProxy ();
+
+		void SendEntity (const Entity& e);
 
 	signals:
 		void gotEntity (LeechCraft::Entity e);

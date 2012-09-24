@@ -36,6 +36,9 @@ namespace LMP
 		ArtistsInfoDisplay (QWidget* = 0);
 
 		void SetSimilarArtists (Media::SimilarityInfos_t);
+	private slots:
+		void handleBookmark (const QString&, const QString&, const QString&);
+		void handleLink (const QString&);
 	};
 }
 }

@@ -73,7 +73,9 @@ namespace Poshuku
 		QAction *Copy_;
 		QAction *Paste_;
 		QAction *Back_;
+		QMenu *BackMenu_;
 		QAction *Forward_;
+		QMenu *ForwardMenu_;
 		QAction *Reload_;
 		QAction *Stop_;
 		QAction *ReloadStop_;
@@ -165,8 +167,12 @@ namespace Poshuku
 		void handleScreenSave ();
 		void handleViewSources ();
 		void handleSavePage ();
-		void updateTooltip ();
 		void enableActions ();
+
+		void updateNavHistory ();
+		void handleBackHistoryAction ();
+		void handleForwardHistoryAction ();
+
 		void handleEntityAction ();
 		void checkLinkRels ();
 		void setScrollPosition ();

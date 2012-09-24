@@ -18,6 +18,7 @@
 
 #include "shortcutmanager.h"
 #include <memory>
+#include <algorithm>
 #include <QStandardItemModel>
 #include <QSortFilterProxyModel>
 #include <QSettings>
@@ -117,11 +118,20 @@ namespace LeechCraft
 		QSettings settings ("Deviant", "Leechcraft");
 		settings.beginGroup ("Shortcuts");
 
+		auto deEdit = [] (const QList<QStandardItem*>& items)
+		{
+			std::for_each (items.begin (), items.end (),
+				[] (decltype (items.front ()) item) { item->setEditable (false); });
+		};
+
+		auto parentFirst = new QStandardItem (objName);
+		parentFirst->setIcon (objIcon);
+		parentFirst->setData (QVariant::fromValue<QObject*> (object), Roles::Object);
+
 		QList<QStandardItem*> parentRow;
-		parentRow << new QStandardItem (objName);
+		parentRow << parentFirst;
 		parentRow << new QStandardItem (objDescr);
-		parentRow.at (0)->setIcon (objIcon);
-		parentRow.at (0)->setData (	QVariant::fromValue<QObject*> (object), Roles::Object);
+		deEdit (parentRow);
 
 		const auto& info = ihs->GetActionInfo ();
 
@@ -133,12 +143,15 @@ namespace LeechCraft
 					QVariant::fromValue<QKeySequences_t> (info [name].Seqs_)).value<QKeySequences_t> ();
 			const auto& sequence = sequences.value (0);
 
+			auto first = new QStandardItem (info [name].UserVisibleText_);
+			first->setIcon (info [name].Icon_);
+			first->setData (name, Roles::OriginalName);
+			first->setData (QVariant::fromValue<QKeySequences_t> (sequences), Roles::Sequence);
+
 			QList<QStandardItem*> itemRow;
-			itemRow << new QStandardItem (info [name].UserVisibleText_);
+			itemRow << first;
 			itemRow << new QStandardItem (sequence.toString ());
-			itemRow.at (0)->setIcon (info [name].Icon_);
-			itemRow.at (0)->setData (name, Roles::OriginalName);
-			itemRow.at (0)->setData (QVariant::fromValue<QKeySequences_t> (sequences), Roles::Sequence);
+			deEdit (itemRow);
 			parentRow.at (0)->appendRow (itemRow);
 
 			if (sequences != info [name].Seqs_)

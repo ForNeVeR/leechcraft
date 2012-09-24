@@ -20,6 +20,7 @@
 
 #include <QWidget>
 #include "ui_nowplayingwidget.h"
+#include "mediainfo.h"
 
 namespace LeechCraft
 {
@@ -33,15 +34,29 @@ namespace LMP
 		Q_OBJECT
 
 		Ui::NowPlayingWidget Ui_;
+
+		Media::SimilarityInfos_t LastInfos_;
+		MediaInfo CurrentInfo_;
+
+		QStringList PossibleLyrics_;
+		int LyricsVariantPos_;
 	public:
 		NowPlayingWidget (QWidget* = 0);
 
-		ArtistsInfoDisplay* GetArtistsDisplay () const;
+		void SetSimilarArtists (Media::SimilarityInfos_t);
+		void SetLyrics (const QString&);
 
 		void SetAlbumArt (const QPixmap&);
 		void SetTrackInfo (const MediaInfo&);
 	private:
 		void SetStatistics (const QString&);
+	private slots:
+		void on_PrevLyricsButton__released ();
+		void on_NextLyricsButton__released ();
+		void updateLyricsSwitcher ();
+		void resetSimilarArtists ();
+	signals:
+		void gotArtistImage (const QString&, const QUrl&);
 	};
 }
 }

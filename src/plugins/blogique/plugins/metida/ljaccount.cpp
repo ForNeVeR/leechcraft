@@ -20,10 +20,15 @@
 #include "ljaccount.h"
 #include <QtDebug>
 #include <util/passutils.h>
+#include <util/util.h>
+#include "core.h"
 #include "ljaccountconfigurationwidget.h"
 #include "ljaccountconfigurationdialog.h"
 #include "ljbloggingplatform.h"
-#include "core.h"
+#include "ljprofile.h"
+#include "ljxmlrpc.h"
+#include "profilewidget.h"
+#include "utils.h"
 
 namespace LeechCraft
 {
@@ -34,8 +39,27 @@ namespace Metida
 	LJAccount::LJAccount (const QString& name, QObject *parent)
 	: QObject (parent)
 	, ParentBloggingPlatform_ (qobject_cast<LJBloggingPlatform*> (parent))
+	, LJXmlRpc_ (new LJXmlRPC (this, this))
 	, Name_ (name)
+	, IsValidated_ (false)
+	, LJProfile_ (std::make_shared<LJProfile> (this))
 	{
+		qRegisterMetaType<LJProfileData> ("LJProfileData");
+		qRegisterMetaTypeStreamOperators<QList<LJFriendGroup>> ("QList<LJFriendGroup>");
+		qRegisterMetaTypeStreamOperators<QList<LJMood>> ("QList<LJMood>");
+
+		connect (LJXmlRpc_,
+				SIGNAL (validatingFinished (bool)),
+				this,
+				SLOT (handleValidatingFinished (bool)));
+		connect (LJXmlRpc_,
+				SIGNAL (error (int, const QString&)),
+				this,
+				SLOT (handleXmlRpcError (int, const QString&)));
+		connect (LJXmlRpc_,
+				SIGNAL (profileUpdated (const LJProfileData&)),
+				LJProfile_.get (),
+				SLOT (handleProfileUpdate (const LJProfileData&)));
 	}
 
 	QObject* LJAccount::GetObject ()
@@ -55,13 +79,11 @@ namespace Metida
 
 	QString LJAccount::GetOurLogin () const
 	{
-		//TODO
-		return QString ();
+		return Login_;
 	}
 
-	void LJAccount::RenameAccount (const QString& name)
+	void LJAccount::RenameAccount (const QString&)
 	{
-
 	}
 
 	QByteArray LJAccount::GetAccountID () const
@@ -77,15 +99,28 @@ namespace Metida
 		if (!Login_.isEmpty ())
 			dia->ConfWidget ()->SetLogin (Login_);
 
-		QString key ("org.LeechCraft.Blogique.PassForAccount/" + GetAccountID ());
-		dia->ConfWidget ()->SetPassword (Util::GetPassword (key,
-				QString (),
-				&Core::Instance ()));
+		dia->ConfWidget ()->SetPassword (GetPassword ());
 
 		if (dia->exec () == QDialog::Rejected)
 			return;
 
 		FillSettings (dia->ConfWidget ());
+	}
+
+	bool LJAccount::IsValidated () const
+	{
+		return IsValidated_;
+	}
+
+	QString LJAccount::GetPassword () const
+	{
+		QString key ("org.LeechCraft.Blogique.PassForAccount/" + GetAccountID ());
+		return Util::GetPassword (key, QString (), &Core::Instance ());
+	}
+
+	QObject* LJAccount::GetProfile ()
+	{
+		return LJProfile_.get ();
 	}
 
 	void LJAccount::FillSettings (LJAccountConfigurationWidget *widget)
@@ -98,17 +133,20 @@ namespace Metida
 					&Core::Instance ());
 
 		emit accountSettingsChanged ();
+		Validate ();
 	}
 
 	QByteArray LJAccount::Serialize () const
 	{
-		quint16 ver = 1;
+		quint16 ver = 2;
 		QByteArray result;
 		{
 			QDataStream ostr (&result, QIODevice::WriteOnly);
 			ostr << ver
 					<< Name_
-					<< Login_;
+					<< Login_
+					<< IsValidated_
+					<< LJProfile_->GetProfileData ();
 		}
 
 		return result;
@@ -120,7 +158,8 @@ namespace Metida
 		QDataStream in (data);
 		in >> ver;
 
-		if (ver != 1)
+		if (ver > 2 ||
+				ver < 1)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unknown version"
@@ -131,9 +170,95 @@ namespace Metida
 		QString name;
 		in >> name;
 		LJAccount *result = new LJAccount (name, parent);
-		in >> result->Login_;
+		in >> result->Login_
+				>> result->IsValidated_;
+
+		if (ver == 2)
+		{
+			LJProfileData profile;
+			in >> profile;
+			result->LJProfile_->handleProfileUpdate (profile);
+		}
 
 		return result;
+	}
+
+	void LJAccount::Validate ()
+	{
+		LJXmlRpc_->Validate (Login_, GetPassword ());
+	}
+
+	void LJAccount::Init ()
+	{
+		connect (this,
+				SIGNAL (accountValidated (bool)),
+				ParentBloggingPlatform_,
+				SLOT (handleAccountValidated (bool)));
+
+		connect (this,
+				SIGNAL (accountSettingsChanged ()),
+				ParentBloggingPlatform_,
+				SLOT (saveAccounts ()));
+	}
+
+	void LJAccount::AddFriends (const QList<LJFriendEntry_ptr>& friends)
+	{
+		LJProfile_->AddFriends (friends);
+	}
+
+	void LJAccount::AddNewFriend (const QString& username,
+			const QString& bgcolor, const QString& fgcolor, uint groupId)
+	{
+		LJXmlRpc_->AddNewFriend (username, bgcolor, fgcolor, groupId);
+	}
+
+	void LJAccount::DeleteFriend (const QString& username)
+	{
+		LJXmlRpc_->DeleteFriend (username);
+	}
+
+	void LJAccount::AddGroup (const QString& name, bool isPublic, int id)
+	{
+		LJXmlRpc_->AddGroup (name, isPublic, id);
+	}
+
+	void LJAccount::DeleteGroup (int id)
+	{
+		LJXmlRpc_->DeleteGroup (id);
+	}
+
+	void LJAccount::handleValidatingFinished (bool success)
+	{
+		IsValidated_ = success;
+		qDebug () << Q_FUNC_INFO
+				<< "account"
+				<< GetAccountID ()
+				<< "validating result is"
+				<< IsValidated_;
+
+		emit accountValidated (IsValidated_);
+		emit accountSettingsChanged ();
+	}
+
+	void LJAccount::handleXmlRpcError (int errorCode, const QString& msgInEng)
+	{
+		Entity e = Util::MakeNotification ("Blogique",
+				tr ("%1 (original message: %2)")
+						.arg (MetidaUtils::GetLocalizedErrorMessage (errorCode), msgInEng),
+				PWarning_);
+
+		qWarning () << Q_FUNC_INFO
+				<< "error code:"
+				<< errorCode
+				<< "error text:"
+				<< msgInEng;
+
+		Core::Instance ().SendEntity (e);
+	}
+
+	void LJAccount::updateProfile ()
+	{
+		LJXmlRpc_->UpdateProfileInfo ();
 	}
 
 }

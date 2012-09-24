@@ -21,18 +21,15 @@
 #include <algorithm>
 #include <QMessageBox>
 #include <QCloseEvent>
-#include <QModelIndex>
-#include <QChildEvent>
-#include <QToolButton>
-#include <QStandardItemModel>
 #include <QCursor>
-#include <QCheckBox>
 #include <QShortcut>
-#include <QClipboard>
 #include <QMenu>
 #include <QSplashScreen>
 #include <QBitmap>
+#include <QTime>
+#include <QCryptographicHash>
 #include <QDockWidget>
+#include <QInputDialog>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
 #include <util/util.h>
 #include <util/defaulthookproxy.h>
@@ -41,10 +38,8 @@
 #include "core.h"
 #include "commonjobadder.h"
 #include "xmlsettingsmanager.h"
-#include "fancypopupmanager.h"
 #include "skinengine.h"
 #include "childactioneventfilter.h"
-#include "logtoolbox.h"
 #include "graphwidget.h"
 #include "shortcutmanager.h"
 #include "tagsviewer.h"
@@ -72,10 +67,25 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 , WasMaximized_ (false)
 , DefaultSystemStyleName_ (QApplication::style ()->objectName ())
 , IsQuitting_ (false)
-, Splash_ (new QSplashScreen (QPixmap (":/resources/images/funsplash.jpg"),
+, Splash_ (new QSplashScreen (QPixmap (":/resources/images/splash.svg"),
 		Qt::SplashScreen))
 , IsToolBarVisible_ (true)
 {
+	const auto& storedPass = XmlSettingsManager::Instance ()->property ("StartupPassword").toString ();
+	if (!storedPass.isEmpty ())
+	{
+		const auto& pass = QInputDialog::getText (this,
+				tr ("Startup password"),
+				tr ("Enter startup password for LeechCraft:"),
+				QLineEdit::Password);
+		if (QCryptographicHash::hash (pass.toUtf8 (), QCryptographicHash::Sha1).toHex () != storedPass)
+		{
+			if (!pass.isEmpty ())
+				QMessageBox::critical (this, "LeechCraft", tr ("Sorry, incorrect password"));
+			std::exit (0);
+		}
+	}
+
 	Guard_ = new ToolbarGuard (this);
 	setUpdatesEnabled (false);
 
@@ -83,7 +93,7 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 	//Splash_->setMask (QPixmap (":/resources/images/funsplash.jpg").mask ());
 	Splash_->show ();
 	Splash_->setUpdatesEnabled (true);
-	Splash_->showMessage (tr ("Initializing LeechCraft..."), Qt::AlignLeft | Qt::AlignBottom);
+	Splash_->showMessage (tr ("Initializing LeechCraft..."), Qt::AlignLeft | Qt::AlignBottom, QColor ("#FF3000"));
 	QApplication::processEvents ();
 
 #ifdef Q_OS_WIN32
@@ -94,7 +104,6 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 			GetCorePluginManager ()->RegisterHookable (this);
 
 	InitializeInterface ();
-	hide ();
 
 	connect (qApp,
 			SIGNAL (aboutToQuit ()),
@@ -105,15 +114,11 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 			SIGNAL (loadProgress (const QString&)),
 			this,
 			SLOT (handleLoadProgress (const QString&)));
-	connect (&Core::Instance (),
-			SIGNAL (log (const QString&)),
-			LogToolBox_,
-			SLOT (log (const QString&)));
 
 	Core::Instance ().SetReallyMainWindow (this);
 	Core::Instance ().DelayedInit ();
 
-	Splash_->showMessage (tr ("Finalizing..."), Qt::AlignLeft | Qt::AlignBottom);
+	Splash_->showMessage (tr ("Finalizing..."), Qt::AlignLeft | Qt::AlignBottom, QColor ("#FF3000"));
 
 	connect (Core::Instance ().GetNewTabMenuManager (),
 			SIGNAL (restoreTabActionAdded (QAction*)),
@@ -170,7 +175,7 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 			0,
 			Qt::ApplicationShortcut);
 
-    Ui_.ActionShowToolBar_->setChecked (IsToolBarVisible_);
+	Ui_.ActionShowToolBar_->setChecked (IsToolBarVisible_);
 }
 
 void LeechCraft::MainWindow::handleShortcutFullscreenMode ()
@@ -210,9 +215,14 @@ LeechCraft::ToolbarGuard* LeechCraft::MainWindow::GetGuard () const
 	return Guard_;
 }
 
-LeechCraft::FancyPopupManager* LeechCraft::MainWindow::GetFancyPopupManager () const
+QMenu* LeechCraft::MainWindow::GetMainMenu () const
 {
-	return FancyPopupManager_;
+	return Ui_.ActionMenu_->menu ();
+}
+
+void LeechCraft::MainWindow::HideMainMenu ()
+{
+	Ui_.MainTabWidget_->RemoveActionFromTabBarLayout (QTabBar::LeftSide, Ui_.ActionMenu_);
 }
 
 QWidget* LeechCraft::MainWindow::GetDockListWidget (Qt::DockWidgetArea area) const
@@ -230,6 +240,11 @@ QWidget* LeechCraft::MainWindow::GetDockListWidget (Qt::DockWidgetArea area) con
 
 void LeechCraft::MainWindow::ToggleViewActionVisiblity (QDockWidget *widget, bool visible)
 {
+	Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
+	emit hookDockWidgetActionVisToggled (proxy, widget, visible);
+	if (proxy->IsCancelled ())
+		return;
+
 	QAction *act = widget->toggleViewAction ();
 
 	if (!visible)
@@ -290,12 +305,15 @@ void LeechCraft::MainWindow::RemoveMenus (const QMap<QString, QList<QAction*>>& 
 			Q_FOREACH (QAction *action, menus [menuName])
 				toRemove->removeAction (action);
 		else
-			Q_FOREACH (QAction *action, Ui_.ActionMenu_->menu ()->actions ())
+		{
+			auto menu = Ui_.ActionMenu_->menu ();
+			Q_FOREACH (QAction *action, menu->actions ())
 				if (action->text () == menuName)
 				{
-					Ui_.ActionMenu_->menu ()->removeAction (action);
+					menu->removeAction (action);
 					break;
 				}
+		}
 	}
 }
 
@@ -325,7 +343,7 @@ void LeechCraft::MainWindow::closeEvent (QCloseEvent *e)
 
 void LeechCraft::MainWindow::InitializeInterface ()
 {
- 	installEventFilter (new ChildActionEventFilter (this));
+	installEventFilter (new ChildActionEventFilter (this));
 
 	Ui_.setupUi (this);
 
@@ -342,13 +360,21 @@ void LeechCraft::MainWindow::InitializeInterface ()
 	MenuView_->addAction (Ui_.ActionFullscreenMode_);
 	MenuTools_ = new QMenu (tr ("Tools"), this);
 
+#ifdef Q_OS_MAC
+	Ui_.ActionFullscreenMode_->setVisible (false);
+#endif
+
 	Ui_.ActionAddTask_->setProperty ("ActionIcon", "list-add");
 	Ui_.ActionCloseTab_->setProperty ("ActionIcon", "tab-close");
 	Ui_.ActionSettings_->setProperty ("ActionIcon", "preferences-system");
+	Ui_.ActionSettings_->setMenuRole (QAction::PreferencesRole);
 	Ui_.ActionAboutLeechCraft_->setProperty ("ActionIcon", "help-about");
+	Ui_.ActionAboutLeechCraft_->setMenuRole (QAction::AboutRole);
 	Ui_.ActionAboutQt_->setIcon (qApp->style ()->
 			standardIcon (QStyle::SP_MessageBoxQuestion).pixmap (32, 32));
+	Ui_.ActionAboutQt_->setMenuRole (QAction::AboutQtRole);
 	Ui_.ActionQuit_->setProperty ("ActionIcon", "application-exit");
+	Ui_.ActionQuit_->setMenuRole (QAction::QuitRole);
 	Ui_.ActionFullscreenMode_->setProperty ("ActionIcon", "view-fullscreen");
 	Ui_.ActionFullscreenMode_->setParent (this);
 
@@ -383,6 +409,7 @@ void LeechCraft::MainWindow::InitializeInterface ()
 	menu->addSeparator ();
 	menu->addAction (Ui_.ActionAboutLeechCraft_);
 	menu->addSeparator ();
+	menu->addAction (Ui_.ActionRestart_);
 	menu->addAction (Ui_.ActionQuit_);
 	Ui_.ActionMenu_->setMenu (menu);
 
@@ -397,11 +424,8 @@ void LeechCraft::MainWindow::InitializeInterface ()
 	SetStatusBar ();
 	ReadSettings ();
 
-	LogToolBox_ = new LogToolBox (this);
-
 	Ui_.MainTabWidget_->AddAction2TabBarLayout (QTabBar::LeftSide, Ui_.ActionMenu_);
 }
-
 
 void LeechCraft::MainWindow::SetStatusBar ()
 {
@@ -502,6 +526,20 @@ void LeechCraft::MainWindow::on_ActionAboutLeechCraft__triggered ()
 	AboutDialog *dia = new AboutDialog (this);
 	dia->setAttribute (Qt::WA_DeleteOnClose);
 	dia->show ();
+}
+
+void LeechCraft::MainWindow::on_ActionRestart__triggered()
+{
+	if (QMessageBox::question (this,
+				"LeechCraft",
+				tr ("Do you really want to restart?"),
+				QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
+		return;
+
+	static_cast<Application*> (qApp)->InitiateRestart ();
+	QTimer::singleShot (1000,
+			qApp,
+			SLOT (quit ()));
 }
 
 void LeechCraft::MainWindow::on_ActionQuit__triggered ()
@@ -625,11 +663,6 @@ void LeechCraft::MainWindow::on_ActionFullscreenMode__triggered (bool full)
 		Clock_->hide ();
 		showNormal ();
 	}
-}
-
-void LeechCraft::MainWindow::on_ActionLogger__triggered ()
-{
-	LogToolBox_->show ();
 }
 
 void LeechCraft::MainWindow::on_MainTabWidget__currentChanged (int index)
@@ -772,28 +805,32 @@ void LeechCraft::MainWindow::doDelayedInit ()
 
 void LeechCraft::MainWindow::handleLoadProgress (const QString& str)
 {
-	Splash_->showMessage (str, Qt::AlignLeft | Qt::AlignBottom);
+	Splash_->showMessage (str, Qt::AlignLeft | Qt::AlignBottom, QColor ("#FF3000"));
 }
 
 void LeechCraft::MainWindow::FillQuickLaunch ()
 {
-	QList<IActionsExporter*> exporters = Core::Instance ()
-			.GetPluginManager ()->GetAllCastableTo<IActionsExporter*> ();
-	Q_FOREACH (IActionsExporter *exp, exporters)
+	Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
+	emit hookGonnaFillMenu (proxy);
+	if (proxy->IsCancelled ())
+		return;
+
+	const auto& exporters = Core::Instance ().GetPluginManager ()->GetAllCastableTo<IActionsExporter*> ();
+	Q_FOREACH (auto exp, exporters)
 	{
-		QMap<QString, QList<QAction*>> map = exp->GetMenuActions ();
+		const auto& map = exp->GetMenuActions ();
 		if (!map.isEmpty ())
 			AddMenus (map);
 	}
 
-	Util::DefaultHookProxy_ptr proxy (new Util::DefaultHookProxy);
+	proxy.reset (new Util::DefaultHookProxy);
 	emit hookGonnaFillQuickLaunch (proxy);
 	if (proxy->IsCancelled ())
 		return;
 
-	Q_FOREACH (IActionsExporter *exp, exporters)
+	Q_FOREACH (auto exp, exporters)
 	{
-		QList<QAction*> actions = exp->GetActions (AEPQuickLaunch);
+		const auto& actions = exp->GetActions (ActionsEmbedPlace::QuickLaunch);
 		if (actions.isEmpty ())
 			continue;
 
@@ -815,9 +852,9 @@ void LeechCraft::MainWindow::FillTray ()
 
 	const auto& trayMenus = Core::Instance ().GetPluginManager ()->
 			GetAllCastableTo<IActionsExporter*> ();
-	Q_FOREACH (IActionsExporter *o, trayMenus)
+	Q_FOREACH (auto o, trayMenus)
 	{
-		const auto& actions = o->GetActions (AEPTrayMenu);
+		const auto& actions = o->GetActions (ActionsEmbedPlace::TrayMenu);
 		SkinEngine::Instance ().UpdateIconSet (actions);
 		iconMenu->addActions (actions);
 		if (actions.size ())
@@ -828,7 +865,6 @@ void LeechCraft::MainWindow::FillTray ()
 
 	TrayIcon_ = new QSystemTrayIcon (QIcon (":/resources/images/leechcraft.svg"), this);
 	handleShowTrayIconChanged ();
-	FancyPopupManager_ = new FancyPopupManager (TrayIcon_, this);
 	TrayIcon_->setContextMenu (iconMenu);
 	connect (TrayIcon_,
 			SIGNAL (activated (QSystemTrayIcon::ActivationReason)),
@@ -844,14 +880,11 @@ void LeechCraft::MainWindow::FillToolMenu ()
 			Core::Instance ().GetPluginManager ()->
 				GetAllCastableTo<IActionsExporter*> ())
 	{
-		const auto& acts = e->GetActions (AEPToolsMenu);
+		const auto& acts = e->GetActions (ActionsEmbedPlace::ToolsMenu);
 		SkinEngine::Instance ().UpdateIconSet (acts);
-
-		Q_FOREACH (QAction *action, acts)
-			MenuTools_->insertAction (Ui_.ActionLogger_, action);
-
+		MenuTools_->addActions (acts);
 		if (acts.size ())
-			MenuTools_->insertSeparator (Ui_.ActionLogger_);
+			MenuTools_->addSeparator ();
 	}
 
 	QMenu *ntm = Core::Instance ()

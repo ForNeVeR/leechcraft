@@ -46,6 +46,12 @@ namespace Metida
 		}
 	}
 
+	void Core::Release ()
+	{
+		if (LJPlatform_)
+			LJPlatform_->Release ();
+	}
+
 	void Core::CreateBloggingPlatfroms (QObject *parentPlatform)
 	{
 		LJPlatform_ = std::make_shared<LJBloggingPlatform> (parentPlatform);
@@ -74,6 +80,11 @@ namespace Metida
 	IPluginProxy* Core::GetPluginProxy ()
 	{
 		return qobject_cast<IPluginProxy*> (PluginProxy_);
+	}
+
+	void Core::SendEntity (const Entity& e)
+	{
+		emit gotEntity (e);
 	}
 
 }

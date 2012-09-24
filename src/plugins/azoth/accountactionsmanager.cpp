@@ -31,6 +31,7 @@
 #include "interfaces/azoth/isupportgeolocation.h"
 #include "interfaces/azoth/ihaveservicediscovery.h"
 #include "interfaces/azoth/ihaveconsole.h"
+#include "interfaces/azoth/ihavemicroblogs.h"
 #include "core.h"
 #include "joinconferencedialog.h"
 #include "bookmarksmanagerdialog.h"
@@ -40,6 +41,7 @@
 #include "locationdialog.h"
 #include "consolewidget.h"
 #include "servicediscoverywidget.h"
+#include "microblogstab.h"
 
 namespace LeechCraft
 {
@@ -51,6 +53,7 @@ namespace Azoth
 	, AccountJoinConference_ (new QAction (tr ("Join conference..."), this))
 	, AccountManageBookmarks_ (new QAction (tr ("Manage bookmarks..."), this))
 	, AccountAddContact_ (new QAction (tr ("Add contact..."), this))
+	, AccountViewMicroblogs_ (new QAction (tr ("View microblogs..."), this))
 	, AccountSetActivity_ (new QAction (tr ("Set activity..."), this))
 	, AccountSetMood_ (new QAction (tr ("Set mood..."), this))
 	, AccountSetLocation_ (new QAction (tr ("Set location..."), this))
@@ -78,6 +81,10 @@ namespace Azoth
 				SIGNAL (triggered ()),
 				this,
 				SLOT (addAccountContact ()));
+		connect (AccountViewMicroblogs_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleAccountMicroblogs ()));
 		connect (AccountSetActivity_,
 				SIGNAL (triggered ()),
 				this,
@@ -141,10 +148,14 @@ namespace Azoth
 				{
 					const QVariantMap& map = bm.toMap ();
 
-					QAction *act = bmsMenu->addAction (map ["HumanReadableName"].toString ());
+					auto name = map ["StoredName"].toString ();
+					const auto& hrName = map ["HumanReadableName"].toString ();
+					if (name.isEmpty ())
+						name = hrName;
+					QAction *act = bmsMenu->addAction (name);
 					act->setProperty ("Azoth/BMData", bm);
-					act->setProperty ("Azoth/AccountObject",
-							QVariant::fromValue<QObject*> (accObj));
+					act->setProperty ("Azoth/AccountObject", QVariant::fromValue<QObject*> (accObj));
+					act->setToolTip (hrName);
 					connect (act,
 							SIGNAL (triggered ()),
 							this,
@@ -159,6 +170,12 @@ namespace Azoth
 		actions << AccountAddContact_;
 		actions << Util::CreateSeparator (menu);
 
+		if (qobject_cast<IHaveMicroblogs*> (accObj))
+		{
+			actions << AccountViewMicroblogs_;
+			actions << Util::CreateSeparator (menu);
+		}
+
 		if (qobject_cast<ISupportActivity*> (accObj))
 			actions << AccountSetActivity_;
 		if (qobject_cast<ISupportMood*> (accObj))
@@ -171,6 +188,9 @@ namespace Azoth
 		if (!accActions.isEmpty ())
 		{
 			actions += accActions;
+			auto proxy = Core::Instance ().GetProxy ();
+			Q_FOREACH (QAction *action, actions)
+				action->setIcon (proxy->GetIcon (action->property ("ActionIcon").toString ()));
 			actions << Util::CreateSeparator (menu);
 		}
 
@@ -249,9 +269,13 @@ namespace Azoth
 			return;
 
 		IProtocol *proto = qobject_cast<IProtocol*> (account->GetParentProtocol ());
-		IMUCJoinWidget *imjw = qobject_cast<IMUCJoinWidget*> (proto->GetMUCJoinWidget ());
+
+		auto jWidget = proto->GetMUCJoinWidget ();
+		IMUCJoinWidget *imjw = qobject_cast<IMUCJoinWidget*> (jWidget);
 		imjw->SetIdentifyingData (bmData.toMap ());
 		imjw->Join (account->GetObject ());
+
+		jWidget->deleteLater ();
 	}
 
 	void AccountActionsManager::manageAccountBookmarks ()
@@ -263,7 +287,6 @@ namespace Azoth
 		auto dia = new BookmarksManagerDialog (MW_);
 		dia->FocusOn (account);
 		dia->show ();
-		dia->setAttribute (Qt::WA_DeleteOnClose, true);
 	}
 
 	void AccountActionsManager::addAccountContact ()
@@ -278,6 +301,15 @@ namespace Azoth
 
 		dia.GetSelectedAccount ()->RequestAuth (dia.GetContactID (),
 				dia.GetReason (), dia.GetNick (), dia.GetGroups ());
+	}
+
+	void AccountActionsManager::handleAccountMicroblogs ()
+	{
+		IAccount *account = GetAccountFromSender (sender (), Q_FUNC_INFO);
+		if (!account)
+			return;
+
+		emit gotMicroblogsTab (new MicroblogsTab (account));
 	}
 
 	void AccountActionsManager::handleAccountSetActivity ()

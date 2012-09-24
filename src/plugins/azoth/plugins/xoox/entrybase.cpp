@@ -22,10 +22,12 @@
 #include <QInputDialog>
 #include <QtDebug>
 #include <QBuffer>
+#include <QCryptographicHash>
 #include <QXmppVCardIq.h>
 #include <QXmppPresence.h>
 #include <QXmppClient.h>
 #include <QXmppRosterManager.h>
+#include <QXmppDiscoveryManager.h>
 #include <util/util.h>
 #include <interfaces/azoth/iproxyobject.h>
 #include <interfaces/azoth/azothutil.h>
@@ -42,6 +44,7 @@
 #include "usermood.h"
 #include "usertune.h"
 #include "userlocation.h"
+#include "pepmicroblog.h"
 #include "adhoccommandmanager.h"
 #include "executecommanddialog.h"
 #include "roomclentry.h"
@@ -178,7 +181,8 @@ namespace Xoox
 
 		QPointer<VCardDialog> ptr (VCardDialog_);
 		Account_->GetClientConnection ()->FetchVCard (GetJID (),
-				[ptr] (const QXmppVCardIq& iq) { if (ptr) ptr->UpdateInfo (iq); });
+				[ptr] (const QXmppVCardIq& iq) { if (ptr) ptr->UpdateInfo (iq); },
+				true);
 		VCardDialog_->show ();
 	}
 
@@ -186,19 +190,21 @@ namespace Xoox
 	{
 		auto res = Variant2ClientInfo_ [var];
 
+		if (GetJID ().endsWith ("@vk.com") ||
+			GetJID ().endsWith ("@vkmessenger.com"))
+			res.remove ("client_type");
+
 		auto version = Variant2Version_ [var];
 		if (version.name ().isEmpty ())
 			return res;
 
 		QString str;
 		str = version.name ();
+		res ["client_remote_name"] = version.name ();
 		if (!version.version ().isEmpty ())
-			str += " " + version.version ();
+			res ["client_version"] = version.version ();
 		if (!version.os ().isEmpty ())
-			str += " (" + version.os () + ")";
-		res ["client_name"] = QString ("%1 (claiming %2)")
-				.arg (res ["client_name"].toString ())
-				.arg (str);
+			res ["client_os"] = version.os ();
 
 		return res;
 	}
@@ -228,6 +234,21 @@ namespace Xoox
 		Account_->GetClientConnection ()->GetClient ()->sendPacket (msg);
 	}
 
+	QVariant EntryBase::GetMetaInfo (DataField field) const
+	{
+		switch (field)
+		{
+		case DataField::BirthDate:
+			return VCardIq_.birthday ();
+		}
+
+		qWarning () << Q_FUNC_INFO
+				<< "unknown data field"
+				<< static_cast<int> (field);
+
+		return QVariant ();
+	}
+
 	bool EntryBase::CanSendDirectedStatusNow (const QString& variant)
 	{
 		if (variant.isEmpty ())
@@ -246,27 +267,29 @@ namespace Xoox
 
 		auto conn = Account_->GetClientConnection ();
 
-		QXmppPresence::Type presType = state.State_ == SOffline ?
-				QXmppPresence::Unavailable :
-				QXmppPresence::Available;
-		QXmppPresence pres (presType,
-				QXmppPresence::Status (static_cast<QXmppPresence::Status::Type> (state.State_),
-						state.StatusString_,
-						conn->GetLastState ().Priority_));
+		auto pres = XooxUtil::StatusToPresence (state.State_,
+				state.StatusString_, conn->GetLastState ().Priority_);
 
 		QString to = GetJID ();
 		if (!variant.isEmpty ())
 			to += '/' + variant;
 		pres.setTo (to);
 
-		conn->GetClient ()->addProperCapability (pres);
+		auto discoMgr = conn->GetClient ()->findExtension<QXmppDiscoveryManager> ();
+		pres.setCapabilityHash ("sha-1");
+		pres.setCapabilityNode (discoMgr->clientCapabilitiesNode ());
+		pres.setCapabilityVer (discoMgr->capabilities ().verificationString ());
 		conn->GetClient ()->sendPacket (pres);
+	}
+
+	void EntryBase::RequestLastPosts (int)
+	{
 	}
 
 	void EntryBase::HandlePresence (const QXmppPresence& pres, const QString& resource)
 	{
 		SetClientInfo (resource, pres);
-		SetStatus (XooxUtil::PresenceToStatus (pres), resource);
+		SetStatus (XooxUtil::PresenceToStatus (pres), resource, pres);
 
 		CheckVCardUpdate (pres);
 	}
@@ -294,8 +317,7 @@ namespace Xoox
 				(!vars.contains (variant) || variant.isEmpty ()))
 			variant = vars.first ();
 
-		UserActivity *activity = dynamic_cast<UserActivity*> (event);
-		if (activity)
+		if (UserActivity *activity = dynamic_cast<UserActivity*> (event))
 		{
 			if (activity->GetGeneral () == UserActivity::GeneralEmpty)
 				Variant2ClientInfo_ [variant].remove ("user_activity");
@@ -312,8 +334,7 @@ namespace Xoox
 			return;
 		}
 
-		UserMood *mood = dynamic_cast<UserMood*> (event);
-		if (mood)
+		if (UserMood *mood = dynamic_cast<UserMood*> (event))
 		{
 			if (mood->GetMood () == UserMood::MoodEmpty)
 				Variant2ClientInfo_ [variant].remove ("user_mood");
@@ -329,8 +350,7 @@ namespace Xoox
 			return;
 		}
 
-		UserTune *tune = dynamic_cast<UserTune*> (event);
-		if (tune)
+		if (UserTune *tune = dynamic_cast<UserTune*> (event))
 		{
 			if (tune->IsNull ())
 				Variant2ClientInfo_ [variant].remove ("user_tune");
@@ -351,12 +371,17 @@ namespace Xoox
 			return;
 		}
 
-		UserLocation *location = dynamic_cast<UserLocation*> (event);
-		if (location)
+		if (UserLocation *location = dynamic_cast<UserLocation*> (event))
 		{
 			Location_ [variant] = location->GetInfo ();
 			emit locationChanged (variant, this);
 			emit locationChanged (variant);
+			return;
+		}
+
+		if (PEPMicroblog *microblog = dynamic_cast<PEPMicroblog*> (event))
+		{
+			emit gotNewPost (*microblog);
 			return;
 		}
 
@@ -395,14 +420,16 @@ namespace Xoox
 		}
 	}
 
-	void EntryBase::SetStatus (const EntryStatus& status, const QString& variant)
+	void EntryBase::SetStatus (const EntryStatus& status, const QString& variant, const QXmppPresence& presence)
 	{
 		const bool existed = CurrentStatus_.contains (variant);
 		const bool wasOffline = existed ?
 				CurrentStatus_ [variant].State_ == SOffline :
 				false;
+
 		if (existed &&
-				status == CurrentStatus_ [variant])
+				status == CurrentStatus_ [variant] &&
+				presence.priority () == Variant2ClientInfo_.value (variant).value ("priority"))
 			return;
 
 		CurrentStatus_ [variant] = status;
@@ -424,13 +451,6 @@ namespace Xoox
 			}
 		}
 
-		emit statusChanged (status, variant);
-
-		if (!existed ||
-				(existed && status.State_ == SOffline) ||
-				wasOffline)
-			emit availableVariantsChanged (vars);
-
 		if ((!existed || wasOffline) &&
 				status.State_ != SOffline)
 		{
@@ -443,17 +463,21 @@ namespace Xoox
 
 		if (status.State_ != SOffline)
 		{
-			QXmppRosterManager& rm = Account_->
-					GetClientConnection ()->GetClient ()->rosterManager ();
-			const auto& presences = rm.getAllPresencesForBareJid (GetJID ());
-			if (presences.contains (variant))
-			{
-				const int p = presences.value (variant).status ().priority ();
+			if (const int p = presence.priority ())
 				Variant2ClientInfo_ [variant] ["priority"] = p;
-			}
 		}
 		else
+		{
 			Variant2Version_.remove (variant);
+			Variant2ClientInfo_.remove (variant);
+		}
+
+		emit statusChanged (status, variant);
+
+		if (!existed ||
+				(existed && status.State_ == SOffline) ||
+				wasOffline)
+			emit availableVariantsChanged (vars);
 
 		GlooxMessage *message = 0;
 		if (GetEntryType () == ETPrivateChat)
@@ -508,7 +532,7 @@ namespace Xoox
 		return VCardIq_;
 	}
 
-	void EntryBase::SetVCard (const QXmppVCardIq& vcard)
+	void EntryBase::SetVCard (const QXmppVCardIq& vcard, bool initial)
 	{
 		VCardIq_ = vcard;
 		VCardPhotoHash_ = VCardIq_.photo ().isEmpty () ?
@@ -529,7 +553,8 @@ namespace Xoox
 		if (VCardDialog_)
 			VCardDialog_->UpdateInfo (vcard);
 
-		Core::Instance ().ScheduleSaveRoster (10000);
+		if (!initial)
+			Core::Instance ().ScheduleSaveRoster (10000);
 
 		emit vcardUpdated ();
 	}
@@ -592,7 +617,6 @@ namespace Xoox
 		auto capsManager = Account_->GetClientConnection ()->GetCapsManager ();
 		const auto& storedIds = capsManager->GetIdentities (ver);
 
-		qDebug () << "known stored identities for" << ver.toHex () << GetJID () << storedIds.size ();
 		if (!storedIds.isEmpty ())
 			SetDiscoIdentities (reqVar, storedIds);
 		else
@@ -629,6 +653,7 @@ namespace Xoox
 		Variant2Identities_ [variant] = ids;
 
 		const QString& name = ids.value (0).name ();
+		const QString& type = ids.value (0).type ();
 		if (name.contains ("Kopete"))
 		{
 			Variant2ClientInfo_ [variant] ["client_type"] = "kopete";
@@ -642,6 +667,13 @@ namespace Xoox
 			Variant2ClientInfo_ [variant] ["client_type"] = "jabber.el";
 			Variant2ClientInfo_ [variant] ["client_name"] = "Emacs Jabber.El";
 			Variant2ClientInfo_ [variant] ["raw_client_name"] = "jabber.el";
+			emit statusChanged (GetStatus (variant), variant);
+		}
+		else if (type == "mrim")
+		{
+			Variant2ClientInfo_ [variant] ["client_type"] = "mailruagent";
+			Variant2ClientInfo_ [variant] ["client_name"] = "Mail.Ru Agent Gateway";
+			Variant2ClientInfo_ [variant] ["raw_client_name"] = "mailruagent";
 			emit statusChanged (GetStatus (variant), variant);
 		}
 	}

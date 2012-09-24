@@ -41,7 +41,7 @@ namespace Xoox
 	}
 
 	QObject* TransferManager::SendFile (const QString& id,
-			const QString& sourceVar, const QString& name)
+			const QString& sourceVar, const QString& name, const QString& comment)
 	{
 		QString target = GlooxCLEntry::JIDFromID (Account_, id);
 		QString var = sourceVar;
@@ -56,7 +56,7 @@ namespace Xoox
 		}
 		if (!var.isEmpty ())
 			target += '/' + var;
-		return new TransferJob (Manager_->sendFile (target, name), this);
+		return new TransferJob (Manager_->sendFile (target, name, comment), this);
 	}
 
 	GlooxAccount* TransferManager::GetAccount () const
@@ -66,6 +66,10 @@ namespace Xoox
 
 	void TransferManager::handleFileReceived (QXmppTransferJob *job)
 	{
+		auto cc = Account_->GetClientConnection ();
+		if (!cc->GetCLEntry (job->jid ()))
+			cc->CreateEntry (job->jid ());
+
 		emit fileOffered (new TransferJob (job, this));
 	}
 }

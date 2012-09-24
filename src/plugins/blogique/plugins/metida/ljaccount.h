@@ -18,8 +18,12 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
-#include "interfaces/blogique/iaccount.h"
+#include <QSet>
+#include <interfaces/blogique/iaccount.h>
+#include "profiletypes.h"
+#include "ljfriendentry.h"
 
 namespace LeechCraft
 {
@@ -27,21 +31,27 @@ namespace Blogique
 {
 namespace Metida
 {
-
+	class LJFriendEntry;
 	class LJAccountConfigurationWidget;
 	class LJBloggingPlatform;
+	class LJXmlRPC;
+	class LJProfile;
 
 	class LJAccount : public QObject
-							, public IAccount
+					, public IAccount
 	{
 		Q_OBJECT
 		Q_INTERFACES (LeechCraft::Blogique::IAccount)
 
 		LJBloggingPlatform *ParentBloggingPlatform_;
+		LJXmlRPC *LJXmlRpc_;
 		QString Name_;
 		QString Login_;
+		bool IsValidated_;
+		std::shared_ptr<LJProfile> LJProfile_;
 	public:
 		LJAccount (const QString& name, QObject *parent = 0);
+
 		QObject* GetObject ();
 		QObject* GetParentBloggingPlatform () const;
 		QString GetAccountName () const;
@@ -49,14 +59,38 @@ namespace Metida
 		void RenameAccount (const QString& name);
 		QByteArray GetAccountID () const;
 		void OpenConfigurationDialog ();
+		bool IsValidated () const;
+
+		QString GetPassword () const;
+
+		QObject* GetProfile ();
 
 		void FillSettings (LJAccountConfigurationWidget *widget);
 
 		QByteArray Serialize () const;
 		static LJAccount* Deserialize (const QByteArray& data, QObject *parent);
+
+		void Validate ();
+		void Init ();
+
+		void AddFriends (const QList<LJFriendEntry_ptr>& friends);
+
+		void AddNewFriend (const QString& username,
+				const QString& bgcolor, const QString& fgcolor, uint groupId);
+		void DeleteFriend (const QString& username);
+
+		void AddGroup (const QString& name, bool isPublic, int id);
+		void DeleteGroup (int id);
+
+	public slots:
+		void handleValidatingFinished (bool success);
+		void handleXmlRpcError (int errorCode, const QString& msgInEng);
+		void updateProfile ();
+
 	signals:
 		void accountRenamed (const QString& newName);
 		void accountSettingsChanged ();
+		void accountValidated (bool validated);
 	};
 }
 }

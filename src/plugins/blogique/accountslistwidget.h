@@ -35,6 +35,12 @@ namespace Blogique
 	{
 		Q_OBJECT
 
+		enum Columns
+		{
+			Name,
+			IsValidated
+		};
+
 		Ui::AccountsListWidget Ui_;
 		QStandardItemModel *AccountsModel_;
 		QHash<QStandardItem*, IAccount*> Item2Account_;
@@ -45,10 +51,14 @@ namespace Blogique
 	public slots:
 		void addAccount (QObject *accObj);
 		void handleAccountRemoved (QObject *accObj);
+		void handleAccountValidated (QObject *accObj, bool validated);
 	private slots:
 		void on_Add__released ();
 		void on_Modify__released ();
 		void on_Delete__released ();
+		void on_Profile__released ();
+		void handleAccountClicked (const QModelIndex& index);
+		void handleAccountDoubleClicked (const QModelIndex& index);
 	};
 }
 }

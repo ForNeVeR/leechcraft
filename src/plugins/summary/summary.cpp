@@ -104,7 +104,8 @@ namespace Summary
 
 	QIcon Summary::GetIcon () const
 	{
-		return QIcon (":/plugins/summary/resources/images/summary.svg");
+		static QIcon icon (":/plugins/summary/resources/images/summary.svg");
+		return icon;
 	}
 
 	QStringList Summary::Provides () const
@@ -161,6 +162,11 @@ namespace Summary
 	QTreeView* Summary::GetCurrentView () const
 	{
 		return Core::Instance ().GetCurrentView ();
+	}
+
+	void Summary::RecoverTabs (const QList<TabRecoverInfo>& infos)
+	{
+		Core::Instance ().RecoverTabs (infos);
 	}
 }
 }

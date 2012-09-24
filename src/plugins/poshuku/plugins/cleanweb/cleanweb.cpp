@@ -41,6 +41,11 @@ namespace CleanWeb
 	void CleanWeb::Init (ICoreProxy_ptr proxy)
 	{
 		Translator_.reset (LeechCraft::Util::InstallTranslator ("poshuku_cleanweb"));
+
+		SettingsDialog_.reset (new Util::XmlSettingsDialog);
+		SettingsDialog_->RegisterObject (XmlSettingsManager::Instance (),
+				"poshukucleanwebsettings.xml");
+
 		connect (&Core::Instance (),
 				SIGNAL (delegateEntity (const LeechCraft::Entity&,
 						int*, QObject**)),
@@ -54,9 +59,6 @@ namespace CleanWeb
 
 		Core::Instance ().SetProxy (proxy);
 
-		SettingsDialog_.reset (new Util::XmlSettingsDialog);
-		SettingsDialog_->RegisterObject (XmlSettingsManager::Instance (),
-				"poshukucleanwebsettings.xml");
 		SettingsDialog_->SetCustomWidget ("SubscriptionsManager",
 				new SubscriptionsManager ());
 		SettingsDialog_->SetCustomWidget ("UserFilters",
@@ -90,7 +92,8 @@ namespace CleanWeb
 
 	QIcon CleanWeb::GetIcon () const
 	{
-		return QIcon (":/plugins/poshuku/plugins/cleanweb/resources/images/poshuku_cleanweb.svg");
+		static QIcon icon (":/plugins/poshuku/plugins/cleanweb/resources/images/poshuku_cleanweb.svg");
+		return icon;
 	}
 
 	QStringList CleanWeb::Provides () const
@@ -147,6 +150,11 @@ namespace CleanWeb
 			QList<LeechCraft::Poshuku::IWebPlugin*>& plugins)
 	{
 		plugins << Core::Instance ().GetFlashOnClick ();
+	}
+
+	void CleanWeb::hookInitialLayoutCompleted (IHookProxy_ptr, QWebPage *page, QWebFrame *frame)
+	{
+		Core::Instance ().HandleInitialLayout (page, frame);
 	}
 
 	void CleanWeb::hookNAMCreateRequest (IHookProxy_ptr proxy,

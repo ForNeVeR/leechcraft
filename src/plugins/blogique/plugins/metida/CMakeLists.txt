@@ -4,6 +4,7 @@ INCLUDE (InitLCPlugin OPTIONAL)
 
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
+SET (QT_USE_QTXMLPATTERNS TRUE)
 INCLUDE (${QT_USE_FILE})
 
 INCLUDE_DIRECTORIES (${BLOGIQUE_INCLUDE_DIR}
@@ -14,28 +15,48 @@ INCLUDE_DIRECTORIES (${BLOGIQUE_INCLUDE_DIR}
 	)
 
 SET (METIDA_SRCS
+	addeditentrydialog.cpp
+	core.cpp
+	frienditemdelegate.cpp
+	friendsmodel.cpp
 	ljaccount.cpp
 	ljaccountconfigurationdialog.cpp
 	ljaccountconfigurationwidget.cpp
 	ljbloggingplatform.cpp
+	ljfriendentry.cpp
+	ljprofile.cpp
+	ljxmlrpc.cpp
 	metida.cpp
-	core.cpp
+	profiletypes.cpp
+	profilewidget.cpp
+	utils.cpp
 	xmlsettingsmanager.cpp
 	)
 
 SET (METIDA_HEADERS
+	addeditentrydialog.h
+	core.h
+	frienditemdelegate.h
+	friendsmodel.h
 	ljaccount.h
 	ljaccountconfigurationdialog.h
 	ljaccountconfigurationwidget.h
 	ljbloggingplatform.h
+	ljfriendentry.h
+	ljprofile.h
+	ljxmlrpc.h
 	metida.h
-	core.h
+	profiletypes.h
+	profilewidget.h
+	utils.h
 	xmlsettingsmanager.h
 	)
 
 SET (METIDA_FORMS
+	addeditentrydialog.ui
 	ljaccountconfigurationdialog.ui
 	ljaccountconfigurationwidget.ui
+	profilewidget.ui
 	)
 
 SET (METIDA_RESOURCES blogiquemetidaresources.qrc)

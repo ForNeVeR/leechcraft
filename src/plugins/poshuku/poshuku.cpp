@@ -230,7 +230,8 @@ namespace Poshuku
 
 	QIcon Poshuku::GetIcon () const
 	{
-		return QIcon (":/resources/images/poshuku.svg");
+		static QIcon icon (":/resources/images/poshuku.svg");
+		return icon;
 	}
 
 	TabClasses_t Poshuku::GetTabClasses () const
@@ -340,11 +341,11 @@ namespace Poshuku
 
 		switch (place)
 		{
-		case AEPToolsMenu:
+		case ActionsEmbedPlace::ToolsMenu:
 			result << CheckFavorites_;
 			result << ToolMenu_->menuAction ();
 			break;
-		case AEPCommonContextMenu:
+		case ActionsEmbedPlace::CommonContextMenu:
 			result << ReloadAll_;
 			break;
 		default:

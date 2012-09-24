@@ -35,6 +35,7 @@
 #include <util/resourceloader.h>
 #include <util/util.h>
 #include <util/shortcuts/shortcutmanager.h>
+#include "interfaces/azoth/imucjoinwidget.h"
 #include "core.h"
 #include "mainwidget.h"
 #include "chattabsmanager.h"
@@ -42,6 +43,7 @@
 #include "xmlsettingsmanager.h"
 #include "transferjobmanager.h"
 #include "servicediscoverywidget.h"
+#include "microblogstab.h"
 #include "accountslistwidget.h"
 #include "consolewidget.h"
 #include "searchwidget.h"
@@ -61,14 +63,18 @@ namespace Azoth
 
 		Core::Instance ().SetProxy (proxy);
 		InitShortcuts ();
+
+		MW_ = new MainWidget ();
+
 		InitSettings ();
-		InitMW ();
 		InitSignals ();
 		InitTabClasses ();
 	}
 
 	void Plugin::SecondInit ()
 	{
+		InitMW ();
+
 		XmlSettingsDialog_->SetDataSource ("SmileIcons",
 				Core::Instance ().GetSmilesOptionsModel ());
 
@@ -114,7 +120,8 @@ namespace Azoth
 
 	QIcon Plugin::GetIcon () const
 	{
-		return QIcon (":/plugins/azoth/resources/images/azoth.svg");
+		static QIcon icon (":/plugins/azoth/resources/images/azoth.svg");
+		return icon;
 	}
 
 	QStringList Plugin::Provides () const
@@ -147,7 +154,7 @@ namespace Azoth
 		QList<QAction*> result;
 		switch (aep)
 		{
-		case AEPTrayMenu:
+		case ActionsEmbedPlace::TrayMenu:
 			result << MW_->GetChangeStatusMenu ()->menuAction ();
 			break;
 		default:
@@ -208,16 +215,47 @@ namespace Azoth
 
 			qDebug () << Q_FUNC_INFO << context;
 
-			if (context == "chattab")
+			if (context == "chattab" || context == "chattab2")
 			{
 				ChatTabsManager::RestoreChatInfo info;
 				info.Props_ = recInfo.DynProperties_;
 				str >> info.EntryID_
 					>> info.Variant_;
 
+				if (context == "chattab2")
+					str >> info.MsgText_;
+
 				QList<ChatTabsManager::RestoreChatInfo> infos;
 				infos << info;
 				Core::Instance ().GetChatTabsManager ()->EnqueueRestoreInfos (infos);
+			}
+			else if (context == "muctab2")
+			{
+				QString entryId;
+				QVariantMap data;
+				QByteArray accountId;
+				str >> entryId
+					>> data
+					>> accountId;
+
+				if (auto entry = Core::Instance ().GetEntry (entryId))
+				{
+					auto mgr = Core::Instance ().GetChatTabsManager ();
+					mgr->OpenChat (qobject_cast<ICLEntry*> (entry), recInfo.DynProperties_);
+				}
+				else
+				{
+					auto acc = Core::Instance ().GetAccount (accountId);
+					auto proto = qobject_cast<IProtocol*> (acc->GetParentProtocol ());
+					auto widgetObj = proto->GetMUCJoinWidget ();
+					auto widget = qobject_cast<IMUCJoinWidget*> (widgetObj);
+					if (!widget)
+						return;
+
+					widget->SetIdentifyingData (data);
+					widget->Join (acc->GetObject ());
+					widgetObj->deleteLater ();
+				}
 			}
 			else
 				qWarning () << Q_FUNC_INFO
@@ -322,15 +360,25 @@ namespace Azoth
 		XmlSettingsDialog_->SetDataSource ("OutputAudioDevice", new QStringListModel (audioOuts));
 #endif
 
-		XmlSettingsDialog_->SetCustomWidget ("AccountsWidget", new AccountsListWidget);
+		auto accountsList = new AccountsListWidget;
+		XmlSettingsDialog_->SetCustomWidget ("AccountsWidget", accountsList);
+		connect (accountsList,
+				SIGNAL (accountVisibilityChanged (IAccount*)),
+				MW_,
+				SLOT (handleAccountVisibilityChanged ()));
+		connect (accountsList,
+				SIGNAL (accountVisibilityChanged (IAccount*)),
+				&Core::Instance (),
+				SLOT (saveAccountVisibility (IAccount*)));
 	}
 
 	void Plugin::InitMW ()
 	{
 		QDockWidget *dw = new QDockWidget ();
-		MW_ = new MainWidget ();
 		dw->setWidget (MW_);
 		dw->setWindowTitle ("Azoth");
+		dw->setWindowIcon (GetIcon ());
+		dw->toggleViewAction ()->setIcon (GetIcon ());
 
 		const int dockArea = XmlSettingsManager::Instance ()
 				.Property ("MWDockArea", Qt::RightDockWidgetArea).toInt ();
@@ -395,6 +443,10 @@ namespace Azoth
 				SIGNAL (gotSDWidget (ServiceDiscoveryWidget*)),
 				this,
 				SLOT (handleSDWidget (ServiceDiscoveryWidget*)));
+		connect (MW_,
+				SIGNAL (gotMicroblogsTab (MicroblogsTab*)),
+				this,
+				SLOT (handleMicroblogsTab (MicroblogsTab*)));
 	}
 
 	void Plugin::InitTabClasses ()
@@ -408,6 +460,8 @@ namespace Azoth
 			0,
 			TFEmpty
 		};
+		ChatTab::SetTabClassInfo (chatTab);
+
 		TabClassInfo mucTab =
 		{
 			"MUCTab",
@@ -446,12 +500,24 @@ namespace Azoth
 			0,
 			TFEmpty
 		};
+		TabClassInfo microblogsTab =
+		{
+			"MicroblogsTab",
+			tr ("Microblogs"),
+			tr ("Microblogs where protocol/account supports that"),
+			QIcon (),
+			0,
+			TFEmpty
+		};
 
 		TabClasses_ << chatTab;
 		TabClasses_ << mucTab;
 		TabClasses_ << searchTab;
 		TabClasses_ << sdTab;
 		TabClasses_ << consoleTab;
+		TabClasses_ << microblogsTab;
+
+		MicroblogsTab::SetTabData (this, microblogsTab);
 	}
 
 	void Plugin::handleSDWidget (ServiceDiscoveryWidget *sd)
@@ -462,6 +528,16 @@ namespace Azoth
 				SIGNAL (removeTab (QWidget*)));
 		emit addNewTab (tr ("Service discovery"), sd);
 		emit raiseTab (sd);
+	}
+
+	void Plugin::handleMicroblogsTab (MicroblogsTab *tab)
+	{
+		connect (tab,
+				SIGNAL (removeTab (QWidget*)),
+				this,
+				SIGNAL (removeTab (QWidget*)));
+		emit addNewTab (tr ("Microblogs"), tab);
+		emit raiseTab (tab);
 	}
 
 	void Plugin::handleTasksTreeSelectionCurrentRowChanged (const QModelIndex& index, const QModelIndex&)

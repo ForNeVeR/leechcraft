@@ -16,10 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include <limits>
 #include <stdexcept>
-#include <list>
-#include <functional>
+#include <algorithm>
+#include <iostream>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QtDebug>
@@ -28,13 +27,13 @@
 #include <QApplication>
 #include <QAction>
 #include <QToolBar>
-#include <QKeyEvent>
 #include <QDir>
-#include <QTextCodec>
+#include <QCryptographicHash>
 #include <QDesktopServices>
-#include <QNetworkReply>
 #include <QAbstractNetworkCache>
-#include <QClipboard>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QInputDialog>
 #include <util/util.h>
 #include <util/customcookiejar.h>
 #include <util/defaulthookproxy.h>
@@ -46,7 +45,6 @@
 #include <interfaces/ihavetabs.h>
 #include <interfaces/ihavesettings.h>
 #include <interfaces/ihaveshortcuts.h>
-#include <interfaces/iwindow.h>
 #include <interfaces/iactionsexporter.h>
 #include <interfaces/isummaryrepresentation.h>
 #include <interfaces/structures.h>
@@ -59,7 +57,6 @@
 #include "sqlstoragebackend.h"
 #include "handlerchoicedialog.h"
 #include "tagsmanager.h"
-#include "fancypopupmanager.h"
 #include "application.h"
 #include "newtabmenumanager.h"
 #include "networkaccessmanager.h"
@@ -104,7 +101,7 @@ namespace LeechCraft
 		StorageBackend_->Prepare ();
 
 		QStringList paths;
-		boost::program_options::variables_map map = qobject_cast<Application*> (qApp)->GetVarMap ();
+		const auto& map = qobject_cast<Application*> (qApp)->GetVarMap ();
 		if (map.count ("plugin"))
 		{
 			const std::vector<std::string>& plugins = map ["plugin"].as<std::vector<std::string>> ();
@@ -200,7 +197,7 @@ namespace LeechCraft
 		QList<QList<QAction*>> actions;
 		Q_FOREACH (const IActionsExporter *plugin, plugins)
 		{
-			const QList<QAction*>& list = plugin->GetActions (AEPCommonContextMenu);
+			const QList<QAction*>& list = plugin->GetActions (ActionsEmbedPlace::CommonContextMenu);
 			if (!list.size ())
 				continue;
 			actions << list;
@@ -235,13 +232,7 @@ namespace LeechCraft
 
 	void Core::Setup (QObject *plugin)
 	{
-		const IJobHolder *ijh = qobject_cast<IJobHolder*> (plugin);
-
 		InitDynamicSignals (plugin);
-
-		if (ijh)
-			InitJobHolder (plugin);
-
 		if (qobject_cast<IHaveTabs*> (plugin))
 			InitMultiTab (plugin);
 	}
@@ -254,6 +245,14 @@ namespace LeechCraft
 
 	void Core::DelayedInit ()
 	{
+		const auto& map = qobject_cast<Application*> (qApp)->GetVarMap ();
+		if (map.count ("list-plugins"))
+		{
+			Q_FOREACH (QPluginLoader_ptr loader, PluginManager_->GetAllAvailable ())
+				std::cout << "Found plugin: " << loader->fileName ().toUtf8 ().constData () << std::endl;
+			std::exit (0);
+		}
+
 		connect (this,
 				SIGNAL (error (QString)),
 				ReallyMainWindow_,
@@ -262,7 +261,12 @@ namespace LeechCraft
 		TabManager_.reset (new TabManager (ReallyMainWindow_->GetTabWidget (),
 					ReallyMainWindow_->GetTabWidget ()));
 
-		PluginManager_->Init ();
+		connect (TabManager_.get (),
+				SIGNAL (currentTabChanged (QWidget*)),
+				DM_,
+				SLOT (handleTabChanged (QWidget*)));
+
+		PluginManager_->Init (map.count ("safe-mode"));
 
 		NewTabMenuManager_->SetToolbarActions (GetActions2Embed ());
 
@@ -376,10 +380,10 @@ namespace LeechCraft
 			{
 				QDragEnterEvent *event = static_cast<QDragEnterEvent*> (e);
 
-				Q_FOREACH (const QString& format, event->mimeData ()->formats ())
+				auto mimeData = event->mimeData ();
+				Q_FOREACH (const QString& format, mimeData->formats ())
 				{
-					const Entity& e = Util::MakeEntity (event->
-								mimeData ()->data (format),
+					const Entity& e = Util::MakeEntity (mimeData->data (format),
 							QString (),
 							FromUserInitiated,
 							format);
@@ -397,10 +401,10 @@ namespace LeechCraft
 			{
 				QDropEvent *event = static_cast<QDropEvent*> (e);
 
-				Q_FOREACH (const QString& format, event->mimeData ()->formats ())
+				auto mimeData = event->mimeData ();
+				Q_FOREACH (const QString& format, mimeData->formats ())
 				{
-					const Entity& e = Util::MakeEntity (event->
-								mimeData ()->data (format),
+					const Entity& e = Util::MakeEntity (mimeData->data (format),
 							QString (),
 							FromUserInitiated,
 							format);
@@ -471,6 +475,34 @@ namespace LeechCraft
 			CustomCookieJar *jar = static_cast<CustomCookieJar*> (NetworkAccessManager_->cookieJar ());
 			jar->setAllCookies (QList<QNetworkCookie> ());
 			jar->Save ();
+		}
+		else if (name == "SetStartupPassword")
+		{
+			if (QMessageBox::question (ReallyMainWindow_,
+						"LeechCraft",
+						tr ("This security measure is easily circumvented by modifying "
+							"LeechCraft's settings files (or registry on Windows) in a text "
+							"editor. For proper and robust protection consider using some "
+							"third-party tools like <em>encfs</em> (http://www.arg0.net/encfs/)."
+							"<br/><br/>Accept this dialog if you understand the above and "
+							"this kind of security through obscurity is OK for you."),
+						QMessageBox::Ok | QMessageBox::Cancel) != QMessageBox::Ok)
+				return;
+
+			bool ok = false;
+			const auto& newPass = QInputDialog::getText (ReallyMainWindow_,
+					"LeechCraft",
+					tr ("Enter new startup password:"),
+					QLineEdit::Password,
+					QString (),
+					&ok);
+			if (!ok)
+				return;
+
+			QString contents;
+			if (!newPass.isEmpty ())
+				contents = QCryptographicHash::hash (newPass.toUtf8 (), QCryptographicHash::Sha1).toHex ();
+			XmlSettingsManager::Instance ()->setProperty ("StartupPassword", contents);
 		}
 	}
 
@@ -623,6 +655,24 @@ namespace LeechCraft
 		return result;
 	}
 
+	namespace
+	{
+		bool HandleNoHandlers (const Entity& p)
+		{
+			if (p.Entity_.toUrl ().isValid () &&
+					(p.Parameters_ & FromUserInitiated) &&
+					!(p.Parameters_ & OnlyDownload) &&
+					XmlSettingsManager::Instance ()->
+						property ("FallbackExternalHandlers").toBool ())
+			{
+				QDesktopServices::openUrl (p.Entity_.toUrl ());
+				return true;
+			}
+			else
+				return false;
+		}
+	}
+
 	bool Core::handleGotEntity (Entity p, int *id, QObject **pr)
 	{
 		const QString& string = Util::GetUserText (p);
@@ -643,17 +693,7 @@ namespace LeechCraft
 					dia->Add (qobject_cast<IInfo*> (plugin), qobject_cast<IEntityHandler*> (plugin));
 
 		if (!(numHandlers + numDownloaders))
-		{
-			if (p.Entity_.toUrl ().isValid () &&
-					(p.Parameters_ & FromUserInitiated) &&
-					!(p.Parameters_ & OnlyDownload))
-			{
-				QDesktopServices::openUrl (p.Entity_.toUrl ());
-				return true;
-			}
-			else
-				return false;
-		}
+			return HandleNoHandlers (p);
 
 		const bool bcastCandidate = !id && !pr && numHandlers;
 
@@ -742,15 +782,10 @@ namespace LeechCraft
 						property ("DontAskWhenSingle").toBool ())) &&
 				dia->GetFirstEntityHandler ())
 			return DoHandle (dia->GetFirstEntityHandler (), p);
-		else if (p.Mime_ == "x-leechcraft/notification")
-		{
-			HandleNotify (p);
-			return true;
-		}
 		else
 		{
-			emit log (tr ("Could not handle download entity %1.")
-					.arg (string));
+			qWarning () << Q_FUNC_INFO
+					<< "Could not handle download entity %1.";
 			return false;
 		}
 
@@ -789,54 +824,6 @@ namespace LeechCraft
 		ReallyMainWindow_->statusBar ()->showMessage (origMessage, 30000);
 	}
 
-	void Core::HandleNotify (const Entity& entity)
-	{
-		const bool show = XmlSettingsManager::Instance ()->
-			property ("ShowFinishedDownloadMessages").toBool ();
-
-		QString pname;
-		IInfo *ii = qobject_cast<IInfo*> (sender ());
-		if (ii)
-		{
-			try
-			{
-				pname = ii->GetName ();
-			}
-			catch (const std::exception& e)
-			{
-				qWarning () << Q_FUNC_INFO
-					<< e.what ()
-					<< sender ();
-			}
-			catch (...)
-			{
-				qWarning () << Q_FUNC_INFO
-					<< sender ();
-			}
-		}
-
-		const QString& nheader = entity.Entity_.toString ();
-		const QString& ntext = entity.Additional_ ["Text"].toString ();
-		const int priority = entity.Additional_ ["Priority"].toInt ();
-
-		QString header;
-
-		const QString str ("%1: %2");
-
-		if (pname.isEmpty () || nheader.isEmpty ())
-			header = pname + nheader;
-		else
-			header = str.arg (pname).arg (nheader);
-
-		const QString& text = str.arg (header).arg (ntext);
-
-		emit log (text);
-
-		if (priority != PLog_ &&
-				show)
-			ReallyMainWindow_->GetFancyPopupManager ()->ShowMessage (entity);
-	}
-
 	void Core::InitDynamicSignals (QObject *plugin)
 	{
 		const QMetaObject *qmo = plugin->metaObject ();
@@ -869,10 +856,6 @@ namespace LeechCraft
 							int*, QObject**)));
 	}
 
-	void Core::InitJobHolder (QObject *plugin)
-	{
-	}
-
 	void Core::InitEmbedTab (QObject *plugin)
 	{
 		InitCommonTab (plugin);
@@ -903,11 +886,6 @@ namespace LeechCraft
 				SIGNAL (changeTabIcon (QWidget*, const QIcon&)),
 				TabManager_.get (),
 				SLOT (changeTabIcon (QWidget*, const QIcon&)),
-				Qt::UniqueConnection);
-		connect (plugin,
-				SIGNAL (changeTooltip (QWidget*, QWidget*)),
-				TabManager_.get (),
-				SLOT (changeTooltip (QWidget*, QWidget*)),
 				Qt::UniqueConnection);
 		connect (plugin,
 				SIGNAL (statusBarChanged (QWidget*, const QString&)),

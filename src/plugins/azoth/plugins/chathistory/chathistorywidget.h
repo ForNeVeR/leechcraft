@@ -27,9 +27,12 @@ class QSortFilterProxyModel;
 
 namespace LeechCraft
 {
+struct Entity;
+
 namespace Azoth
 {
 class ICLEntry;
+
 namespace ChatHistory
 {
 	class Plugin;
@@ -41,6 +44,9 @@ namespace ChatHistory
 		Q_INTERFACES (ITabWidget);
 
 		Ui::ChatHistoryWidget Ui_;
+
+		const int PerPageAmount_;
+
 		QStandardItemModel *ContactsModel_;
 		QSortFilterProxyModel *SortFilter_;
 		int Backpages_;
@@ -52,9 +58,9 @@ namespace ChatHistory
 		QString CurrentEntry_;
 		QString PreviousSearchText_;
 		QToolBar *Toolbar_;
-		
+
 		QHash<QString, QString> EntryID2NameCache_;
-		
+
 		ICLEntry *EntryToFocus_;
 
 		static Plugin *S_ParentMultiTabs_;
@@ -67,7 +73,7 @@ namespace ChatHistory
 		static void SetParentMultiTabs (Plugin*);
 
 		ChatHistoryWidget (ICLEntry* = 0, QWidget* = 0);
-		
+
 		void Remove ();
 		QToolBar* GetToolBar () const;
 		QObject* ParentMultiTabs ();
@@ -78,18 +84,29 @@ namespace ChatHistory
 		void handleGotUsersForAccount (const QStringList&, const QString&, const QStringList&);
 		void handleGotChatLogs (const QString&, const QString&, int, int, const QVariant&);
 		void handleGotSearchPosition (const QString&, const QString&, int);
+		void handleGotDaysForSheet (const QString&, const QString&, int, int, const QList<int>&);
+
 		void on_AccountBox__currentIndexChanged (int);
 		void handleContactSelected (const QModelIndex&);
 		void on_HistorySearch__returnPressed ();
 		void on_SearchType__currentIndexChanged ();
+
+		void on_Calendar__currentPageChanged ();
+		void on_Calendar__activated (const QDate&);
+
 		void previousHistory ();
 		void nextHistory ();
 		void clearHistory ();
+
+		void on_HistView__anchorClicked (const QUrl&);
 	private:
+		void UpdateDates ();
 		void RequestLogs ();
 		void RequestSearch ();
 	signals:
 		void removeSelf (QWidget*);
+
+		void gotEntity (const LeechCraft::Entity&);
 	};
 }
 }

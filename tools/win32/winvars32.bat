@@ -5,7 +5,7 @@ rem == (c) Eugene Mamin <thedzhon@gmail.com>
 
 rem == Build variables ==
 
-call "C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\vcvars32.bat" x86
+call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\vcvars32.bat" x86
 
 set QTDIR=E:\Programs\QtSDK\Desktop\Qt\4.8.1\msvc2010
 

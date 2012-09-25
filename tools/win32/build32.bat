@@ -25,7 +25,7 @@ if exist build32 rmdir /s /q build32
 if not exist build32 mkdir build32
 cd build32
 cmake ../../../src ^
-	-G "Visual Studio 11" ^
+	-G "Visual Studio 10" ^
 	%BTYPE% ^
 	-DBoost_DEBUG=1 ^
 	-DBOOST_LIBRARYDIR=%BOOST_BIN_DIR% ^

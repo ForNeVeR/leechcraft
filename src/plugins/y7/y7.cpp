@@ -49,6 +49,7 @@ namespace Y7
 	void Plugin::SecondInit ()
 	{
 		QTimer::singleShot (5000, this, SLOT(initProgress ()));
+		QTimer::singleShot (5000, this, SLOT(initTabs ()));
 	}
 
 	QByteArray Plugin::GetUniqueID () const
@@ -77,6 +78,28 @@ namespace Y7
 		return QIcon ();
 	}
 
+	void Plugin::InitProgressModel ()
+	{
+		connect (ProgressModel_, SIGNAL (rowsInserted (const QModelIndex &, int, int)),
+			SLOT (progressRowsInserted (const QModelIndex &, int, int)));
+		connect (ProgressModel_, SIGNAL (dataChanged (const QModelIndex &, const QModelIndex &)),
+			SLOT (progressDataChanged (const QModelIndex &, const QModelIndex &)));
+	}
+
+	void Plugin::SetProgress ()
+	{
+		auto handle = Proxy_->GetMainWindow ()->winId ();
+
+		Taskbar_->SetProgressState (handle, TBPF_ERROR);
+
+		QMessageBox::information (nullptr, "Y7", "Progress succesful set.");
+	}
+
+	void Plugin::initTabs ()
+	{
+
+	}
+
 	void Plugin::initProgress ()
 	{
 		QMessageBox::information (nullptr, "Y7", "Start init progress");
@@ -101,16 +124,8 @@ namespace Y7
 		{
 			auto currentPlugin = qobject_cast<IJobHolder*> (pluginList.first());
 			ProgressModel_ = currentPlugin->GetRepresentation ();
-			initProgressModel ();
+			InitProgressModel ();
 		}
-	}
-
-	void Plugin::initProgressModel ()
-	{
-		connect (ProgressModel_, SIGNAL (rowsInserted (const QModelIndex &, int, int)),
-			SLOT (progressRowsInserted (const QModelIndex &, int, int)));
-		connect (ProgressModel_, SIGNAL (dataChanged (const QModelIndex &, const QModelIndex &)),
-			SLOT (progressDataChanged (const QModelIndex &, const QModelIndex &)));
 	}
 
 	void Plugin::progressRowsInserted (const QModelIndex &parent, int start, int end)
@@ -139,15 +154,6 @@ namespace Y7
 			qlonglong total = modelIndex.data (ProcessState::Total).toLongLong ();
 			QMessageBox::information (nullptr, "Y7", QString("%1 / %2").arg(done).arg(total));
 		}	
-	}
-
-	void Plugin::setProgress ()
-	{
-		auto handle = Proxy_->GetMainWindow ()->winId ();
-
-		Taskbar_->SetProgressState (handle, TBPF_ERROR);
-
-		QMessageBox::information (nullptr, "Y7", "Progress succesful set.");
 	}
 }
 }

@@ -39,6 +39,11 @@ namespace Y7
 	{
 		Q_OBJECT
 		Q_INTERFACES (IInfo)
+
+		ICoreProxy_ptr Proxy_;
+		ITaskbarList3 *Taskbar_;
+		QList<IJobHolder*> JobHolders_;
+		QAbstractItemModel *ProgressModel_;
 	public:
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
@@ -47,22 +52,15 @@ namespace Y7
 		QString GetName () const;
 		QString GetInfo () const;
 		QIcon GetIcon () const;
+	private:
+		void InitProgressModel ();
+		void SetProgress ();
+	private slots:		
+		void initTabs ();
 
-		void initProgressModel ();
-
-		void setProgress ();
-
-	public slots:		
 		void initProgress ();
 		void progressRowsInserted (const QModelIndex &parent, int start, int end);
 		void progressDataChanged (const QModelIndex &topLeft, const QModelIndex &bottomRight);
-		
-
-	private:
-		ICoreProxy_ptr Proxy_;
-		ITaskbarList3 *Taskbar_;
-		QList<IJobHolder*> JobHolders_;
-		QAbstractItemModel *ProgressModel_;
 	};
 }
 }

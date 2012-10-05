@@ -31,47 +31,18 @@ SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTSQL TRUE)
 SET (QT_USE_QTXML TRUE)
 INCLUDE (${QT_USE_FILE})
-IF (NOT QT_PHONON_FOUND)
-	IF (NOT PHONON_FOUND)
-		MESSAGE (FATAL_ERROR "No Phonon is found, LMP cannot be built")
-	ENDIF (NOT PHONON_FOUND)
-ENDIF (NOT QT_PHONON_FOUND)
-  
+IF (NOT WIN32 AND NOT PHONON_FOUND)
+	MESSAGE (FATAL_ERROR "No Phonon is found, LMP cannot be built")
+ENDIF (NOT WIN32 AND NOT PHONON_FOUND)
+
 INCLUDE_DIRECTORIES (
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}
 	${Boost_INCLUDE_DIR}
 	${QT_PHONON_INCLUDES}
-	${LEECHCRAFT_INCLUDE_DIR}
 	${TAGLIB_INCLUDES}
+	${LEECHCRAFT_INCLUDE_DIR}
 	)
-IF (WIN32)
-	INCLUDE_DIRECTORIES (
-		${TAGLIB_INCLUDES}/toolkit
-		${TAGLIB_INCLUDES}/asf
-		${TAGLIB_INCLUDES}/mpeg
-		${TAGLIB_INCLUDES}/ogg
-		${TAGLIB_INCLUDES}/ogg/flac
-		${TAGLIB_INCLUDES}/flac
-		${TAGLIB_INCLUDES}/mpc
-		${TAGLIB_INCLUDES}/mp4
-		${TAGLIB_INCLUDES}/ogg/vorbis
-		${TAGLIB_INCLUDES}/ogg/speex
-		${TAGLIB_INCLUDES}/mpeg/id3v2
-		${TAGLIB_INCLUDES}/mpeg/id3v2/frames
-		${TAGLIB_INCLUDES}/mpeg/id3v1
-		${TAGLIB_INCLUDES}/ape
-		${TAGLIB_INCLUDES}/wavpack
-		${TAGLIB_INCLUDES}/trueaudio
-		${TAGLIB_INCLUDES}/riff
-		${TAGLIB_INCLUDES}/riff/aiff
-		${TAGLIB_INCLUDES}/riff/wav
-		${TAGLIB_INCLUDES}/mod
-		${TAGLIB_INCLUDES}/s3m
-		${TAGLIB_INCLUDES}/it
-		${TAGLIB_INCLUDES}/xm
-	)
-ENDIF (WIN32)
 SET (SRCS
 	lmp.cpp
 	xmlsettingsmanager.cpp
@@ -110,16 +81,20 @@ SET (SRCS
 	eventswidget.cpp
 	plmanagerwidget.cpp
 	nowplayingpixmaphandler.cpp
+	lmpproxy.cpp
 	sync/cloudwidget.cpp
 	sync/clouduploadmanager.cpp
 	sync/clouduploader.cpp
 	sync/copymanager.cpp
 	sync/devicesbrowserwidget.cpp
+	sync/formats.cpp
 	sync/syncmanagerbase.cpp
 	sync/syncmanager.cpp
+	sync/syncunmountablemanager.cpp
 	sync/transcodejob.cpp
 	sync/transcodemanager.cpp
 	sync/transcodingparamswidget.cpp
+	sync/unmountabledevmanager.cpp
 	sync/uploadmodel.cpp
 	playlistparsers/commonpl.cpp
 	playlistparsers/playlistfactory.cpp
@@ -145,18 +120,12 @@ SET (FORMS
 	sync/transcodingparamswidget.ui
 	)
 SET (RESOURCES resources.qrc)
-CreateTrVars ("lmp" "en;es;ru_RU" TRANSLATIONS COMPILED_TRANSLATIONS)
+CreateTrs ("lmp" "en;es;ru_RU" COMPILED_TRANSLATIONS)
 QT4_WRAP_UI (UIS_H ${FORMS})
 QT4_ADD_RESOURCES (RCCS ${RESOURCES})
 
 OPTION (ENABLE_LMP_MPRIS "Enable MPRIS support for LMP" TRUE)
 
-ADD_CUSTOM_COMMAND (OUTPUT
-	${COMPILED_TRANSLATIONS}
-	COMMAND "${QT_LRELEASE_EXECUTABLE}" ${TRANSLATIONS}
-	DEPENDS ${TRANSLATIONS}
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	)
 ADD_LIBRARY (leechcraft_lmp SHARED
 	${COMPILED_TRANSLATIONS}
 	${SRCS}
@@ -175,6 +144,9 @@ TARGET_LINK_LIBRARIES (leechcraft_lmp
 
 	${MPRIS_SUBLIB}
 	)
+
+CreateTrsUpTarget("lmp" "en;ru_RU" "${SRCS}" "${FORMS}" "lmpsettings.xml")
+
 INSTALL (TARGETS leechcraft_lmp DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 INSTALL (FILES lmpsettings.xml DESTINATION ${LC_SETTINGS_DEST})
@@ -182,6 +154,7 @@ INSTALL (DIRECTORY interfaces DESTINATION include/leechcraft)
 
 OPTION (ENABLE_LMP_DUMBSYNC "Enable DumbSync, plugin for syncing with Flash-like media players" ON)
 OPTION (ENABLE_LMP_MP3TUNES "Enable plugin for syncing and using the mp3tunes.com service" ON)
+OPTION (ENABLE_LMP_MTPSYNC "Enable plugin for syncing with MTP devices" OFF)
 
 IF (ENABLE_LMP_DUMBSYNC)
 	ADD_SUBDIRECTORY (plugins/dumbsync)
@@ -189,3 +162,6 @@ ENDIF (ENABLE_LMP_DUMBSYNC)
 IF (ENABLE_LMP_MP3TUNES)
 	ADD_SUBDIRECTORY (plugins/mp3tunes)
 ENDIF (ENABLE_LMP_MP3TUNES)
+IF (ENABLE_LMP_MTPSYNC)
+	ADD_SUBDIRECTORY (plugins/mtpsync)
+ENDIF (ENABLE_LMP_MTPSYNC)

@@ -40,19 +40,14 @@ namespace LMP
 	{
 		std::for_each (files.begin (), files.end (),
 				[this, syncer, &mount] (decltype (files.front ()) file)
-					{
-						SyncTo syncTo;
-						syncTo.MountPath_ = mount;
-						syncTo.Syncer_ = syncer;
-						Source2Params_ [file] = syncTo;
-					});
+					{ Source2Params_ [file] = { syncer, mount }; });
 
 		SyncManagerBase::AddFiles (files, params);
 	}
 
 	void SyncManager::CreateSyncer (const QString& mount)
 	{
-		auto mgr = new CopyManager (this);
+		auto mgr = new CopyManager<CopyJob> (this);
 		connect (mgr,
 				SIGNAL (startedCopying (QString)),
 				this,
@@ -113,13 +108,16 @@ namespace LMP
 
 		if (!Mount2Copiers_.contains (syncTo.MountPath_))
 			CreateSyncer (syncTo.MountPath_);
-		CopyManager::CopyJob job;
-		job.Syncer_ = syncTo.Syncer_;
-		job.From_ = transcoded;
-		job.RemoveOnFinish_ = from != transcoded;
-		job.MountPoint_ = syncTo.MountPath_;
-		job.Filename_ = mask;
-		Mount2Copiers_ [syncTo.MountPath_]->Copy (job);
+		const CopyJob copyJob
+		{
+			transcoded,
+			from != transcoded,
+			syncTo.Syncer_,
+			from,
+			syncTo.MountPath_,
+			mask
+		};
+		Mount2Copiers_ [syncTo.MountPath_]->Copy (copyJob);
 	}
 }
 }

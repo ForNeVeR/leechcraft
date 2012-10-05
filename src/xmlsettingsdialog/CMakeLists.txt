@@ -94,6 +94,16 @@ IF (NOT LC_NO_MOC)
 	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 ENDIF (NOT LC_NO_MOC)
 QT4_WRAP_UI (UIS_H ${FORMS})
+
+FOREACH (SRC ${SRCS})
+	SET (XSD_SRCS "${XSD_SRCS};xmlsettingsdialog/${SRC}")
+ENDFOREACH (SRC)
+FOREACH (FORM ${FORMS})
+	SET (XSD_FORMS "${XSD_FORMS};xmlsettingsdialog/${FORM}")
+ENDFOREACH (FORM)
+SET (XSD_SRCS ${XSD_SRCS} PARENT_SCOPE)
+SET (XSD_FORMS ${XSD_FORMS} PARENT_SCOPE)
+
 IF (MSVC)
     add_msvc_version_full (xmlsettingsdialog library dll 0 3 0 0
                           ${winver_PRODUCT_VERSION_N1}

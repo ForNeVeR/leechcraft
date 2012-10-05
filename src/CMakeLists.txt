@@ -175,7 +175,7 @@ IF (MSVC)
 	SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 	INCLUDE (LibHelperWin32Macros)
 ENDIF (MSVC)
-IF (UNIX)
+IF (UNIX OR (WIN32 AND MINGW))
 	SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fno-strict-aliasing -std=c++0x")
 	IF (NOT APPLE)
 		SET (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--as-needed")
@@ -187,10 +187,10 @@ IF (UNIX)
 	IF (USE_PIPE)
 		SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe")
 	ENDIF (USE_PIPE)
-ENDIF (UNIX)
-IF (WIN32 AND NOT MSVC)
-	SET (CMAKE_CXX_FLAGS "-Wall")
-ENDIF (WIN32 AND NOT MSVC)
+	IF (WIN32 AND MINGW)
+		SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+	ENDIF (WIN32 AND MINGW)
+ENDIF (UNIX OR (WIN32 AND MINGW))
 
 IF (GPTOOLS_CPU AND GPTOOLS_MEM)
 	SET (GPTOOLS_CPU FALSE)
@@ -213,18 +213,32 @@ IF (GPTOOLS_CPU_AND_MEM)
 	SET (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -ltcmalloc_and_profiler")
 ENDIF (GPTOOLS_CPU_AND_MEM)
 
-IF (NOT LIBDIR)
-	SET (LIBDIR "lib${LIB_SUFFIX}")
-ENDIF (NOT LIBDIR)
+IF (NOT APPLE)
+	IF (NOT LIBDIR)
+		SET (LIBDIR "lib${LIB_SUFFIX}")
+	ENDIF (NOT LIBDIR)
 
-SET (LC_PLUGINS_DEST "${LIBDIR}/leechcraft/plugins")
-SET (LC_TRANSLATIONS_DEST "share/leechcraft/translations")
-SET (LC_SETTINGS_DEST "share/leechcraft/settings")
-SET (LC_QML_DEST "share/leechcraft/qml")
-SET (LC_SHARE_DEST "share/leechcraft")
-SET (LC_INSTALLEDMANIFEST_DEST "share/leechcraft/installed")
-SET (LC_GLOBAL_SETTINGS_DEST "share/leechcraft/rc")
-SET (LC_GLOBAL_SETTINGS_DEST_IN "${CMAKE_INSTALL_PREFIX}/${LC_GLOBAL_SETTINGS_DEST}")
+	SET (LC_BINDIR "bin")
+	SET (LC_PLUGINS_DEST "${LIBDIR}/leechcraft/plugins")
+	SET (LC_TRANSLATIONS_DEST "share/leechcraft/translations")
+	SET (LC_SETTINGS_DEST "share/leechcraft/settings")
+	SET (LC_QML_DEST "share/leechcraft/qml")
+	SET (LC_SHARE_DEST "share/leechcraft")
+	SET (LC_INSTALLEDMANIFEST_DEST "share/leechcraft/installed")
+	SET (LC_GLOBAL_SETTINGS_DEST "share/leechcraft/rc")
+	SET (LC_GLOBAL_SETTINGS_DEST_IN "${CMAKE_INSTALL_PREFIX}/${LC_GLOBAL_SETTINGS_DEST}")
+ELSE (NOT APPLE)
+	SET (LIBDIR "lib")
+	SET (LC_BINDIR "leechcraft.app/Contents/MacOs")
+	SET (LC_PLUGINS_DEST "leechcraft.app/Contents/PlugIns")
+	SET (LC_TRANSLATIONS_DEST "leechcraft.app/Contents/Resources/translations")
+	SET (LC_SETTINGS_DEST "leechcraft.app/Contents/Resources/settings")
+	SET (LC_QML_DEST "leechcraft.app/Contents/Resources/share/qml")
+	SET (LC_SHARE_DEST "leechcraft.app/Contents/Resources/share")
+	SET (LC_INSTALLEDMANIFEST_DEST "leechcraft.app/Contents/Resources/share/installed")
+	SET (LC_GLOBAL_SETTINGS_DEST "leechcraft.app/Contents/Resources/share/rc")
+	SET (LC_GLOBAL_SETTINGS_DEST_IN "${CMAKE_INSTALL_PREFIX}/${LC_GLOBAL_SETTINGS_DEST}")
+ENDIF (NOT APPLE)
 
 SET (Boost_ADDITIONAL_VERSIONS "1.47" "1.46" "1.46.1" "1.44" "1.44.0")
 FIND_PACKAGE (Boost REQUIRED COMPONENTS date_time filesystem program_options system thread)
@@ -326,6 +340,10 @@ IF (UNIX)
 	OPTION (ENABLE_LAUNCHY "Build Launchy, third-party application launcher module" ${WITH_PLUGINS})
 ENDIF (UNIX)
 
+IF (APPLE)
+	OPTION (ENABLE_PIERRE "Build Pierre, Mac OS X integration layer" ${WITH_PLUGINS})
+ENDIF (APPLE)
+
 # Defunct
 OPTION (ENABLE_EISKALTDCPP "Build EiskaltDC++ client" OFF)
 OPTION (ENABLE_TABPP "Build Tab++, the enhanced tab manager" OFF)
@@ -337,20 +355,6 @@ OPTION (ENABLE_TRANSPARENTARCH "Build TransparentArch, the plugin for transparen
 OPTION (ENABLE_VFSCORE "Build VFS core" OFF)
 
 ENABLE_TESTING ()
-
-FUNCTION (CreateTrVars PlugName Langs TranVar CompiledTranVar)
-	STRING (LENGTH "${PlugName}" _pnameLength)
-	SET (_basename "leechcraft")
-	IF (_pnameLength)
-		SET (_basename "${_basename}_${PlugName}")
-	ENDIF (_pnameLength)
-	FOREACH (_LANG ${Langs})
-		SET (_tran ${_tran} ${_basename}_${_LANG}.ts)
-		SET (_ctran ${_ctran} ${CMAKE_CURRENT_SOURCE_DIR}/${_basename}_${_LANG}.qm)
-	ENDFOREACH (_LANG)
-	SET (${TranVar} ${_tran} PARENT_SCOPE)
-	SET (${CompiledTranVar} ${_ctran} PARENT_SCOPE)
-ENDFUNCTION (CreateTrVars)
 
 FUNCTION (CreateTrs PlugName Langs CompiledTranVar)
 	STRING (LENGTH "${PlugName}" _pnameLength)
@@ -372,6 +376,32 @@ FUNCTION (CreateTrs PlugName Langs CompiledTranVar)
 	INSTALL (FILES ${_ctran} DESTINATION ${LC_TRANSLATIONS_DEST})
 	SET (${CompiledTranVar} ${_ctran} PARENT_SCOPE)
 ENDFUNCTION (CreateTrs)
+
+SET (GENCPP_XML_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../tools/scripts/translationstuff/gencpp.sh")
+
+FUNCTION (CreateTrsUpTarget PlugName Langs Sources Forms Xml)
+	STRING (LENGTH "${PlugName}" _pnameLength)
+	STRING (LENGTH "${Xml}" _xmlLength)
+	SET (_basename "leechcraft")
+	IF (_pnameLength)
+		SET (_basename "${_basename}_${PlugName}")
+	ENDIF (_pnameLength)
+	IF (_xmlLength)
+		FOREACH (_LANG ${Langs})
+			ADD_CUSTOM_TARGET (${_basename}_ts_${_LANG}
+					${GENCPP_XML_PATH} ${Xml}
+					COMMAND ${QT_LUPDATE_EXECUTABLE} "-noobsolete" ${Sources} ${Forms} "dummy.cpp" "-ts" "${_basename}_${_LANG}.ts"
+					COMMAND "rm" "-f" "dummy.cpp"
+					WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" VERBATIM)
+		ENDFOREACH (_LANG)
+	ELSE (_xmlLength)
+		FOREACH (_LANG ${Langs})
+			ADD_CUSTOM_TARGET (${_basename}_ts_${_LANG}
+					${QT_LUPDATE_EXECUTABLE} "-noobsolete" ${Sources} ${Forms} "-ts" "${_basename}_${_LANG}.ts"
+					WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" VERBATIM)
+		ENDFOREACH (_LANG)
+	ENDIF (_xmlLength)
+ENDFUNCTION (CreateTrsUpTarget)
 
 IF (ENABLE_SUMMARY)
 	ADD_SUBDIRECTORY (plugins/summary)
@@ -625,6 +655,12 @@ IF (WIN32)
 	ENDIF (ENABLE_Y7)
 ENDIF (WIN32)
 
+IF (APPLE)
+	IF (ENABLE_PIERRE)
+		ADD_SUBDIRECTORY (plugins/pierre)
+	ENDIF (ENABLE_PIERRE)
+ENDIF (APPLE)
+
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
 SET (QT_USE_QTSQL TRUE)
@@ -743,7 +779,8 @@ SOURCE_GROUP ("core\\sources" FILES ${leechcraft_SRCS})
 SOURCE_GROUP ("core\\forms" FILES ${leechcraft_FORMS})
 SOURCE_GROUP ("core\\resources" FILES ${leechcraft_RESOURCES})
 
-CreateTrVars ("" "ru_RU;de;uk_UA;it;ar;eo;es;tr;tt;en;be;fr;pl" TRANSLATIONS COMPILED_TRANSLATIONS)
+CreateTrs ("" "ru_RU;de;uk_UA;it;ar;eo;es;tr;tt;en;be;fr;pl" COMPILED_TRANSLATIONS)
+CreateTrsUpTarget ("" "en;ru_RU" "${SRCS};${UTIL_SRCS};${XSD_SRCS}" "${FORMS};${UTIL_FORMS};${XSD_FORMS}" "coresettings.xml")
 
 ADD_DEFINITIONS (-DBOOST_PROGRAM_OPTIONS_DYN_LINK)
 ADD_DEFINITIONS (${QT_DEFINITIONS})
@@ -755,13 +792,6 @@ QT4_WRAP_UI (UIS_H ${leechcraft_FORMS})
 QT4_ADD_RESOURCES (RCC ${leechcraft_RESOURCES})
 
 SOURCE_GROUP ("core\\generated_qt" FILES ${MOC_SRCS} ${UIS_H} ${RCC})
-
-ADD_CUSTOM_COMMAND (OUTPUT
-	${COMPILED_TRANSLATIONS}
-	COMMAND "${QT_LRELEASE_EXECUTABLE}" ${TRANSLATIONS}
-	DEPENDS ${TRANSLATIONS}
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	)
 
 SOURCE_GROUP("core\\translations" FILES ${COMPILED_TRANSLATIONS})
 
@@ -802,7 +832,7 @@ TARGET_LINK_LIBRARIES (leechcraft
 		${Boost_PROGRAM_OPTIONS_LIBRARY}
 		${LEECHCRAFT_LIBRARIES}
 		)
-INSTALL (TARGETS leechcraft DESTINATION bin)
+INSTALL (TARGETS leechcraft DESTINATION ${LC_BINDIR})
 INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 INSTALL (FILES coresettings.xml DESTINATION ${LC_SETTINGS_DEST})
 
@@ -819,14 +849,14 @@ INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/leechcra
 INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/FindLeechCraft.cmake DESTINATION ${LC_SHARE_DEST}/cmake/)
 INSTALL (FILES InitLCPlugin.cmake DESTINATION share/cmake/Modules)
 
-INSTALL (DIRECTORY share/ DESTINATION share)
+INSTALL (DIRECTORY share/leechcraft/ DESTINATION ${LC_SHARE_DEST})
 
 INSTALL (DIRECTORY freedesktop/icons/ DESTINATION share/icons/hicolor
 	PATTERN ".svn" EXCLUDE)
-IF (UNIX)
+IF (UNIX AND NOT APPLE)
 	INSTALL (FILES freedesktop/leechcraft.desktop DESTINATION share/applications)
 	INSTALL (FILES data/leechcraft.1.gz DESTINATION share/man/man1)
 	INSTALL (FILES scripts/leechcraft-add-file DESTINATION bin PERMISSIONS
 		OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ
 		WORLD_EXECUTE WORLD_READ)
-ENDIF (UNIX)
+ENDIF (UNIX AND NOT APPLE)

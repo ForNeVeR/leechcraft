@@ -71,8 +71,8 @@ namespace Xoox
 			<< KAParams_
 			<< OurPhotoHash_
 			<< FileLogEnabled_
-			<< (FTMethods_ & QXmppTransferJob::InBandMethod)
-			<< (FTMethods_ & QXmppTransferJob::SocksMethod)
+			<< static_cast<bool> (FTMethods_ & QXmppTransferJob::InBandMethod)
+			<< static_cast<bool> (FTMethods_ & QXmppTransferJob::SocksMethod)
 			<< UseSOCKS5Proxy_
 			<< SOCKS5Proxy_;
 	}
@@ -353,8 +353,12 @@ namespace Xoox
 			return;
 
 		auto conn = Account_->GetClientConnection ();
+		if (!conn)
+			return;
+
 		const auto state = conn->GetLastState ();
 		Account_->ChangeState (EntryStatus (SOffline, Account_->GetState ().StatusString_));
+		conn->SetOurJID (GetFullJID ());
 		new AccStatusRestorer (state, conn);
 	}
 }

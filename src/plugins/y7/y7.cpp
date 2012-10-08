@@ -25,6 +25,7 @@
 #include <QTimer>
 #include <QVector>
 #include <interfaces/core/icoreproxy.h>
+#include <interfaces/core/icoretabwidget.h>
 #include <interfaces/core/ipluginsmanager.h>
 #include <interfaces/ijobholder.h>
 
@@ -111,8 +112,6 @@ namespace Y7
 		
 		buttons.push_back(button);
 		
-		QMessageBox::information (nullptr, "Y7", QString::fromWCharArray(buttons[0].szTip));
-
 		auto windowId = Proxy_->GetMainWindow ()->winId ();
 		if (Taskbar_->ThumbBarAddButtons(windowId, buttons.size(), buttons.data()) != S_OK)
 		{
@@ -127,10 +126,10 @@ namespace Y7
 	{
 		QMessageBox::information (nullptr, "Y7", "Start init progress");
 
-		auto pluginList = Proxy_->GetPluginsManager ()->GetAllCastableRoots<IJobHolder*> ();
+		auto plugins = Proxy_->GetPluginsManager ()->GetAllCastableRoots<IJobHolder*> ();
 
 		QString message("Traceable plugins detected:\n");
-		Q_FOREACH(auto plugin, pluginList)
+		Q_FOREACH (auto plugin, plugins)
 		{
 			auto pluginInfo = qobject_cast<IInfo*> (plugin);
 			auto jobHolder = qobject_cast<IJobHolder*> (plugin);
@@ -143,9 +142,9 @@ namespace Y7
 
 		QMessageBox::information (nullptr, "Y7", message);
 		
-		if (!pluginList.empty())
+		if (!plugins.empty())
 		{
-			auto currentPlugin = qobject_cast<IJobHolder*> (pluginList.first());
+			auto currentPlugin = qobject_cast<IJobHolder*> (plugins.first());
 			ProgressModel_ = currentPlugin->GetRepresentation ();
 			InitProgressModel ();
 		}
@@ -153,7 +152,27 @@ namespace Y7
 
 	void Plugin::initTabs ()
 	{
+		auto tabWidget = Proxy_->GetTabWidget ();
+		auto mainWindowId = Proxy_->GetMainWindow ()->winId ();
 
+		for (auto index = 0; index < tabWidget->WidgetCount (); ++index)
+		{
+			auto widget = tabWidget->Widget (index);
+			auto widgetWinId = widget->winId ();
+			if (Taskbar_->RegisterTab (widgetWinId, mainWindowId) != S_OK)
+			{
+				QMessageBox::information (nullptr, "Y7", "Cannot initialize tab.");
+				return;
+			}
+
+			if (Taskbar_->SetTabOrder(widgetWinId, nullptr) != S_OK)
+			{
+				QMessageBox::information (nullptr, "Y7", "Cannot set tab order.");
+				return;
+			}
+		}
+
+		QMessageBox::information (nullptr, "Y7", QString("%1 tabs initialized.").arg(tabWidget->WidgetCount ()));
 	}
 
 	void Plugin::progressRowsInserted (const QModelIndex &parent, int start, int end)

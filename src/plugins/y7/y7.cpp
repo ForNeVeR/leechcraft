@@ -23,6 +23,7 @@
 #include <QMessageBox>
 #include <QModelIndex>
 #include <QTimer>
+#include <QVector>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
 #include <interfaces/ijobholder.h>
@@ -48,6 +49,7 @@ namespace Y7
 
 	void Plugin::SecondInit ()
 	{
+		QTimer::singleShot (5000, this, SLOT(initButtons ()));
 		QTimer::singleShot (5000, this, SLOT(initProgress ()));
 		QTimer::singleShot (5000, this, SLOT(initTabs ()));
 	}
@@ -95,9 +97,30 @@ namespace Y7
 		QMessageBox::information (nullptr, "Y7", "Progress succesful set.");
 	}
 
-	void Plugin::initTabs ()
+	void Plugin::initButtons ()
 	{
+		const size_t SZTIP_SIZE = 260;
 
+		QVector<THUMBBUTTON> buttons;
+
+		THUMBBUTTON button = {};
+		button.iId = 0;
+		button.dwMask = THB_BITMAP | THB_TOOLTIP | THB_FLAGS;
+		wcsncpy(button.szTip, L"Tooltip 1", SZTIP_SIZE);
+		button.dwFlags = THBF_ENABLED;
+		
+		buttons.push_back(button);
+		
+		QMessageBox::information (nullptr, "Y7", QString::fromWCharArray(buttons[0].szTip));
+
+		auto windowId = Proxy_->GetMainWindow ()->winId ();
+		if (Taskbar_->ThumbBarAddButtons(windowId, buttons.size(), buttons.data()) != S_OK)
+		{
+			QMessageBox::information (nullptr, "Y7", "Cannot initialize taskbar.");
+			return;
+		}
+
+		QMessageBox::information (nullptr, "Y7", "Taskbar initialized.");
 	}
 
 	void Plugin::initProgress ()
@@ -126,6 +149,11 @@ namespace Y7
 			ProgressModel_ = currentPlugin->GetRepresentation ();
 			InitProgressModel ();
 		}
+	}
+
+	void Plugin::initTabs ()
+	{
+
 	}
 
 	void Plugin::progressRowsInserted (const QModelIndex &parent, int start, int end)

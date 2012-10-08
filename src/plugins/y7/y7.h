@@ -56,11 +56,13 @@ namespace Y7
 		void InitProgressModel ();
 		void SetProgress ();
 	private slots:		
-		void initTabs ();
+		void initButtons ();
 
 		void initProgress ();
 		void progressRowsInserted (const QModelIndex &parent, int start, int end);
 		void progressDataChanged (const QModelIndex &topLeft, const QModelIndex &bottomRight);
+
+		void initTabs ();
 	};
 }
 }

@@ -41,6 +41,7 @@
 #include "staticplaylistmanager.h"
 #include "audiopropswidget.h"
 #include "playlistundocommand.h"
+#include "sortingcriteriadialog.h"
 #include "util.h"
 
 namespace LeechCraft
@@ -335,18 +336,12 @@ namespace LMP
 		QMenu *playMode = new QMenu (tr ("Play mode"));
 		playButton->setMenu (playMode);
 
-		std::vector<Player::PlayMode> modes;
-		modes.push_back (Player::PlayMode::Sequential);
-		modes.push_back (Player::PlayMode::Shuffle);
-		modes.push_back (Player::PlayMode::RepeatTrack);
-		modes.push_back (Player::PlayMode::RepeatAlbum);
-		modes.push_back (Player::PlayMode::RepeatWhole);
-		std::vector<QString> names;
-		names.push_back (tr ("Sequential"));
-		names.push_back (tr ("Shuffle"));
-		names.push_back (tr ("Repeat track"));
-		names.push_back (tr ("Repeat album"));
-		names.push_back (tr ("Repeat whole"));
+		const std::vector<Player::PlayMode> modes = { Player::PlayMode::Sequential,
+				Player::PlayMode::Shuffle, Player::PlayMode::RepeatTrack,
+				Player::PlayMode::RepeatAlbum, Player::PlayMode::RepeatWhole };
+		const std::vector<QString> names = { tr ("Sequential"),
+				tr ("Shuffle"), tr ("Repeat track"),
+				tr ("Repeat album"), tr ("Repeat whole") };
 		PlayModesGroup_ = new QActionGroup (this);
 		for (size_t i = 0; i < modes.size (); ++i)
 		{
@@ -382,7 +377,7 @@ namespace LMP
 		auto menu = new QMenu (tr ("Sorting"));
 		sortButton->setMenu (menu);
 
-		auto getInts = [] (const QList<Player::SortingCriteria>& crit) -> QVariantList
+		auto getInts = [] (const QList<SortingCriteria>& crit)
 		{
 			QVariantList result;
 			std::transform (crit.begin (), crit.end (), std::back_inserter (result),
@@ -390,42 +385,62 @@ namespace LMP
 			return result;
 		};
 
-		typedef QPair<QString, QList<Player::SortingCriteria>> SortPair_t;
+		typedef QPair<QString, QList<SortingCriteria>> SortPair_t;
 		QList<SortPair_t> stdSorts;
 #if QT_VERSION >= 0x040800
 		stdSorts << SortPair_t (tr ("Artist / Year / Album / Track number"),
-					QList<Player::SortingCriteria> ()
-						<< Player::SortingCriteria::Artist
-						<< Player::SortingCriteria::Year
-						<< Player::SortingCriteria::Album
-						<< Player::SortingCriteria::TrackNumber);
+					{
+						SortingCriteria::Artist,
+						SortingCriteria::Year,
+						SortingCriteria::Album,
+						SortingCriteria::TrackNumber
+					});
 		stdSorts << SortPair_t (tr ("Artist / Track title"),
-					QList<Player::SortingCriteria> ()
-						<< Player::SortingCriteria::Artist
-						<< Player::SortingCriteria::TrackTitle);
+					{
+						SortingCriteria::Artist,
+						SortingCriteria::TrackTitle
+					});
 		stdSorts << SortPair_t (tr ("File path"),
-					QList<Player::SortingCriteria> ()
-						<< Player::SortingCriteria::FilePath);
-		stdSorts << SortPair_t (tr ("No sort"), QList<Player::SortingCriteria> ());
+					{
+						SortingCriteria::FilePath
+					});
+		stdSorts << SortPair_t (tr ("No sort"), {});
 #endif
 
+		const auto& currentCriteria = Player_->GetSortingCriteria ();
+
 		auto sortGroup = new QActionGroup (this);
-		bool isFirst = true;
+		bool wasChecked = false;
 		Q_FOREACH (const auto& pair, stdSorts)
 		{
 			auto act = menu->addAction (pair.first);
 			act->setProperty ("SortInts", getInts (pair.second));
 			act->setCheckable (true);
-			act->setChecked (isFirst);
 			sortGroup->addAction (act);
-
-			isFirst = false;
+			if (pair.second == currentCriteria)
+			{
+				act->setChecked (true);
+				wasChecked = true;
+			}
+			else
+				act->setChecked (false);
 
 			connect (act,
 					SIGNAL (triggered ()),
 					this,
 					SLOT (handleStdSort ()));
 		}
+
+		menu->addSeparator ();
+		auto customAct = menu->addAction (tr ("Custom..."));
+		customAct->setCheckable (true);
+		if (!wasChecked)
+			customAct->setChecked (true);
+		sortGroup->addAction (customAct);
+		connect (customAct,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (handleCustomSort ()));
 
 		PlaylistToolbar_->addWidget (sortButton);
 	}
@@ -607,13 +622,28 @@ namespace LMP
 	void PlaylistWidget::handleStdSort ()
 	{
 		const auto& intVars = sender ()->property ("SortInts").toList ();
-		QList<Player::SortingCriteria> criteria;
+		QList<SortingCriteria> criteria;
 		std::transform (intVars.begin (), intVars.end (), std::back_inserter (criteria),
 				[] (decltype (intVars.front ()) var)
-					{ return static_cast<Player::SortingCriteria> (var.toInt ()); });
+					{ return static_cast<SortingCriteria> (var.toInt ()); });
 		Player_->SetSortingCriteria (criteria);
 
 		EnableMoveButtons (criteria.isEmpty ());
+	}
+
+	void PlaylistWidget::handleCustomSort ()
+	{
+		const auto& current = Player_->GetSortingCriteria ();
+		SortingCriteriaDialog dia (this);
+		dia.SetCriteria (current);
+		if (dia.exec () != QDialog::Accepted)
+			return;
+
+		const auto& newCriteria = dia.GetCriteria ();
+		if (newCriteria == current)
+			return;
+
+		Player_->SetSortingCriteria (newCriteria);
 	}
 
 	void PlaylistWidget::removeSelectedSongs ()

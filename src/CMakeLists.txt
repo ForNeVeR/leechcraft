@@ -292,6 +292,7 @@ OPTION (ENABLE_LMP "Build LMP, the LeechCraft Music Player" ${WITH_PLUGINS})
 OPTION (ENABLE_NETWORKMONITOR "Build NetworkMonitor, the monitor for HTTP requests" ${WITH_PLUGINS})
 OPTION (ENABLE_NEWLIFE "Build NewLife, the settings importer" ${WITH_PLUGINS})
 OPTION (ENABLE_PINTAB "Build Pintab for pinning important tabs" ${WITH_PLUGINS})
+OPTION (ENABLE_POGOOGLUE "Build Pogooglue, Google search client" ${WITH_PLUGINS})
 OPTION (ENABLE_POSHUKU "Build Poshuku, the WWW Browser" ${WITH_PLUGINS})
 OPTION (ENABLE_SECMAN "Build SecMan, security & personal data manager" ${WITH_PLUGINS})
 OPTION (ENABLE_SEEKTHRU "Build SeekThru, the client for the OpenSearch-aware web sites" ${WITH_PLUGINS})
@@ -619,6 +620,10 @@ IF (ENABLE_PINTAB)
 	ADD_SUBDIRECTORY (plugins/pintab)
 ENDIF (ENABLE_PINTAB)
 
+IF (ENABLE_POGOOGLUE)
+	ADD_SUBDIRECTORY (plugins/pogooglue)
+ENDIF (ENABLE_POGOOGLUE)
+
 IF (ENABLE_OTLOZHU)
 	ADD_SUBDIRECTORY (plugins/otlozhu)
 ENDIF (ENABLE_OTLOZHU)
@@ -713,6 +718,7 @@ SET (leechcraft_SRCS
 	coreplugin2manager.cpp
 	dockmanager.cpp
 	acceptlangwidget.cpp
+	entitymanager.cpp
 	)
 SET (leechcraft_HEADERS
 	mainwindow.h
@@ -755,6 +761,7 @@ SET (leechcraft_HEADERS
 	coreplugin2manager.h
 	dockmanager.h
 	acceptlangwidget.h
+	entitymanager.h
 	interfaces/structures.h
 	)
 SET (leechcraft_FORMS

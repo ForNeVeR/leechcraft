@@ -16,41 +16,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "platformlayer.h"
-#include <util/util.h>
+#pragma once
+
+#include <QObject>
+#include <util/utilconfig.h>
+
+class QVariant;
+class IEntityManager;
+class QMenu;
 
 namespace LeechCraft
 {
-namespace Liznoo
+namespace Util
 {
-	PlatformLayer::PlatformLayer (QObject *parent)
-	: QObject (parent)
+	class StdDataFilterMenuCreator : public QObject
 	{
-	}
+		Q_OBJECT
 
-	void PlatformLayer::ChangeState (PlatformLayer::PowerState)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "not supported";
-	}
-
-	void PlatformLayer::EmitGonnaSleep (int timeout)
-	{
-		Entity e = Util::MakeEntity ("Sleeping",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		e.Additional_ ["TimeLeft"] = timeout;
-		emit gotEntity (e);
-	}
-
-	void PlatformLayer::EmitWokeUp ()
-	{
-		Entity e = Util::MakeEntity ("WokeUp",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		emit gotEntity (e);
-	}
+		IEntityManager *EntityMgr_;
+	public:
+		UTIL_API StdDataFilterMenuCreator (const QVariant&, IEntityManager*, QMenu*);
+	private slots:
+		void handleDataFilterAction ();
+	};
 }
 }

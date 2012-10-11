@@ -16,41 +16,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "platformlayer.h"
-#include <util/util.h>
+#pragma once
+
+#include <QDialog>
+#include "ui_sortingcriteriadialog.h"
+#include "sortingcriteria.h"
+
+class QStandardItemModel;
 
 namespace LeechCraft
 {
-namespace Liznoo
+namespace LMP
 {
-	PlatformLayer::PlatformLayer (QObject *parent)
-	: QObject (parent)
+	class SortingCriteriaDialog : public QDialog
 	{
-	}
+		Q_OBJECT
 
-	void PlatformLayer::ChangeState (PlatformLayer::PowerState)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "not supported";
-	}
+		Ui::SortingCriteriaDialog Ui_;
+		QStandardItemModel *Model_;
+	public:
+		SortingCriteriaDialog (QWidget* = 0);
 
-	void PlatformLayer::EmitGonnaSleep (int timeout)
-	{
-		Entity e = Util::MakeEntity ("Sleeping",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		e.Additional_ ["TimeLeft"] = timeout;
-		emit gotEntity (e);
-	}
-
-	void PlatformLayer::EmitWokeUp ()
-	{
-		Entity e = Util::MakeEntity ("WokeUp",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		emit gotEntity (e);
-	}
+		void SetCriteria (const QList<SortingCriteria>&);
+		QList<SortingCriteria> GetCriteria () const;
+	private:
+		void AddCriteria (SortingCriteria);
+	private slots:
+		void on_Add__released ();
+		void on_Remove__released ();
+	};
 }
 }

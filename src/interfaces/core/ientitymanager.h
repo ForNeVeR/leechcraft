@@ -16,41 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "platformlayer.h"
-#include <util/util.h>
+#pragma once
+
+#include <QObject>
 
 namespace LeechCraft
 {
-namespace Liznoo
+	struct Entity;
+}
+
+class IEntityManager
 {
-	PlatformLayer::PlatformLayer (QObject *parent)
-	: QObject (parent)
+public:
+	struct DelegationResult
 	{
-	}
+		QObject *Handler_;
+		int ID_;
+	};
 
-	void PlatformLayer::ChangeState (PlatformLayer::PowerState)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "not supported";
-	}
+	virtual ~IEntityManager () {}
 
-	void PlatformLayer::EmitGonnaSleep (int timeout)
-	{
-		Entity e = Util::MakeEntity ("Sleeping",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		e.Additional_ ["TimeLeft"] = timeout;
-		emit gotEntity (e);
-	}
+	virtual DelegationResult DelegateEntity (LeechCraft::Entity, QObject *desired = 0) = 0;
 
-	void PlatformLayer::EmitWokeUp ()
-	{
-		Entity e = Util::MakeEntity ("WokeUp",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		emit gotEntity (e);
-	}
-}
-}
+	virtual bool HandleEntity (LeechCraft::Entity, QObject *desired = 0) = 0;
+
+	virtual bool CouldHandle (const LeechCraft::Entity&) = 0;
+
+	virtual QList<QObject*> GetPossibleHandlers (const LeechCraft::Entity&) = 0;
+};
+
+Q_DECLARE_INTERFACE (IEntityManager, "org.Deviant.LeechCraft.IEntityManager/1.0");

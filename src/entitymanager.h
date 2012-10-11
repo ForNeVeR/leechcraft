@@ -16,41 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "platformlayer.h"
-#include <util/util.h>
+#pragma once
+
+#include <QObject>
+#include "interfaces/core/ientitymanager.h"
 
 namespace LeechCraft
 {
-namespace Liznoo
-{
-	PlatformLayer::PlatformLayer (QObject *parent)
-	: QObject (parent)
+	class EntityManager : public QObject
+						, public IEntityManager
 	{
-	}
+		Q_OBJECT
+		Q_INTERFACES (IEntityManager)
+	public:
+		EntityManager (QObject* = 0);
 
-	void PlatformLayer::ChangeState (PlatformLayer::PowerState)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "not supported";
-	}
-
-	void PlatformLayer::EmitGonnaSleep (int timeout)
-	{
-		Entity e = Util::MakeEntity ("Sleeping",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		e.Additional_ ["TimeLeft"] = timeout;
-		emit gotEntity (e);
-	}
-
-	void PlatformLayer::EmitWokeUp ()
-	{
-		Entity e = Util::MakeEntity ("WokeUp",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		emit gotEntity (e);
-	}
-}
+		DelegationResult DelegateEntity (Entity, QObject* = 0);
+		bool HandleEntity (Entity, QObject* = 0);
+		bool CouldHandle (const Entity&);
+		QList<QObject*> GetPossibleHandlers (const Entity&);
+	};
 }

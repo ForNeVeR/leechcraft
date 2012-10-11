@@ -1,6 +1,7 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
  * Copyright (C) 2006-2012  Georg Rudoy
+ * Copyright (C) 2012       Maxim Ignatenko
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,41 +17,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
+#pragma once
+
 #include "platformlayer.h"
-#include <util/util.h>
+#include <IOKit/pwr_mgt/IOPMLib.h>
 
 namespace LeechCraft
 {
 namespace Liznoo
 {
-	PlatformLayer::PlatformLayer (QObject *parent)
-	: QObject (parent)
+	class PlatformMac : public PlatformLayer
 	{
-	}
+		Q_OBJECT
 
-	void PlatformLayer::ChangeState (PlatformLayer::PowerState)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "not supported";
-	}
+		IONotificationPortRef NotifyPortRef_;
+		io_object_t NotifierObject_;
+		io_connect_t Port_;
+	public:
+		PlatformMac (QObject* = 0);
+		~PlatformMac ();
 
-	void PlatformLayer::EmitGonnaSleep (int timeout)
-	{
-		Entity e = Util::MakeEntity ("Sleeping",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		e.Additional_ ["TimeLeft"] = timeout;
-		emit gotEntity (e);
-	}
-
-	void PlatformLayer::EmitWokeUp ()
-	{
-		Entity e = Util::MakeEntity ("WokeUp",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		emit gotEntity (e);
-	}
+		void Stop ();
+		void IOCallback (io_service_t, natural_t, void*);
+	};
 }
 }

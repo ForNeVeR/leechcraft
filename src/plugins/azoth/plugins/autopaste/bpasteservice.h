@@ -16,41 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "platformlayer.h"
-#include <util/util.h>
+#pragma once
+
+#include "pasteservicebase.h"
 
 namespace LeechCraft
 {
-namespace Liznoo
+namespace Azoth
 {
-	PlatformLayer::PlatformLayer (QObject *parent)
-	: QObject (parent)
+namespace Autopaste
+{
+	class BPasteService : public PasteServiceBase
 	{
-	}
+		Q_OBJECT
+	public:
+		BPasteService (QObject *entry, QObject* = 0);
 
-	void PlatformLayer::ChangeState (PlatformLayer::PowerState)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "not supported";
-	}
-
-	void PlatformLayer::EmitGonnaSleep (int timeout)
-	{
-		Entity e = Util::MakeEntity ("Sleeping",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		e.Additional_ ["TimeLeft"] = timeout;
-		emit gotEntity (e);
-	}
-
-	void PlatformLayer::EmitWokeUp ()
-	{
-		Entity e = Util::MakeEntity ("WokeUp",
-				QString (),
-				TaskParameter::Internal,
-				"x-leechcraft/power-state-changed");
-		emit gotEntity (e);
-	}
+		void Paste (const PasteParams&);
+	};
+}
 }
 }

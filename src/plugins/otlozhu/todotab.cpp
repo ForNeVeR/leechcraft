@@ -117,9 +117,24 @@ namespace Otlozhu
 		Ui_.TodoTree_->addAction (editComment);
 
 		DueDateMenu_->setProperty ("ActionIcon", "view-calendar");
-		const QList<int> delays = { 0, 1, 3, 6, 12, 24, 48, 168 };
-		const QStringList labels = { tr ("Clear"), tr ("Hour"), tr ("3 hours"), tr ("6 hours"),
-				tr ("12 hours"), tr ("Day"), tr ("2 days"), tr ("Week") };
+		QList<int> delays;
+		delays.push_back (0);
+		delays.push_back (1);
+		delays.push_back (3);
+		delays.push_back (6);
+		delays.push_back (12);
+		delays.push_back (24);
+		delays.push_back (48);
+		delays.push_back (168);
+		QStringList labels;
+		labels.push_back (tr ("Clear"));
+		labels.push_back (tr ("Hour"));
+		labels.push_back (tr ("3 hours"));
+		labels.push_back (tr ("6 hours"));
+		labels.push_back (tr ("12 hours"));
+		labels.push_back (tr ("Day"));
+		labels.push_back (tr ("2 days"));
+		labels.push_back (tr ("Week"));
 		for (int i = 0; i < delays.size (); ++i)
 		{
 			QAction *delay = new QAction (labels.at (i), this);

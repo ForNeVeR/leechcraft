@@ -41,7 +41,7 @@ namespace Otlozhu
 				this,
 				SIGNAL (gotEntity (LeechCraft::Entity)));
 
-		TCTodo_ = TabClassInfo
+		TabClassInfo temp = 
 		{
 			GetUniqueID () + "_todo",
 			GetName (),
@@ -50,6 +50,7 @@ namespace Otlozhu
 			20,
 			TFOpenableByRequest | TFSingle
 		};
+		TCTodo_ = temp;
 	}
 
 	void Plugin::SecondInit ()
@@ -83,7 +84,9 @@ namespace Otlozhu
 
 	TabClasses_t Plugin::GetTabClasses () const
 	{
-		return { TCTodo_ };
+		TabClasses_t classes;
+		classes.push_back (TCTodo_);
+		return classes;
 	}
 
 	void Plugin::TabOpenRequested (const QByteArray& id)

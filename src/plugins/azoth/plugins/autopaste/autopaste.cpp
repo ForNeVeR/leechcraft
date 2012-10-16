@@ -136,7 +136,8 @@ namespace Autopaste
 		case PasteDialog::Yes:
 		{
 			auto service = dia.GetCreator () (entry);
-			service->Paste ({ Proxy_->GetNetworkAccessManager (), text, dia.GetHighlight () });
+			PasteServiceBase::PasteParams temp = { Proxy_->GetNetworkAccessManager (), text, dia.GetHighlight () };
+			service->Paste (temp);
 			proxy->CancelDefault ();
 		}
 		}

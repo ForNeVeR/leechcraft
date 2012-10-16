@@ -408,7 +408,7 @@ namespace Metacontacts
 		Messages_ << message;
 		if (shouldSort)
 			std::stable_sort (Messages_.begin (), Messages_.end (),
-					[] (QObject *lObj, QObject *rObj)
+					[] (QObject *lObj, QObject *rObj) -> bool
 					{
 						IMessage *left = qobject_cast<IMessage*> (lObj);
 						IMessage *right = qobject_cast<IMessage*> (rObj);

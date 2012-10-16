@@ -38,7 +38,10 @@ namespace LMP
 	{
 		std::for_each (files.begin (), files.end (),
 				[this, cloud, &account] (decltype (files.front ()) file)
-					{ Source2Params_ [file] = { cloud, account }; });
+					{ 
+						CloudUpload upload = { cloud, account };
+						Source2Params_ [file] = upload; 
+					});
 
 		SyncManagerBase::AddFiles (files, params);
 	}
@@ -79,7 +82,8 @@ namespace LMP
 
 		if (!Cloud2Uploaders_.contains (syncTo.Cloud_))
 			CreateUploader (syncTo.Cloud_);
-		Cloud2Uploaders_ [syncTo.Cloud_]->Upload ({ from != transcoded, syncTo.Account_, transcoded });
+		CloudUploader::UploadJob job = { from != transcoded, syncTo.Account_, transcoded };
+		Cloud2Uploaders_ [syncTo.Cloud_]->Upload (job);
 	}
 }
 }

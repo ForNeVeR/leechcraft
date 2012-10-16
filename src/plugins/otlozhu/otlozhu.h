@@ -35,7 +35,7 @@ namespace Otlozhu
 					, public ISyncable
 	{
 		Q_OBJECT
-		Q_INTERFACES (IInfo IHaveTabs IEntityHandler)
+		Q_INTERFACES (IInfo IHaveTabs IEntityHandler ISyncable)
 
 		TabClassInfo TCTodo_;
 	public:

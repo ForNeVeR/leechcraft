@@ -438,16 +438,22 @@ namespace GoogleDrive
 	void DriveManager::DownloadFile (const QString& filePath, const QUrl& url,
 			bool silent)
 	{
-		TaskParameters tp = OnlyDownload | FromUserInitiated;
+		TaskParameters tp = OnlyDownload;
+		QString savePath;
 		if (silent)
-			tp |= AutoAccept | Internal |
+		{
+			savePath = QDesktopServices::storageLocation (QDesktopServices::TempLocation) +
+						"/" + QFileInfo (filePath).fileName ();
+			tp |= AutoAccept |
+					Internal |
 					DoNotNotifyUser |
 					DoNotSaveInHistory |
 					DoNotAnnounceEntity;
-		LeechCraft::Entity e = Util::MakeEntity (url,
-				QDesktopServices::storageLocation (QDesktopServices::TempLocation) +
-						"/" + QFileInfo (filePath).fileName (),
-				tp);
+		}
+		else
+			tp |= FromUserInitiated;
+
+		const auto& e = Util::MakeEntity (url, savePath, tp);
 		silent ?
 			Core::Instance ().DelegateEntity (e, filePath) :
 			Core::Instance ().SendEntity (e);
@@ -523,7 +529,7 @@ namespace GoogleDrive
 	{
 		DriveItem CreateDriveItem (const QVariant& itemData)
 		{
-			QVariantMap map = itemData.toMap ();
+			const QVariantMap& map = itemData.toMap ();
 
 			const QVariantMap& permission = map ["userPermission"].toMap ();
 			const QString& role = permission ["role"].toString ();
@@ -555,7 +561,7 @@ namespace GoogleDrive
 					"application/vnd.google-apps.folder";
 			driveItem.Mime_ = map ["mimeType"].toString ();
 
-			driveItem.DownloadUrl_ = map ["downloadUrl"].toUrl ();
+			driveItem.DownloadUrl_ = QUrl (map ["downloadUrl"].toString ());
 
 			const QVariantMap& labels = map ["labels"].toMap ();
 			driveItem.Labels_ = DriveItem::ILNone;
@@ -580,7 +586,7 @@ namespace GoogleDrive
 			driveItem.Md5_ = map ["md5Checksum"].toString ();
 			driveItem.FileSize_ = map ["fileSize"].toLongLong ();
 
-			for (const auto& ownerName : map ["ownerNames"].toList ())
+			Q_FOREACH(const auto& ownerName, map ["ownerNames"].toList ())
 				driveItem.OwnerNames_ << ownerName.toString ();
 
 			driveItem.LastModifiedBy_ = map ["lastModifyingUserName"].toString ();

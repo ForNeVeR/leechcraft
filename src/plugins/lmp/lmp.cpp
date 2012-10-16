@@ -58,7 +58,7 @@ namespace LMP
 		qmlRegisterType<QGraphicsDropShadowEffect> ("Effects", 1, 0, "DropShadow");
 		qmlRegisterType<QGraphicsOpacityEffect> ("Effects", 1, 0, "OpacityEffect");
 
-		PlayerTC_ =
+		TabClassInfo temp = 
 		{
 			GetUniqueID () + "_player",
 			"LMP",
@@ -67,6 +67,7 @@ namespace LMP
 			40,
 			TFSingle | TFByDefault | TFOpenableByRequest
 		};
+		PlayerTC_ = temp;
 
 		Core::Instance ().SetProxy (proxy);
 		Core::Instance ().PostInit ();
@@ -140,7 +141,7 @@ namespace LMP
 		{
 			const auto& id = "LMP_Global_" + method;
 			const auto& seq = GlobAction2Entity_ [id].Additional_ ["Shortcut"].value<QKeySequence> ();
-			GlobAction2Info_ [id] = { userText, seq, proxy->GetIcon (icon) };
+			GlobAction2Info_ [id] = ActionInfo (userText, seq, proxy->GetIcon (icon));
 		};
 		setInfo (SLOT (togglePause ()), tr ("Play/pause"), "media-playback-start");
 		setInfo (SLOT (previousTrack ()), tr ("Previous track"), "media-skip-backward");

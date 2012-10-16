@@ -1,4 +1,5 @@
 *.qm
+*.qm.rule
 builds/
 build32/
 backup/
@@ -13,3 +14,7 @@ src/data/leechcraft.1.gz
 dummyfile.cpp
 *.kdev4
 *.user
+/tools/win32/build32
+/tools/win32/LeechCraft_debug
+/tools/win32/LeechCraft_release
+/tools/win32/LeechCraft

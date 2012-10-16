@@ -81,7 +81,8 @@ namespace Azoth
 			{
 				const int idx = Ui_.TransferMethod_->count ();
 				Ui_.TransferMethod_->addItem (var);
-				Pos2Sharer_ [idx] = { sharerObj, var };
+				SharerInfo temp = { sharerObj, var };
+				Pos2Sharer_ [idx] = temp;
 			}
 		}
 	}

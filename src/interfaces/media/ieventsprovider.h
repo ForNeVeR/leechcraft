@@ -25,7 +25,7 @@
 
 namespace Media
 {
-	enum class EventAttendType
+	enum EventAttendType
 	{
 		None,
 		Maybe,

@@ -38,7 +38,7 @@ namespace NetStoreManager
 	{
 		Util::InstallTranslator ("netstoremanager");
 
-		ManagerTC_ =
+		TabClassInfo temp =
 		{
 			GetUniqueID () + ".manager",
 			"NetStoreManager",
@@ -47,6 +47,7 @@ namespace NetStoreManager
 			45,
 			TFOpenableByRequest
 		};
+		ManagerTC_ = temp;
 
 		XSD_.reset (new Util::XmlSettingsDialog);
 		XSD_->RegisterObject (&XmlSettingsManager::Instance (), "netstoremanagersettings.xml");

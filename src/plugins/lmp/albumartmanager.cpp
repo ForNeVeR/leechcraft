@@ -47,8 +47,8 @@ namespace LMP
 			QTimer::singleShot (500,
 					this,
 					SLOT (rotateQueue ()));
-
-		Queue_ << Media::AlbumInfo { artist.Name_, album->Name_ };
+		Media::AlbumInfo info = { artist.Name_, album->Name_ };
+		Queue_ << info;
 	}
 
 	void AlbumArtManager::rotateQueue ()

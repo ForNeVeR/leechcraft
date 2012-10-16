@@ -43,8 +43,7 @@ namespace Monocle
 		XSD_->SetDataSource ("DefaultBackends",
 				Core::Instance ().GetDefaultBackendManager ()->GetModel ());
 
-		DocTabInfo_ =
-		{
+		TabClassInfo temp = {
 			GetUniqueID () + "_Document",
 			"Monocle",
 			GetInfo (),
@@ -52,6 +51,8 @@ namespace Monocle
 			55,
 			TFOpenableByRequest | TFSuggestOpening
 		};
+		DocTabInfo_ = temp;
+		
 	}
 
 	void Plugin::SecondInit ()
@@ -115,7 +116,7 @@ namespace Monocle
 
 	TabClasses_t Plugin::GetTabClasses () const
 	{
-		return { DocTabInfo_ };
+		return TabClasses_t() << DocTabInfo_;
 	}
 
 	void Plugin::TabOpenRequested (const QByteArray& id)

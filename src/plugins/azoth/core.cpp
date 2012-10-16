@@ -745,7 +745,7 @@ namespace Azoth
 
 	QList<QColor> Core::GenerateColors (const QString& coloring) const
 	{
-		auto fix = [] (qreal h)
+		auto fix = [] (qreal h) -> qreal
 		{
 			while (h < 0)
 				h += 1;
@@ -1085,6 +1085,8 @@ namespace Azoth
 			cats << tr ("General");
 
 		QList<QStandardItem*> result;
+		QMetaObject::invokeMethod (CLModel_, "modelAboutToBeReset");
+		CLModel_->blockSignals (true);
 		Q_FOREACH (const QString& cat, cats)
 		{
 			if (!Account2Category2Item_ [account].keys ().contains (cat))
@@ -1102,6 +1104,8 @@ namespace Azoth
 
 			result << Account2Category2Item_ [account] [cat];
 		}
+		CLModel_->blockSignals (false);
+		QMetaObject::invokeMethod (CLModel_, "modelReset");
 
 		return result;
 	}
@@ -1595,7 +1599,8 @@ namespace Azoth
 					continue;
 
 				SavedStatus_ [acc] = state;
-				acc->ChangeState ({SOffline, tr ("Client went to sleep")});
+				auto status = EntryStatus(SOffline, tr ("Client went to sleep"));
+				acc->ChangeState (status);
 			}
 		else if (e.Entity_ == "WokeUp")
 		{
@@ -1651,7 +1656,11 @@ namespace Azoth
 				Qt::ItemIsDragEnabled |
 				Qt::ItemIsDropEnabled);
 
+		QMetaObject::invokeMethod (CLModel_, "modelAboutToBeReset");
+		CLModel_->blockSignals (true);
 		catItem->appendRow (clItem);
+		CLModel_->blockSignals (false);
+		QMetaObject::invokeMethod (CLModel_, "modelReset");
 
 		Entry2Items_ [clEntry] << clItem;
 	}
@@ -1813,7 +1822,7 @@ namespace Azoth
 	void Core::handleMucJoinRequested ()
 	{
 		auto accounts = GetAccountsPred (ProtocolPlugins_,
-				[] (IProtocol *proto) { return proto->GetFeatures () & IProtocol::PFMUCsJoinable; });
+				[] (IProtocol *proto) -> bool { return proto->GetFeatures () & IProtocol::PFMUCsJoinable; });
 
 		JoinConferenceDialog *dia = new JoinConferenceDialog (accounts, Proxy_->GetMainWindow ());
 		dia->show ();
@@ -1881,7 +1890,11 @@ namespace Azoth
 				CLREntryType);
 		ItemIconManager_->SetIcon (accItem,
 				GetIconPathForState (account->GetState ().State_).get ());
+		QMetaObject::invokeMethod (CLModel_, "modelAboutToBeReset");
+		CLModel_->blockSignals (true);
 		CLModel_->appendRow (accItem);
+		CLModel_->blockSignals (false);
+		QMetaObject::invokeMethod (CLModel_, "modelReset");
 
 		accItem->setEditable (false);
 

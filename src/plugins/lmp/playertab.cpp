@@ -18,6 +18,7 @@
 
 #include "playertab.h"
 #include <algorithm>
+#include <functional>
 #include <QToolBar>
 #include <QFileDialog>
 #include <QStandardItemModel>
@@ -536,7 +537,7 @@ namespace LMP
 					SLOT (handleGotLyrics (const Media::LyricsQuery&, const QStringList&)),
 					Qt::UniqueConnection);
 			auto finder = qobject_cast<Media::ILyricsFinder*> (finderObj);
-			finder->RequestLyrics ({ info.Artist_, info.Album_, info.Title_ },
+			finder->RequestLyrics (Media::LyricsQuery (info.Artist_, info.Album_, info.Title_ ),
 					Media::QueryOption::NoOption);
 		}
 	}
@@ -642,7 +643,7 @@ namespace LMP
 
 	void PlayerTab::handleCurrentPlayTime (qint64 time)
 	{
-		auto niceTime = [] (qint64 time)
+		auto niceTime = [] (qint64 time) -> QString
 		{
 			if (!time)
 				return QString ();

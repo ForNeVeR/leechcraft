@@ -26,7 +26,7 @@ namespace LeechCraft
 {
 namespace Monocle
 {
-	enum class LinkType
+	enum LinkType
 	{
 		PageLink,
 		URL,

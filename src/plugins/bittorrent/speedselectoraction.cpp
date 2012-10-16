@@ -94,7 +94,7 @@ namespace LeechCraft
 				settings.endArray ();
 				settings.endGroup ();
 
-				Call ([] (QComboBox *box) { box->addItem (QString::fromUtf8 ("\u221E"), 0); });
+				Call ([] (QComboBox *box) { box->addItem (QString::fromUtf8 ("\x22\x1E"), 0); });
 				Call ([] (QComboBox *box) { box->setCurrentIndex (box->count () - 1); });
 
 				setVisible (true);

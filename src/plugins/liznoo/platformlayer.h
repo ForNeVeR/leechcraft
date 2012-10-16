@@ -34,12 +34,15 @@ namespace Liznoo
 
 		virtual void Stop () = 0;
 
-		enum class PowerState
+		enum PowerState
 		{
 			Suspend,
 			Hibernate
 		};
 		virtual void ChangeState (PowerState);
+	protected:
+		void EmitGonnaSleep (int);
+		void EmitWokeUp ();
 	signals:
 		void started ();
 		void gotEntity (const LeechCraft::Entity&);

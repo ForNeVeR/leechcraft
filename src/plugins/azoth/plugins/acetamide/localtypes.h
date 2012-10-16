@@ -29,7 +29,7 @@ namespace Azoth
 {
 namespace Acetamide
 {
-	enum class IrcServer
+	enum IrcServer
 	{
 		UnknownServer,
 		UnrealIRCD

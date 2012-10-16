@@ -29,7 +29,7 @@ namespace KBSwitch
 	{
 		Q_OBJECT
 
-		enum class SwitchingPolicy
+		enum SwitchingPolicy
 		{
 			Global,
 			Plugin,

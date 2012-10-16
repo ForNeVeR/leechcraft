@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "documenttab.h"
+#include <functional>
 #include <QToolBar>
 #include <QComboBox>
 #include <QFileDialog>
@@ -60,6 +61,7 @@ namespace Monocle
 	, LayMode_ (LayoutMode::OnePage)
 	, MouseMode_ (MouseMode::Move)
 	, RelayoutScheduled_ (true)
+	, Onload_ ({ -1, 0, 0 })
 	{
 		Ui_.setupUi (this);
 		Ui_.PagesView_->setScene (&Scene_);
@@ -348,7 +350,17 @@ namespace Monocle
 		ScalesBox_ = new QComboBox ();
 		ScalesBox_->addItem (tr ("Fit width"));
 		ScalesBox_->addItem (tr ("Fit page"));
-		std::vector<double> scales = { 0.1, 0.25, 0.33, 0.5, 0.66, 0.8, 1.0, 1.25, 1.5, 2 };
+		std::vector<double> scales;
+		scales.push_back (0.1);
+		scales.push_back (0.25);
+		scales.push_back (0.33);
+		scales.push_back (0.5);
+		scales.push_back (0.66);
+		scales.push_back (0.8);
+		scales.push_back (1.0);
+		scales.push_back (1.25);
+		scales.push_back (1.5);
+		scales.push_back (2.0);
 		Q_FOREACH (double scale, scales)
 			ScalesBox_->addItem (QString::number (scale * 100) + '%', scale);
 		ScalesBox_->setCurrentIndex (0);
@@ -410,7 +422,7 @@ namespace Monocle
 		if (!CurrentDoc_)
 			return 1;
 
-		auto calcRatio = [this] (std::function<double (const QSize&)> dimGetter)
+		auto calcRatio = [this] (std::function<double (const QSize&)> dimGetter) -> double
 		{
 			if (Pages_.isEmpty ())
 				return 1.0;
@@ -504,7 +516,13 @@ namespace Monocle
 		}
 
 		Scene_.setSceneRect (Scene_.itemsBoundingRect ());
-		SetCurrentPage (std::max (GetCurrentPage (), 0));
+		if (Onload_.Num_ >= 0)
+		{
+			handleNavigateRequested (QString (), Onload_.Num_, Onload_.X_, Onload_.Y_);
+			Onload_.Num_ = -1;
+		}
+		else
+			SetCurrentPage (std::max (GetCurrentPage (), 0));
 		updateNumLabel ();
 	}
 
@@ -517,11 +535,19 @@ namespace Monocle
 		}
 	}
 
-	void DocumentTab::handleNavigateRequested (const QString& path, int num, double x, double y)
+	void DocumentTab::handleNavigateRequested (QString path, int num, double x, double y)
 	{
 		if (!path.isEmpty ())
+		{
+			if (QFileInfo (path).isRelative ())
+				path = QFileInfo (CurrentDocPath_).dir ().absoluteFilePath (path);
+
+			Onload_ = { num, x, y };
+
 			if (!SetDoc (path))
-				return;
+				Onload_.Num_ = -1;
+			return;
+		}
 
 		SetCurrentPage (num);
 

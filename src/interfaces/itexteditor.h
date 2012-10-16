@@ -28,7 +28,7 @@ class QAction;
 
 namespace LeechCraft
 {
-	enum class ContentType
+	enum ContentType
 	{
 		HTML,
 		PlainText

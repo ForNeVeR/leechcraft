@@ -4,20 +4,20 @@ call "%~dp0\winvars32.bat"
 
 set BOOST_LIB_SUFFIX=""
 set QT_LIB_SUFFIX=""
+set QXMPP_LIB_SUFFIX=""
 rem Boost and Qt libraries have Debug suffixies in names
 if "%BUILD_TYPE%" == "Debug" (
 	set BOOST_LIB_SUFFIX="gd-"
 	set QT_LIB_SUFFIX="d"
+	set QXMPP_LIB_SUFFIX="_d"
 )
-
-rem This is the directory where LeechCraft will live
-set TARGET_DIR="LeechCraft"
 
 rem === DIRECTORY STRUCTURE ===
 if exist %TARGET_DIR% rmdir /s /q %TARGET_DIR%
 mkdir %TARGET_DIR%
 mkdir %TARGET_DIR%\plugins
 mkdir %TARGET_DIR%\plugins\bin
+mkdir %TARGET_DIR%\plugins\crypto
 mkdir %TARGET_DIR%\plugins\imageformats
 mkdir %TARGET_DIR%\plugins\sqldrivers
 mkdir %TARGET_DIR%\plugins\phonon_backend
@@ -27,6 +27,7 @@ mkdir %TARGET_DIR%\translations
 mkdir %TARGET_DIR%\leechcraft
 mkdir %TARGET_DIR%\leechcraft\themes
 mkdir %TARGET_DIR%\icons
+mkdir %TARGET_DIR%\certs
 
 rem === SHARED COMPONENTS ===
 
@@ -82,6 +83,26 @@ rem - VLC -
 copy %VLC_DIR%\libvlc.dll %TARGET_DIR%
 copy %VLC_DIR%\libvlccore.dll %TARGET_DIR%
 
+rem - QWT -
+copy %QWT_DIR%\lib\qwt%QT_LIB_SUFFIX%.dll %TARGET_DIR%
+
+rem - Taglib -
+copy %TAGLIB_BIN_DIR%\tag.dll %TARGET_DIR%
+
+rem - Poppler-qt4 -
+copy %POPPLER_QT4_BIN_DIR%\poppler-qt4.dll %TARGET_DIR%
+
+rem - Hunspell -
+copy %HUNSPELL_BIN_DIR%\libhunspell.dll %TARGET_DIR%
+
+rem - QCA2 -
+copy %QCA_BIN_DIR%\qca.dll %TARGET_DIR%
+copy %QCA_DIR%\certs\rootcerts.pem %TARGET_DIR%\certs
+copy %QT_BIN_DIR%\..\plugins\crypto\qca-gnupg.dll %TARGET_DIR%\plugins\crypto
+
+rem - QXmpp -
+copy %QXMPP_DIR%\lib\qxmpp%QXMPP_LIB_SUFFIX%0.dll %TARGET_DIR%
+
 rem === LEECHCRAFT FILES ===
 
 rem - Main files -
@@ -99,9 +120,11 @@ rem - Translations -
 for /r %LEECHCRAFT_ROOT_DIR%\src %%f in (*.qm) do copy %%f %TARGET_DIR%\translations
 
 rem - Oxygen icon theme -
-copy %LEECHCRAFT_ROOT_DIR%\src\iconsets\oxygen\oxygen.mapping %TARGET_DIR%\icons
-xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\iconsets\oxygen\icons %TARGET_DIR%\icons\oxygen
+xcopy /e /i %OXYGENICONS_DIR% %TARGET_DIR%\icons\oxygen
 copy nul %TARGET_DIR%\leechcraft\themes\oxygen
+
+rem - Core -
+xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\share %TARGET_DIR%\share
 
 rem - Azoth resources -
 xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\azoth\share %TARGET_DIR%\share
@@ -115,6 +138,12 @@ xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\kinotify\themes %TARGET_DIR%\share
 rem - AdvancedNotifications stuff -
 xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\advancednotifications\share %TARGET_DIR%\share
 
+rem - KnowHow stuff -
+xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\knowhow\share %TARGET_DIR%\share
+
+rem - Aggregator Bodyfetch stuff -
+xcopy /e /i %LEECHCRAFT_ROOT_DIR%\src\plugins\aggregator\plugins\bodyfetch\share %TARGET_DIR%\share
+
 rem - Other stuff -
 copy %LEECHCRAFT_ROOT_DIR%\tools\win32\installer\qt.conf %TARGET_DIR%
 
@@ -124,5 +153,40 @@ copy %QT_BIN_DIR%\..\translations\qt_*.qm %TARGET_DIR%\translations
 
 rem == Copy install script to Leechcraft
 XCOPY installer\* %TARGET_DIR% /Y
+
+rem === Redist & tools ===
+rem mkdir %TARGET_DIR%\myspell
+rem xcopy /e /i %TOOLS_DIR%\myspell %TARGET_DIR%\myspell
+copy %TOOLS_DIR%\7za.exe %TARGET_DIR%
+copy %TOOLS_DIR%\vcredist_x86.exe %TARGET_DIR%
+
+rem === Debug files ===
+set COPYDEBUG=0
+if "%BUILD_TYPE%" == "Debug" set COPYDEBUG=1
+if "%BUILD_TYPE%" == "RelWithDebInfo" set COPYDEBUG=1
+
+if %COPYDEBUG% == 1 (
+rem - qjson -
+copy %QJSON_BIN_DIR%\qjson.pdb %TARGET_DIR%
+rem - libtorrent -
+copy %LIBTORRENT_BIN_DIR%\torrent.pdb %TARGET_DIR%
+rem - QWT -
+copy %QWT_DIR%\lib\qwt%QT_LIB_SUFFIX%.pdb %TARGET_DIR%
+rem - Boost -
+copy %BOOST_ROOT%\bin.v2\libs\date_time\build\msvc-10.0\debug\threading-multi\boost_date_time-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\filesystem\build\msvc-10.0\debug\threading-multi\boost_filesystem-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\program_options\build\msvc-10.0\debug\threading-multi\boost_program_options-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\system\build\msvc-10.0\debug\threading-multi\boost_system-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+copy %BOOST_ROOT%\bin.v2\libs\thread\build\msvc-10.0\debug\threading-multi\boost_thread-vc100-mt-%BOOST_LIB_SUFFIX%%BOOST_VERSION%.pdb %TARGET_DIR%
+rem - Hunspell -
+copy %HUNSPELL_BIN_DIR%\libhunspell.pdb %TARGET_DIR%
+rem - Main files -
+copy %LEECHCRAFT_BUILD_DIR%\%BUILD_TYPE%\leechcraft.pdb %TARGET_DIR%
+copy %LEECHCRAFT_BUILD_DIR%\util\%BUILD_TYPE%\lcutil.pdb %TARGET_DIR%
+copy %LEECHCRAFT_BUILD_DIR%\xmlsettingsdialog\%BUILD_TYPE%\xmlsettingsdialog.pdb %TARGET_DIR%
+
+rem - Plugins -
+for /r %LEECHCRAFT_BUILD_DIR%\plugins %%f in (%BUILD_TYPE%\leechcraft_*.pdb) do copy %%f %TARGET_DIR%\plugins\bin
+)
 
 pause

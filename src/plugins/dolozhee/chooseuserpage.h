@@ -33,7 +33,7 @@ namespace Dolozhee
 
 		Ui::ChooseUserPage Ui_;
 	public:
-		enum class User
+		enum User
 		{
 			Anonymous,
 			New,

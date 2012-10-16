@@ -65,7 +65,8 @@ namespace XSPF
 
 	QList<Phonon::MediaSource> Read2Sources (const QString& path)
 	{
-		return CommonRead2Sources ({ QStringList ("xspf"), path, Read });
+		ReadParams params = { QStringList ("xspf"), path, Read };
+		return CommonRead2Sources (params);
 	}
 }
 }

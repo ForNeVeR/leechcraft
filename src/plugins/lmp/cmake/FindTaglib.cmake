@@ -50,32 +50,40 @@ else(TAGLIBCONFIG_EXECUTABLE)
 
   include(FindPackageHandleStandardArgs)
 
+  if(WIN32)
+	if(MSVC)
+		#MSVS 2010
+		if(MSVC_VERSION LESS 1600)
+			MESSAGE(FATAL_ERROR "We currently support only MSVC 2010 version")
+		endif(MSVC_VERSION LESS 1600)
+	endif(MSVC)
+	if(NOT DEFINED TAGLIB_DIR)
+		if(TAGLIB_FIND_REQUIRED)
+			MESSAGE(FATAL_ERROR "Please set TAGLIB_DIR variable")
+		else(TAGLIB_FIND_REQUIRED)
+			MESSAGE(STATUS "Please set TAGLIB_DIR variable for taglib support")
+		endif(TAGLIB_FIND_REQUIRED)
+	endif(NOT DEFINED TAGLIB_DIR)
+	set(TAGLIB_INCLUDE_WIN32 ${TAGLIB_DIR}/include)
+	find_library(TAGLIB_LIBRARIES NAMES tag.lib PATHS ${TAGLIB_DIR}/lib)
+  else (WIN32)
+    find_library(TAGLIB_LIBRARIES
+      NAMES tag
+      PATHS
+      ${KDE4_LIB_DIR}
+      ${LIB_INSTALL_DIR}
+    )
+  endif(WIN32)
+  
   find_path(TAGLIB_INCLUDES
     NAMES
-    tag.h
+    taglib/tag.h
     PATH_SUFFIXES taglib
     PATHS
     ${KDE4_INCLUDE_DIR}
     ${INCLUDE_INSTALL_DIR}
-    ${TAGLIB_DIR}/include
+    ${TAGLIB_INCLUDE_WIN32}
   )
-
-if (NOT MINGW)
-  find_library(TAGLIB_LIBRARIES
-    NAMES tag
-    PATHS
-    ${KDE4_LIB_DIR}
-    ${LIB_INSTALL_DIR}
-  )
-ELSE (NOT MINGW)
-  find_library(TAGLIB_LIBRARIES
-    NAMES libtag.dll.a
-    PATHS
-    ${KDE4_LIB_DIR}
-    ${LIB_INSTALL_DIR}
-    ${TAGLIB_DIR}/build/taglib
-  )
-ENDIF (NOT MINGW)
 
   find_package_handle_standard_args(Taglib DEFAULT_MSG
                                     TAGLIB_INCLUDES TAGLIB_LIBRARIES)

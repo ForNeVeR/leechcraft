@@ -191,8 +191,14 @@ namespace Otlozhu
 			TodoItem_ptr todo (new TodoItem (AsQString (id)));
 			todo->SetCreatedDate (AsQDateTime (item ["DTSTAMP"]));
 			todo->SetDueDate (AsQDateTime (item ["DUE"]));
-			todo->SetTitle (AsQStrings ({ item ["SUMMARY"], item ["DESCRIPTION"] }));
-			todo->SetComment (AsQStrings ({ item ["COMMENT"], item ["DESCRIPTION"] }));
+			std::vector<MaybeFieldVal_t> titles;
+			titles.push_back (item ["SUMMARY"]);
+			titles.push_back (item ["DESCRIPTION"]);
+			todo->SetTitle (AsQStrings (titles));
+			std::vector<MaybeFieldVal_t> comments;
+			comments.push_back (item ["COMMENT"]);
+			comments.push_back (item ["DESCRIPTION"]);
+			todo->SetComment (AsQStrings (comments));
 			todo->SetPercentage (AsInt (item ["PERCENT-COMPLETE"]));
 
 			const QStringList& tags = AsQString (item ["CATEGORIES"])

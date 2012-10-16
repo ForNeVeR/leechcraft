@@ -55,14 +55,10 @@ namespace LeechCraft
 
 			static QMutex LockedMutex_;
 			static QSet<QString> LockedBases_;
-		public:
-#ifdef _MSC_VER
-#pragma warning "Not supported by MSVS2010"
-#elif
-			DBLock (const DBLock&) = delete;
-			DBLock& operator= (const DBLock&) = delete;
-#endif
 
+			DBLock (const DBLock&);
+			DBLock& operator= (const DBLock&);
+		public:
 			/** @brief Constructor.
 			 *
 			 * Constructs the lock and prepares it to work with the database.

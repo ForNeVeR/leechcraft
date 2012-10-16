@@ -340,13 +340,11 @@ namespace Xoox
 				<< tr ("work")
 				<< tr ("cell");
 
-		const std::vector<QXmppVCardPhone::Type> type2pos =
-		{
-			QXmppVCardPhone::Preferred,
-			QXmppVCardPhone::Home,
-			QXmppVCardPhone::Work,
-			QXmppVCardPhone::Cell
-		};
+		std::vector<QXmppVCardPhone::Type> type2pos;
+		type2pos.push_back (QXmppVCardPhone::Preferred);
+		type2pos.push_back (QXmppVCardPhone::Home);
+		type2pos.push_back (QXmppVCardPhone::Work);
+		type2pos.push_back (QXmppVCardPhone::Cell);
 
 		VCardListEditDialog dia (options, this);
 		dia.setWindowTitle (tr ("VCard phones"));
@@ -394,13 +392,11 @@ namespace Xoox
 				<< tr ("work")
 				<< "X400";
 
-		const std::vector<QXmppVCardEmail::Type> type2pos =
-		{
-			QXmppVCardEmail::Preferred,
-			QXmppVCardEmail::Home,
-			QXmppVCardEmail::Work,
-			QXmppVCardEmail::X400
-		};
+		std::vector<QXmppVCardEmail::Type> type2pos;
+		type2pos.push_back (QXmppVCardEmail::Preferred);
+		type2pos.push_back (QXmppVCardEmail::Home);
+		type2pos.push_back (QXmppVCardEmail::Work);
+		type2pos.push_back (QXmppVCardEmail::X400);
 
 		VCardListEditDialog dia (options, this);
 		dia.setWindowTitle (tr ("VCard emails"));

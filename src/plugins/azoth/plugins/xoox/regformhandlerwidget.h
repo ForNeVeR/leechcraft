@@ -53,7 +53,7 @@ namespace Xoox
 			FTNew
 		} FormType_;
 	public:
-		enum class State
+		enum State
 		{
 			Error,
 			Idle,

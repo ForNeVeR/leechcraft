@@ -29,7 +29,7 @@ namespace YandexDisk
 	{
 		static QPixmap icons (":/netstoremanager/yandexdisk/resources/images/yandexnarod-icons-files.png");
 
-		auto iconNum = [] (const QString& str)
+		auto iconNum = [] (const QString& str) -> int
 		{
 			if (str == "b-icon-music")
 				return 0;

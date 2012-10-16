@@ -38,7 +38,7 @@ namespace Importers
 		auto tfd = [] (const QDomElement& account, const QString& field)
 			{ return account.firstChildElement (field).text (); };
 
-		auto adapter = Common::XMLIMAccount::ConfigAdapter
+		Common::XMLIMAccount::ConfigAdapter adapter = 
 		{
 			AccountsModel_,
 			QStringList (".config") << "Psi+" << "profiles",

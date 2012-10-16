@@ -95,12 +95,12 @@ namespace LMP
 			TrackTitle,
 			TrackPath
 		};
-		enum class DynamicPlaylist
+		enum DynamicPlaylist
 		{
 			Random50
 		};
 
-		enum class DirStatus
+		enum DirStatus
 		{
 			RootPath,
 			SubPath,

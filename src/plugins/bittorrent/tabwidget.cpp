@@ -356,7 +356,7 @@ namespace LeechCraft
 						setText (QString::number (stats.total_payload_upload /
 									static_cast<double> (stats.total_payload_download), 'g', 4));
 				else
-					Ui_.LabelSessionRating_->setText (QString::fromUtf8 ("\u221E"));
+					Ui_.LabelSessionRating_->setText (QString::fromUtf8 ("\x22\x1E"));
 				Ui_.LabelTotalFailedData_->
 					setText (Util::MakePrettySize (stats.total_failed_bytes));
 				Ui_.LabelTotalRedundantData_->
@@ -456,7 +456,7 @@ namespace LeechCraft
 									static_cast<double> (i->Status_.all_time_download), 'g', 4));
 				else
 					Ui_.LabelTorrentOverallRating_->
-						setText (QString::fromUtf8 ("\u221E"));
+						setText (QString::fromUtf8 ("\x22\x1E"));
 				Ui_.LabelActiveTime_->
 					setText (Util::MakeTimeFromLong (i->Status_.active_time));
 				Ui_.LabelSeedingTime_->
@@ -479,7 +479,7 @@ namespace LeechCraft
 									static_cast<double> (i->Status_.total_payload_download), 'g', 4));
 				else
 					Ui_.LabelTorrentRating_->
-						setText (QString::fromUtf8 ("\u221E"));
+						setText (QString::fromUtf8 ("\x22\x1E"));
 				Ui_.PiecesWidget_->setPieceMap (i->Status_.pieces);
 				Ui_.LabelTracker_->
 					setText (QString::fromStdString (i->Status_.current_tracker));

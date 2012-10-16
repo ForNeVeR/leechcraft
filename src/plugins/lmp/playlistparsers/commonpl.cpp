@@ -41,8 +41,11 @@ namespace LMP
 
 			const QFileInfo fi (src);
 			if (params.Suffixes_.contains (fi.suffix ()))
-				result += CommonRead2Sources ({ params.Suffixes_,
-							plDir.absoluteFilePath (src), params.RawParser_ });
+			{
+				ReadParams params = { params.Suffixes_,
+					plDir.absoluteFilePath (src), params.RawParser_ };
+				result += CommonRead2Sources (params);
+			}
 			else if (fi.isRelative ())
 				result << plDir.absoluteFilePath (src);
 			else

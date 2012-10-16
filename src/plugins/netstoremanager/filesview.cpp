@@ -99,7 +99,11 @@ namespace NetStoreManager
 
 			if (!targetIndex.data (ListingRole::InTrash).toBool () &&
 					targetIndex.data (ListingRole::ID).toStringList ().value (0) != "netstoremanager.item_trash")
-				menu->addActions ({ CopyItem_, MoveItem_, menu->addSeparator (), Cancel_ });
+				menu->addActions (QList<QAction*> () 
+									<< CopyItem_
+									<< MoveItem_
+									<< menu->addSeparator ()
+									<< Cancel_);
 
 			menu->exec (viewport ()->mapToGlobal (event->pos ()));
 			menu->deleteLater ();

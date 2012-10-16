@@ -9,9 +9,15 @@ INCLUDE_DIRECTORIES (
 	${LEECHCRAFT_INCLUDE_DIR}
 	)
 SET (SRCS
+	buttonmanager.cpp
+	previewmanager.cpp
+	progressmanager.cpp
 	y7.cpp
 	)
 SET (HEADERS
+	buttonmanager.h
+	previewmanager.h
+	progressmanager.h
 	y7.h
 	)
 IF (NOT LC_NO_MOC)

@@ -18,51 +18,13 @@
 
 #pragma once
 
-#include <QList>
-#include <QObject>
-
-#include <ShObjIdl.h>
-#include <Windows.h>
-
-#include <interfaces/iinfo.h>
-
-class QAbstractItemModel;
-class QModelIndex;
-class IJobHolder;
-
 namespace LeechCraft
 {
 namespace Y7
 {
-	class Plugin : public QObject
-					, public IInfo
+	class ProgressManager
 	{
-		Q_OBJECT
-		Q_INTERFACES (IInfo)
 
-		ICoreProxy_ptr Proxy_;
-		ITaskbarList3 *Taskbar_;
-		QList<IJobHolder*> JobHolders_;
-		QAbstractItemModel *ProgressModel_;
-	public:
-		void Init (ICoreProxy_ptr);
-		void SecondInit ();
-		QByteArray GetUniqueID () const;
-		void Release ();
-		QString GetName () const;
-		QString GetInfo () const;
-		QIcon GetIcon () const;
-	private:
-		void InitProgressModel ();
-		void SetProgress ();
-	private slots:		
-		void initButtons ();
-
-		void initProgress ();
-		void progressRowsInserted (const QModelIndex &parent, int start, int end);
-		void progressDataChanged (const QModelIndex &topLeft, const QModelIndex &bottomRight);
-
-		void initTabs ();
 	};
 }
 }

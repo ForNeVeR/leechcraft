@@ -1,0 +1,6 @@
+[requires]
+icu/57.1@vitallium/stable
+Qt/5.6.1-1@osechet/testing
+
+[generators]
+cmake

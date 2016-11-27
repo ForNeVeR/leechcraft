@@ -3,6 +3,9 @@ cmake_policy (SET CMP0003 NEW)
 cmake_policy (SET CMP0042 NEW)
 cmake_policy (SET CMP0043 NEW)
 
+include(../conanbuildinfo.cmake)
+conan_basic_setup()
+
 project (leechcraft)
 #if (NOT DISABLE_RPATH_TRICKS)
 #	set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")

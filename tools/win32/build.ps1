@@ -85,6 +85,7 @@ try {
 	exec $cmake ../../../src `
 		"-DCMAKE_BUILD_TYPE=$BuildType" `
 		"-DCMAKE_TOOLCHAIN_FILE=$VcpkgToolchainFile" `
+		-DUSE_QT5=True `
 		@plugins
 } finally {
 	Pop-Location

@@ -83,9 +83,9 @@ $plugins = ($enabledPlugins | % { "-DENABLE_$_=True" }) + ($disabledPlugins | % 
 Push-Location $BuildDirectory
 try {
 	exec $cmake ../../../src `
-		-DCMAKE_BUILD_TYPE=$BuildType `
-		-DCMAKE_TOOLCHAIN_FILE=$VcpkgToolchainFile `
-		$plugins
+		"-DCMAKE_BUILD_TYPE=$BuildType" `
+		"-DCMAKE_TOOLCHAIN_FILE=$VcpkgToolchainFile" `
+		@plugins
 } finally {
 	Pop-Location
 }

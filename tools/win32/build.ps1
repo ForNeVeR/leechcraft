@@ -11,6 +11,8 @@
 .PARAMETER VcpkgToolchainFile
 	Path to vcpkg toolchain file, see
 	https://github.com/Microsoft/vcpkg/blob/master/docs/EXAMPLES.md#option-b-cmake-toolchain-file
+.PARAMETER QtDir
+	Path to Qt directory. Should include bin subdirectory.
 .PARAMETER cmake
 	Path to cmake executable.
 .PARAMETER git
@@ -24,6 +26,7 @@ param (
 
 	$BuildDirectory = "$PSScriptRoot/build32",
 	$VcpkgToolchainFile = 'D:\Programs\vcpkg\scripts\buildsystems\vcpkg.cmake',
+	$QtDir = 'E:\Libs\Qt5.7.1\5.7\msvc2015',
 
 	$cmake = 'cmake',
 	$git = 'git',
@@ -48,7 +51,7 @@ function exec($command) {
 }
 
 log '=== INSTALLING DEPENDENCIES ==='
-$dependencies = @('boost'; 'qt5')
+$dependencies = @('boost')
 $dependencies | % {
 	$dependency = $_
 	exec $vcpkg install "$($dependency):$Platform"
@@ -82,6 +85,8 @@ $plugins = ($enabledPlugins | % { "-DENABLE_$_=True" }) + ($disabledPlugins | % 
 
 Push-Location $BuildDirectory
 try {
+	$env:QT_BIN_DIR = "$QtDir/bin" # TODO: Make it not change the environment
+	$env:CMAKE_PREFIX_PATH = "$QtDir/lib/cmake/Qt5;$QtDir/lib/cmake/Qt5Widgets"
 	exec $cmake ../../../src `
 		"-DCMAKE_BUILD_TYPE=$BuildType" `
 		"-DCMAKE_TOOLCHAIN_FILE=$VcpkgToolchainFile" `
